@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.1
+
+- Increased CI session startup tolerance through `WEBOTS_KIT_SESSION_START_TIMEOUT`.
+- Improved `session start` timeout diagnostics so CI logs include manifest and artifact context.
+- Fixed Windows Actions diagnostics upload by copying session logs into the workspace before artifact upload.
+
 ## v0.4.0
 
 - Added controller SDK hardening through the public `ControllerAgent` wrapper.

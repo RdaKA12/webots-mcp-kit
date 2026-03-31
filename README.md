@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.4.0`
+`v0.4.1`
 
 Current focus:
 
@@ -41,6 +41,12 @@ Use an isolated virtual environment. The toolkit depends on `mcp`, which may pul
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e .[dev]
+```
+
+Optional CI or slow-machine tuning:
+
+```powershell
+$env:WEBOTS_KIT_SESSION_START_TIMEOUT='90'
 ```
 
 ## Quick start

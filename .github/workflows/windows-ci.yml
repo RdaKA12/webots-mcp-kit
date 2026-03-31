@@ -8,6 +8,8 @@ on:
 jobs:
   windows-tests:
     runs-on: windows-latest
+    env:
+      WEBOTS_KIT_SESSION_START_TIMEOUT: "90"
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -82,9 +84,21 @@ jobs:
 
       - name: Upload failure diagnostics
         if: failure()
+        shell: powershell
+        run: |
+          $diag = Join-Path $env:GITHUB_WORKSPACE '.ci-diagnostics'
+          New-Item -ItemType Directory -Force -Path $diag | Out-Null
+          if (Test-Path (Join-Path $env:GITHUB_WORKSPACE 'artifacts')) {
+            Copy-Item -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'artifacts') -Destination $diag -Recurse -Force
+          }
+          $sessionRoot = Join-Path $env:LOCALAPPDATA 'webots-mcp-kit\sessions'
+          if (Test-Path $sessionRoot) {
+            Copy-Item -LiteralPath $sessionRoot -Destination (Join-Path $diag 'sessions') -Recurse -Force
+          }
+
+      - name: Upload failure diagnostics artifact
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: windows-ci-diagnostics
-          path: |
-            ${{ github.workspace }}\artifacts
-            C:\Users\runneradmin\AppData\Local\webots-mcp-kit\sessions
+          path: ${{ github.workspace }}\.ci-diagnostics

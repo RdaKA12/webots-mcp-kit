@@ -107,6 +107,7 @@ def start_session(
         stderr=subprocess.DEVNULL,
     )
 
+    timeout = session_start_timeout(timeout)
     deadline = time.time() + timeout
     while time.time() < deadline:
         current = store.load_manifest(session_id)
@@ -115,7 +116,12 @@ def start_session(
         if current.status == "failed":
             raise RuntimeError(current.last_error or f"Session {session_id} failed to initialize.")
         time.sleep(0.25)
-    raise TimeoutError(f"Timed out waiting for session {session_id} to become ready.")
+    current = store.load_manifest(session_id)
+    diagnostics = timeout_diagnostics(store, current)
+    raise TimeoutError(
+        f"Timed out waiting for session {session_id} to become ready after {timeout:.1f}s. "
+        f"status={current.status} session_dir={current.session_dir} diagnostics={diagnostics}"
+    )
 
 
 def stop_session(session_id: str, timeout: float = 20.0) -> SessionManifest:
@@ -141,4 +147,29 @@ def inspect_session(session_id: str) -> dict[str, object]:
             payload["runtime_state"] = SessionClient(manifest).request("get_state", timeout=5.0)
         except Exception as exc:
             payload["runtime_error"] = str(exc)
+    return payload
+
+
+def session_start_timeout(default: float) -> float:
+    raw = os.environ.get("WEBOTS_KIT_SESSION_START_TIMEOUT")
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def timeout_diagnostics(store: SessionStore, manifest: SessionManifest) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "artifacts_dir": manifest.artifacts_dir,
+        "artifacts": store.list_artifacts(manifest.session_id),
+    }
+    webots_stdout = store.artifacts_dir(manifest.session_id) / "webots.stdout.log"
+    if webots_stdout.exists():
+        try:
+            lines = webots_stdout.read_text(encoding="utf-8").splitlines()
+            payload["webots_stdout_tail"] = lines[-10:]
+        except OSError:
+            pass
     return payload
