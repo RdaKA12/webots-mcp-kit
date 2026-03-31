@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .models import ScenarioDefinition, repo_example_root
+from .models import ScenarioDefinition, bundled_example_root
 
 
 def _examples_root() -> Path:
-    return repo_example_root()
+    return bundled_example_root()
 
 
 def scenario_registry() -> dict[str, ScenarioDefinition]:

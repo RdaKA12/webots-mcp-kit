@@ -21,6 +21,11 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, Python version, Webots version, and install method.
+      description: OS, Python version, Webots version, install method (source/TestPyPI/PyPI), and runner type (local/self-hosted/hosted CI).
     validations:
       required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Relevant `doctor --json`, `session inspect`, release workflow, or runtime smoke artifact details.

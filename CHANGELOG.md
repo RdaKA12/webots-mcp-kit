@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.8.0
+
+- Added packaging-ready bundled scenario assets inside the package so wheel installs can run `benchmark list`.
+- Added `Packaging CI` and tag-driven `Release` workflows for GitHub Release, TestPyPI, and PyPI publication.
+- Added runtime diagnostics collection for workflow artifact bundles.
+- Hardened package metadata for public distribution and added packaging/install documentation.
+- Added controller, scenario, runtime triage, release, and packaging verification guides.
+
 ## v0.7.0
 
 - Stabilized the public `ControllerAgent` contract around `from_robot(...)`, `begin_step()`, and `report_step(...)`.

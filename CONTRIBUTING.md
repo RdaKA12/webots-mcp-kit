@@ -18,6 +18,8 @@ Run:
 python -m pytest -q
 webots-kit doctor
 webots-kit benchmark list
+python -m build
+python -m twine check dist/*
 ```
 
 For full smoke validation:
@@ -38,3 +40,5 @@ python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke"
 - Use `webots-kit controller scaffold` when starting a new bundled-scenario controller.
 - Keep the self-hosted Windows runner label as `webots`.
 - `examples/` are demo assets; benchmark thresholds belong in the scenario registry.
+- Bundled runtime assets that must ship in wheels live under `src/webots_mcp_kit/examples/`.
+- Keep `Packaging CI` green before tagging a release.

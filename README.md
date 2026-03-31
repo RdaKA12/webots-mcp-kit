@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.7.0`
+`v0.8.0`
 
 Current focus:
 
@@ -24,6 +24,7 @@ Current focus:
 - stable controller-side integration through `ControllerAgent`
 - bundled scenarios plus registry-backed benchmark thresholds
 - hosted-safe CI with separate self-hosted runtime smoke
+- release pipeline for GitHub Release, TestPyPI, and PyPI
 
 ## Bundled scenarios
 
@@ -45,6 +46,12 @@ Use an isolated virtual environment. The toolkit depends on `mcp`, which may pul
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -e .[dev]
+```
+
+Planned package install path:
+
+```powershell
+pip install webots-mcp-kit
 ```
 
 Optional CI or slow-machine tuning:
@@ -159,6 +166,13 @@ Reference docs:
 
 - [MCP contracts](./docs/mcp-contracts.md)
 - [Self-hosted runtime smoke](./docs/self-hosted-windows-runner.md)
+- [Custom controller integration](./docs/custom-controller-integration.md)
+- [Add a new scenario](./docs/new-scenario-guide.md)
+- [Failed runtime smoke triage](./docs/failed-runtime-smoke-triage.md)
+- [PyPI install and upgrade](./docs/pypi-install-and-upgrade.md)
+- [Release checklist](./docs/release-checklist.md)
+- [Runner maintenance](./docs/self-hosted-runner-maintenance.md)
+- [Packaging verification](./docs/packaging-verification-checklist.md)
 
 ## Testing
 
@@ -183,6 +197,10 @@ python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke"
 ```
 
 The self-hosted GitHub workflow for runtime smoke expects a Windows runner labeled `webots`.
+Packaging and release verification are handled by GitHub workflows:
+
+- `Packaging CI`
+- `Release`
 
 ## Troubleshooting
 
@@ -191,3 +209,4 @@ The self-hosted GitHub workflow for runtime smoke expects a Windows runner label
 - If package installation changes global Python web dependencies, recreate a dedicated virtual environment and reinstall there.
 - GitHub-hosted `windows-latest` runners are only used for unit tests, `doctor`, and MCP handshake smoke. Real Webots runtime smoke is exposed as a separate manual workflow for self-hosted Windows runners with Webots installed.
 - `examples/` contains runnable demo assets; benchmark thresholds and pass/fail logic live in the benchmark registry inside the toolkit code.
+- Wheel installs use bundled package-local scenario assets; source checkouts continue to use repo-local `examples/`.

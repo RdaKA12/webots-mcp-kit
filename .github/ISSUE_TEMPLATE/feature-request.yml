@@ -17,3 +17,8 @@ body:
       description: What capability should be added?
     validations:
       required: true
+  - type: textarea
+    id: release-impact
+    attributes:
+      label: Release or Packaging Impact
+      description: Should this affect GitHub release notes, TestPyPI/PyPI packaging, or self-hosted runtime workflows?

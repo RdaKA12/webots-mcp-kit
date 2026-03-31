@@ -4,13 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webots-mcp-kit"
-version = "0.7.0"
-description = "Local-first Webots MCP toolkit with session launcher, agent SDK, and line follower benchmark."
+version = "0.8.0"
+description = "Windows-first Webots developer toolkit with CLI, MCP server, controller SDK, and bundled benchmarks."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
 requires-python = ">=3.11"
 authors = [
   { name = "Arda Karakas" }
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
   "mcp>=1.12.4,<2",
@@ -19,10 +32,15 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/RdaKA12/webots-mcp-kit"
 Issues = "https://github.com/RdaKA12/webots-mcp-kit/issues"
+Documentation = "https://github.com/RdaKA12/webots-mcp-kit/tree/main/docs"
+Repository = "https://github.com/RdaKA12/webots-mcp-kit"
+Changelog = "https://github.com/RdaKA12/webots-mcp-kit/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.2.2",
   "pytest>=8.0.0",
+  "twine>=6.1.0",
 ]
 
 [project.scripts]
@@ -30,9 +48,16 @@ webots-kit = "webots_mcp_kit.cli:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+webots_mcp_kit = [
+  "examples/**/*.py",
+  "examples/**/*.wbt",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

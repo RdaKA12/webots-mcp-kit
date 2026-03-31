@@ -41,10 +41,7 @@ jobs:
         shell: powershell
         run: |
           $diag = Join-Path $env:GITHUB_WORKSPACE '.ci-diagnostics'
-          New-Item -ItemType Directory -Force -Path $diag | Out-Null
-          if (Test-Path (Join-Path $env:GITHUB_WORKSPACE 'artifacts')) {
-            Copy-Item -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'artifacts') -Destination $diag -Recurse -Force
-          }
+          python -m webots_mcp_kit.diagnostics --output $diag
           $sessionRoot = Join-Path $env:LOCALAPPDATA 'webots-mcp-kit\sessions'
           if (Test-Path $sessionRoot) {
             Copy-Item -LiteralPath $sessionRoot -Destination (Join-Path $diag 'sessions') -Recurse -Force

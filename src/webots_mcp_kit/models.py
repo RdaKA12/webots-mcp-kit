@@ -88,3 +88,14 @@ class ScenarioDefinition:
 
 def repo_example_root() -> Path:
     return Path(__file__).resolve().parents[2] / "examples"
+
+
+def package_example_root() -> Path:
+    return Path(__file__).resolve().parent / "examples"
+
+
+def bundled_example_root() -> Path:
+    repo_root = repo_example_root()
+    if repo_root.exists():
+        return repo_root
+    return package_example_root()
