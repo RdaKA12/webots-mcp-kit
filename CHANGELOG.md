@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.3
+
+- Split hosted-safe CI from real Webots runtime smoke.
+- Kept GitHub-hosted Windows CI focused on unit tests, `doctor`, and MCP tool-list smoke.
+- Added a separate manual `Windows Runtime Smoke` workflow for self-hosted Windows runners labeled `webots`.
+- Split smoke-test env gating so runtime-dependent tests require `WEBOTS_KIT_RUN_RUNTIME_SMOKE=1`.
+
 ## v0.4.2
 
 - Stopped launching the daemon with detached process flags on Windows and now capture daemon stdout/stderr into session artifacts.

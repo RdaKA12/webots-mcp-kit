@@ -1,0 +1,58 @@
+name: Windows Runtime Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  runtime-smoke:
+    runs-on: [self-hosted, windows, webots]
+    env:
+      WEBOTS_KIT_SESSION_START_TIMEOUT: "180"
+      WEBOTS_KIT_RUN_RUNTIME_SMOKE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install toolkit
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Doctor
+        shell: powershell
+        run: webots-kit doctor --json
+
+      - name: Session runtime smoke
+        shell: powershell
+        run: python -m pytest -q -k session_start_inspect_stop_smoke
+
+      - name: Benchmark runtime smoke
+        shell: powershell
+        run: python -m pytest -q -k benchmark_smoke
+
+      - name: Upload failure diagnostics
+        if: failure()
+        shell: powershell
+        run: |
+          $diag = Join-Path $env:GITHUB_WORKSPACE '.ci-diagnostics'
+          New-Item -ItemType Directory -Force -Path $diag | Out-Null
+          if (Test-Path (Join-Path $env:GITHUB_WORKSPACE 'artifacts')) {
+            Copy-Item -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'artifacts') -Destination $diag -Recurse -Force
+          }
+          $sessionRoot = Join-Path $env:LOCALAPPDATA 'webots-mcp-kit\sessions'
+          if (Test-Path $sessionRoot) {
+            Copy-Item -LiteralPath $sessionRoot -Destination (Join-Path $diag 'sessions') -Recurse -Force
+          }
+
+      - name: Upload failure diagnostics artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-runtime-smoke-diagnostics
+          path: ${{ github.workspace }}\.ci-diagnostics

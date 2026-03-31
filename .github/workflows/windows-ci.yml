@@ -49,12 +49,6 @@ jobs:
         shell: powershell
         run: webots-kit doctor --json
 
-      - name: Session smoke
-        shell: powershell
-        env:
-          WEBOTS_KIT_RUN_SMOKE: "1"
-        run: python -m pytest -q -k session_start_inspect_stop_smoke
-
       - name: MCP smoke
         shell: powershell
         env:
@@ -75,12 +69,6 @@ jobs:
 
           asyncio.run(main())
           '@ | python -
-
-      - name: Benchmark smoke
-        shell: powershell
-        env:
-          WEBOTS_KIT_RUN_SMOKE: "1"
-        run: webots-kit benchmark run line-follower --controller example --output .\ci-report.json --duration-s 3
 
       - name: Upload failure diagnostics
         if: failure()

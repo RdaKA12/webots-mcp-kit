@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.4.2`
+`v0.4.3`
 
 Current focus:
 
@@ -135,11 +135,18 @@ Unit tests:
 python -m pytest -q
 ```
 
-Full smoke tests with real Webots execution:
+Hosted-safe smoke tests:
 
 ```powershell
 $env:WEBOTS_KIT_RUN_SMOKE='1'
-python -m pytest -q
+python -m pytest -q -k mcp_tool_list_smoke
+```
+
+Full runtime smoke tests with real Webots execution:
+
+```powershell
+$env:WEBOTS_KIT_RUN_RUNTIME_SMOKE='1'
+python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke"
 ```
 
 ## Troubleshooting
@@ -147,3 +154,4 @@ python -m pytest -q
 - If `doctor` fails, ensure `WEBOTS_HOME` is set or Webots is installed in `C:\Program Files\Webots`.
 - If MCP or session startup closes immediately, inspect `session logs` for the session artifacts.
 - If package installation changes global Python web dependencies, recreate a dedicated virtual environment and reinstall there.
+- GitHub-hosted `windows-latest` runners are only used for unit tests, `doctor`, and MCP handshake smoke. Real Webots runtime smoke is exposed as a separate manual workflow for self-hosted Windows runners with Webots installed.

@@ -10,6 +10,7 @@ import pytest
 
 
 RUN_SMOKE = os.environ.get("WEBOTS_KIT_RUN_SMOKE") == "1"
+RUN_RUNTIME_SMOKE = os.environ.get("WEBOTS_KIT_RUN_RUNTIME_SMOKE") == "1"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -24,7 +25,7 @@ def run_cli(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
     )
 
 
-@pytest.mark.skipif(not RUN_SMOKE, reason="Smoke tests are disabled unless WEBOTS_KIT_RUN_SMOKE=1.")
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
 def test_session_start_inspect_stop_smoke() -> None:
     started = run_cli("session", "start", "--scenario", "line-follower", "--controller", "example", "--mode", "fast", "--render", "off")
     manifest = json.loads(started.stdout)
@@ -36,7 +37,7 @@ def test_session_start_inspect_stop_smoke() -> None:
     assert stopped_manifest["status"] in {"stopped", "failed"}
 
 
-@pytest.mark.skipif(not RUN_SMOKE, reason="Smoke tests are disabled unless WEBOTS_KIT_RUN_SMOKE=1.")
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
 def test_benchmark_smoke() -> None:
     report_path = REPO_ROOT / "artifacts" / "ci-line-follower-report.json"
     report_path.parent.mkdir(parents=True, exist_ok=True)
