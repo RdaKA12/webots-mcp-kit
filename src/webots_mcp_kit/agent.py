@@ -7,6 +7,21 @@ from typing import Any
 from .runtime_io import RuntimeSocketClient, connect_runtime
 
 
+DEVICE_CAPABILITY_MAP: dict[str, dict[str, Any]] = {
+    "Accelerometer": {"category": "sensor", "capabilities": ["read-xyz"], "readable": True, "writable": False},
+    "Camera": {"category": "sensor", "capabilities": ["read-image", "capture-image"], "readable": True, "writable": False},
+    "DistanceSensor": {"category": "sensor", "capabilities": ["read-distance"], "readable": True, "writable": False},
+    "Emitter": {"category": "communication", "capabilities": ["emit"], "readable": False, "writable": True},
+    "Gyro": {"category": "sensor", "capabilities": ["read-angular-velocity"], "readable": True, "writable": False},
+    "LED": {"category": "actuator", "capabilities": ["set-state"], "readable": False, "writable": True},
+    "LightSensor": {"category": "sensor", "capabilities": ["read-light"], "readable": True, "writable": False},
+    "Motor": {"category": "actuator", "capabilities": ["set-velocity", "set-position"], "readable": False, "writable": True},
+    "PositionSensor": {"category": "sensor", "capabilities": ["read-position"], "readable": True, "writable": False},
+    "Receiver": {"category": "communication", "capabilities": ["receive"], "readable": True, "writable": False},
+    "Speaker": {"category": "actuator", "capabilities": ["speak"], "readable": False, "writable": True},
+}
+
+
 def save_rgba_to_ppm(path: Path, image: bytes, width: int, height: int) -> None:
     with path.open("wb") as handle:
         handle.write(f"P6\n{width} {height}\n255\n".encode("ascii"))
@@ -31,10 +46,7 @@ class AgentBridge:
             name=robot.getName(),
             meta={"default_camera": default_camera},
         )
-        self.device_info = [
-            {"name": name, "type": device.__class__.__name__}
-            for name, device in sorted(devices.items(), key=lambda item: item[0])
-        ]
+        self.device_info = [describe_device(name, device) for name, device in sorted(devices.items(), key=lambda item: item[0])]
         self.step_index = 0
         self.paused = False
         self.manual_override: dict[str, Any] | None = None
@@ -91,7 +103,7 @@ class AgentBridge:
                 elif action == "get_sensors":
                     result = sensors
                 elif action == "capture_camera":
-                    camera_name = params.get("camera", self.default_camera)
+                    camera_name = params.get("camera") or self.default_camera
                     frame = camera_frames[camera_name]
                     target = Path(params["path"])
                     target.parent.mkdir(parents=True, exist_ok=True)
@@ -122,3 +134,34 @@ class AgentBridge:
                 "meta": {"paused": self.paused, "default_camera": self.default_camera},
             }
         )
+
+
+class ControllerAgent(AgentBridge):
+    """Public controller-side wrapper for Webots MCP integration."""
+
+    @classmethod
+    def from_robot(cls, robot: Any, *, default_camera: str, devices: dict[str, Any] | None = None) -> "ControllerAgent":
+        return cls(robot=robot, devices=devices or robot.devices, default_camera=default_camera)
+
+    def report_step(
+        self,
+        *,
+        sensors: dict[str, Any],
+        metrics: dict[str, Any],
+        actuators: dict[str, Any],
+        camera_frames: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
+        self.publish_step(
+            sensors=sensors,
+            metrics=metrics,
+            actuators=actuators,
+            camera_frames=camera_frames,
+        )
+
+
+def describe_device(name: str, device: Any) -> dict[str, Any]:
+    device_type = device.__class__.__name__
+    defaults = {"category": "unknown", "capabilities": [], "readable": False, "writable": False}
+    descriptor = {**defaults, **DEVICE_CAPABILITY_MAP.get(device_type, {})}
+    descriptor.update({"name": name, "type": device_type})
+    return descriptor

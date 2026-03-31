@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a defect in the CLI, MCP server, SDK, or bundled scenarios.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What broke?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Commands, controller paths, and scenario details.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, Webots version, and install method.
+    validations:
+      required: true

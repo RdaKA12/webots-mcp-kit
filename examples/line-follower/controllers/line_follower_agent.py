@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from controller import Camera, Robot
 
-from webots_mcp_kit.agent import AgentBridge
+from webots_mcp_kit.agent import ControllerAgent
 
 
 TIME_STEP = 32
@@ -44,7 +44,7 @@ camera.enable(TIME_STEP)
 width = camera.getWidth()
 height = camera.getHeight()
 
-bridge = AgentBridge(robot=robot, devices=robot.devices, default_camera="camera")
+agent = ControllerAgent.from_robot(robot, default_camera="camera")
 
 while robot.step(TIME_STEP) != -1:
     image = camera.getImage()
@@ -59,7 +59,7 @@ while robot.step(TIME_STEP) != -1:
     left_speed = SPEED_UNIT * (CRUISE - TURN_GAIN * abs(delta) + TURN_GAIN * delta)
     right_speed = SPEED_UNIT * (CRUISE - TURN_GAIN * abs(delta) - TURN_GAIN * delta)
 
-    override = bridge.begin_step()
+    override = agent.begin_step()
     if override is not None:
         left_speed, right_speed = override
 
@@ -69,7 +69,7 @@ while robot.step(TIME_STEP) != -1:
     left_motor.setVelocity(left_speed)
     right_motor.setVelocity(right_speed)
 
-    bridge.publish_step(
+    agent.report_step(
         sensors={
             "camera_left_band": round(camera_left, 3),
             "camera_center_band": round(camera_center, 3),

@@ -9,6 +9,7 @@ from .environment import current_python, get_webots_environment
 
 def run_doctor() -> dict[str, object]:
     webots = get_webots_environment()
+    ok = webots.webots_executable.exists() and webots.controller_python_path.exists()
     report = {
         "python": current_python(),
         "webots_home": str(webots.webots_home),
@@ -19,6 +20,9 @@ def run_doctor() -> dict[str, object]:
         "webots_executable_exists": webots.webots_executable.exists(),
         "controller_python_exists": webots.controller_python_path.exists(),
         "platform": sys.platform,
+        "status": "ok" if ok else "failed",
+        "recommended_python": "3.11+",
+        "supports_batch_mode": bool(ok),
     }
     return report
 
@@ -27,9 +31,8 @@ def format_doctor_report(report: dict[str, object]) -> str:
     lines = ["webots-mcp-kit doctor", ""]
     for key, value in report.items():
         lines.append(f"{key}: {value}")
-    ok = bool(report["webots_executable_exists"]) and bool(report["controller_python_exists"])
     lines.append("")
-    lines.append(f"status: {'ok' if ok else 'failed'}")
+    lines.append(f"status: {report['status']}")
     return "\n".join(lines)
 
 

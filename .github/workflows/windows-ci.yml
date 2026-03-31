@@ -1,0 +1,66 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows-tests:
+    runs-on: windows-latest
+    env:
+      WEBOTS_KIT_RUN_SMOKE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Webots
+        shell: powershell
+        run: |
+          $url = 'https://github.com/cyberbotics/webots/releases/download/R2025a/webots-R2025a_setup.exe'
+          $installer = Join-Path $env:TEMP 'webots-R2025a_setup.exe'
+          Invoke-WebRequest -Uri $url -OutFile $installer
+          Start-Process -FilePath $installer -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-' -Wait
+          "WEBOTS_HOME=C:\Program Files\Webots" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install toolkit
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Unit tests
+        shell: powershell
+        run: python -m pytest -q
+
+      - name: Doctor smoke
+        shell: powershell
+        run: webots-kit doctor --json
+
+      - name: MCP smoke
+        shell: powershell
+        run: |
+          @'
+          import asyncio
+          from mcp import ClientSession, StdioServerParameters
+          from mcp.client.stdio import stdio_client
+
+          async def main():
+              params = StdioServerParameters(command='python', args=['-m', 'webots_mcp_kit.cli', 'mcp', 'serve'])
+              async with stdio_client(params) as (read, write):
+                  async with ClientSession(read, write) as session:
+                      await session.initialize()
+                      tools = await session.list_tools()
+                      print([tool.name for tool in tools.tools])
+
+          asyncio.run(main())
+          '@ | python -
+
+      - name: Benchmark smoke
+        shell: powershell
+        run: webots-kit benchmark run line-follower --controller example --output .\ci-report.json --duration-s 3

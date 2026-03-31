@@ -6,16 +6,18 @@ description: Use when working on Webots controllers, running the bundled line fo
 # Webots MCP Kit
 
 Use this skill for Webots controller work, benchmark-driven debugging, or simulation observation through MCP.
+This toolkit is general developer tooling; the bundled line follower is only the first reference scenario.
 
 ## Standard workflow
 
 1. Run `webots-kit doctor` first.
-2. Run `webots-kit benchmark run line-follower --controller <path-or-id> --output <report.json>`.
-3. If interactive inspection is needed, run `webots-kit mcp serve`.
-4. Use the report and session logs before changing controller logic.
+2. Run `webots-kit benchmark list` and choose a scenario.
+3. Run `webots-kit benchmark run <scenario> --controller <path-or-id> --output <report.json>`.
+4. If interactive inspection is needed, run `webots-kit session start ...` or `webots-kit mcp serve`.
+5. Use `webots-kit controller validate <path>` and `webots-kit session logs --session <id>` before changing controller logic.
 
 ## Notes
 
 - Full camera and sensor tooling require a controller that imports `webots_mcp_kit.agent`.
-- The bundled world is `examples/line-follower/worlds/line_follower_benchmark.wbt`.
-- The bundled controller is `examples/line-follower/controllers/line_follower_agent.py`.
+- The public controller-side wrapper is `ControllerAgent`.
+- Bundled scenarios live under `examples/`.

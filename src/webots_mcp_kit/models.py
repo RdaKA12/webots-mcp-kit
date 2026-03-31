@@ -12,13 +12,18 @@ class SessionManifest:
     port: int
     daemon_pid: int
     status: str
+    scenario: str
     world: str
     mode: str
     render: bool
     robot_controller: str
+    target_robot_name: str
+    target_robot_def: str
     created_at: str
     session_dir: str
     artifacts_dir: str
+    stopped_at: str | None = None
+    last_error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -55,6 +60,7 @@ class BenchmarkReport:
     passed: bool
     artifacts: dict[str, str]
     notes: list[str]
+    extra_metrics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -62,9 +68,16 @@ class BenchmarkReport:
         return payload
 
 
-def repo_example_world() -> Path:
-    return Path(__file__).resolve().parents[2] / "examples" / "line-follower" / "worlds" / "line_follower_benchmark.wbt"
+@dataclass(frozen=True, slots=True)
+class ScenarioDefinition:
+    name: str
+    description: str
+    world: Path
+    controller: Path
+    target_robot_name: str
+    target_robot_def: str
+    benchmark_kind: str
 
 
-def repo_example_controller() -> Path:
-    return Path(__file__).resolve().parents[2] / "examples" / "line-follower" / "controllers" / "line_follower_agent.py"
+def repo_example_root() -> Path:
+    return Path(__file__).resolve().parents[2] / "examples"

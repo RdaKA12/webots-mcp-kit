@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webots-mcp-kit"
-version = "0.1.0"
+version = "0.3.0"
 description = "Local-first Webots MCP toolkit with session launcher, agent SDK, and line follower benchmark."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -13,8 +13,12 @@ authors = [
   { name = "Arda Karakas" }
 ]
 dependencies = [
-  "mcp>=1.12.4",
+  "mcp>=1.12.4,<2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/RdaKA12/webots-mcp-kit"
+Issues = "https://github.com/RdaKA12/webots-mcp-kit/issues"
 
 [project.optional-dependencies]
 dev = [

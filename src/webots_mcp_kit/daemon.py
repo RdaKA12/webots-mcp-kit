@@ -12,7 +12,7 @@ from typing import Any
 from .environment import build_process_env, current_python, get_webots_environment, repo_root
 from .models import RuntimeSnapshot, SessionManifest
 from .protocol import encode_message, request_id
-from .utils import choose_free_port
+from .utils import choose_free_port, utc_now_iso
 
 
 class SessionDaemon:
@@ -41,7 +41,7 @@ class SessionDaemon:
         self.controller_processes: dict[str, tuple[asyncio.subprocess.Process, Any, Any]] = {}
         self.runtime_connections: dict[str, asyncio.StreamWriter] = {}
         self.runtime_snapshots: dict[str, RuntimeSnapshot] = {
-            "agent": RuntimeSnapshot(role="agent", name="hover-mini"),
+            "agent": RuntimeSnapshot(role="agent", name=self.manifest.target_robot_name),
             "supervisor": RuntimeSnapshot(role="supervisor", name="kit-supervisor"),
         }
         self.pending_requests: dict[str, asyncio.Future[Any]] = {}
@@ -55,9 +55,13 @@ class SessionDaemon:
         self.webots_stdout_path = self.artifacts_dir / "webots.stdout.log"
         self.webots_stderr_path = self.artifacts_dir / "webots.stderr.log"
 
-    def write_manifest(self, *, status: str | None = None) -> None:
+    def write_manifest(self, *, status: str | None = None, last_error: str | None = None) -> None:
         if status is not None:
             self.manifest.status = status
+            if status in {"stopped", "failed"}:
+                self.manifest.stopped_at = utc_now_iso()
+        if last_error is not None:
+            self.manifest.last_error = last_error
         self.manifest.daemon_pid = os.getpid()
         self.manifest.host = self.host
         self.manifest.port = self.port
@@ -77,8 +81,8 @@ class SessionDaemon:
             stdout_task = asyncio.create_task(self.consume_webots_stdout())
             stderr_task = asyncio.create_task(self.consume_webots_stderr())
             await self.wait_for_stop()
-        except Exception:
-            self.write_manifest(status="failed")
+        except Exception as exc:
+            self.write_manifest(status="failed", last_error=str(exc))
             raise
         finally:
             self.stop_event.set()
@@ -173,7 +177,7 @@ class SessionDaemon:
 
     async def launch_runtime_for_url(self, url: str) -> None:
         name = next((part for part in reversed(url.split("/")) if part and ":" not in part), "")
-        if name == "epuck-line-follower":
+        if name == self.manifest.target_robot_name:
             command = [current_python(), str(self.robot_controller)]
             cwd = str(self.robot_controller.parent)
         elif name == "kit-supervisor":
@@ -194,8 +198,9 @@ class SessionDaemon:
                 "WEBOTS_MCP_PORT": str(self.port),
                 "WEBOTS_MCP_SESSION_ID": self.manifest.session_id,
                 "WEBOTS_MCP_SESSION_DIR": self.manifest.session_dir,
-                "WEBOTS_TARGET_ROBOT": "epuck-line-follower",
-                "WEBOTS_TARGET_DEF": "EPUCK",
+                "WEBOTS_TARGET_ROBOT": self.manifest.target_robot_name,
+                "WEBOTS_TARGET_DEF": self.manifest.target_robot_def,
+                "WEBOTS_MCP_SCENARIO": self.manifest.scenario,
             }
         )
         process = await asyncio.create_subprocess_exec(
@@ -321,9 +326,13 @@ class SessionDaemon:
                 result = {"session_id": self.manifest.session_id, "status": "stopping"}
             elif action == "list_robots":
                 agent = self.runtime_snapshots["agent"]
-                result = [{"name": agent.name, "connected": agent.connected}]
+                result = [{"name": agent.name, "def": self.manifest.target_robot_def, "connected": agent.connected}]
             elif action == "list_devices":
-                result = self.runtime_snapshots["agent"].devices
+                result = {
+                    "robot": self.manifest.target_robot_name,
+                    "scenario": self.manifest.scenario,
+                    "devices": self.runtime_snapshots["agent"].devices,
+                }
             elif action == "get_state":
                 result = {
                     "session": self.manifest.to_dict(),
@@ -331,14 +340,23 @@ class SessionDaemon:
                     "runtimes": {role: snapshot.to_dict() for role, snapshot in self.runtime_snapshots.items()},
                 }
             elif action == "get_sensors":
-                result = self.runtime_snapshots["agent"].sensors
+                snapshot = self.runtime_snapshots["agent"]
+                result = {
+                    "robot": snapshot.name,
+                    "scenario": self.manifest.scenario,
+                    "state": snapshot.state,
+                    "sensors": snapshot.sensors,
+                    "metrics": snapshot.metrics,
+                    "actuators": snapshot.actuators,
+                    "meta": snapshot.meta,
+                }
             elif action == "capture_camera":
                 default_camera = self.runtime_snapshots["agent"].meta.get("default_camera", "camera")
                 target = params.get("path") or str(self.artifacts_dir / f"capture-{request_id()}.ppm")
                 result = await self.send_runtime_command(
                     "agent",
                     "capture_camera",
-                    {"camera": params.get("camera", default_camera), "path": target},
+                    {"camera": params.get("camera") or default_camera, "path": target},
                 )
             elif action == "set_motor_velocity":
                 self.control_paused = False
@@ -363,6 +381,7 @@ class SessionDaemon:
                 result = await self.wait_for_steps(int(params.get("steps", 1)))
             elif action == "run_benchmark":
                 result = await self.run_benchmark(
+                    benchmark=params.get("benchmark", self.manifest.scenario),
                     duration_s=float(params.get("duration_s", 20.0)),
                     fail_streak=int(params.get("line_loss_streak_fail", 25)),
                 )
@@ -372,8 +391,9 @@ class SessionDaemon:
         except Exception as exc:
             return {"kind": "admin_response", "id": message["id"], "ok": False, "error": str(exc)}
 
-    async def run_benchmark(self, *, duration_s: float, fail_streak: int) -> dict[str, Any]:
+    async def run_benchmark(self, *, benchmark: str, duration_s: float, fail_streak: int) -> dict[str, Any]:
         notes: list[str] = []
+        scenario_name = benchmark if benchmark in {"line-follower", "obstacle-avoidance"} else self.manifest.scenario
         try:
             await self.send_runtime_command("agent", "set_paused", {"paused": False})
             await self.send_runtime_command("agent", "clear_manual_override", {})
@@ -388,41 +408,74 @@ class SessionDaemon:
         snapshot = self.runtime_snapshots["agent"]
         start_time = float(snapshot.state.get("robot_time", 0.0))
         start_step = int(snapshot.state.get("step_index", 0))
+        baseline_contact_points = int(self.runtime_snapshots["supervisor"].state.get("contact_points_count", 0))
         line_loss_events = 0
         current_streak = 0
         max_streak = 0
         center_sum = 0.0
         ir_sum = 0.0
+        obstacle_pressure_sum = 0.0
+        mean_forward_speed_sum = 0.0
+        collision_events = 0
         sample_count = 0
         passed = True
+        previous_collision = False
+        previous_position = self.runtime_snapshots["supervisor"].state.get("robot_position")
+        travelled_distance = 0.0
 
         while True:
             self.telemetry_event.clear()
             await asyncio.wait_for(self.telemetry_event.wait(), timeout=max(5.0, duration_s / 2))
             snapshot = self.runtime_snapshots["agent"]
             metrics = snapshot.metrics
-            line_visible = bool(metrics.get("line_visible", False))
-            if line_visible:
-                current_streak = 0
+            supervisor_state = self.runtime_snapshots["supervisor"].state
+            if scenario_name == "line-follower":
+                line_visible = bool(metrics.get("line_visible", False))
+                if line_visible:
+                    current_streak = 0
+                else:
+                    current_streak += 1
+                    if current_streak == 1:
+                        line_loss_events += 1
+                max_streak = max(max_streak, current_streak)
             else:
-                current_streak += 1
-                if current_streak == 1:
-                    line_loss_events += 1
-            max_streak = max(max_streak, current_streak)
+                contact_points_count = int(supervisor_state.get("contact_points_count", 0))
+                has_collision = contact_points_count > baseline_contact_points + 2
+                if has_collision and not previous_collision:
+                    collision_events += 1
+                previous_collision = has_collision
+                position = supervisor_state.get("robot_position")
+                if previous_position and position:
+                    dx = float(position[0]) - float(previous_position[0])
+                    dy = float(position[1]) - float(previous_position[1])
+                    travelled_distance += (dx * dx + dy * dy) ** 0.5
+                previous_position = position
             center_sum += abs(float(metrics.get("center_error", 0.0)))
             ir_sum += abs(float(metrics.get("ir_balance_error", 0.0)))
+            obstacle_pressure_sum += float(metrics.get("obstacle_pressure", 0.0))
+            mean_forward_speed_sum += abs(float(metrics.get("mean_forward_speed", 0.0)))
             sample_count += 1
 
             sim_time = float(snapshot.state.get("robot_time", 0.0))
-            if max_streak >= fail_streak:
+            if scenario_name == "line-follower" and max_streak >= fail_streak:
                 passed = False
                 notes.append("line-loss-threshold-reached")
+                break
+            if scenario_name == "obstacle-avoidance" and collision_events > 0:
+                passed = False
+                notes.append("collision-detected")
                 break
             if sim_time - start_time >= duration_s:
                 break
 
+        if scenario_name == "obstacle-avoidance" and travelled_distance < 0.15:
+            notes.append("low-travel-distance")
+        if scenario_name == "obstacle-avoidance" and (mean_forward_speed_sum / max(sample_count, 1)) < 0.5:
+            passed = False
+            notes.append("insufficient-forward-speed")
+
         return {
-            "benchmark": "line-follower",
+            "benchmark": scenario_name,
             "world": self.manifest.world,
             "controller": self.manifest.robot_controller,
             "session_mode": self.manifest.mode,
@@ -439,6 +492,14 @@ class SessionDaemon:
                 "frames_dir": str(self.artifacts_dir),
             },
             "notes": notes,
+            "extra_metrics": {
+                "collision_events": collision_events,
+                "travelled_distance": round(travelled_distance, 6),
+                "baseline_contact_points": baseline_contact_points,
+                "mean_obstacle_pressure": round(obstacle_pressure_sum / max(sample_count, 1), 6),
+                "mean_forward_speed": round(mean_forward_speed_sum / max(sample_count, 1), 6),
+                "contact_points_count": int(self.runtime_snapshots["supervisor"].state.get("contact_points_count", 0)),
+            },
         }
 
 
@@ -447,6 +508,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--session-file", required=True)
     parser.add_argument("--world", required=True)
     parser.add_argument("--robot-controller", required=True)
+    parser.add_argument("--scenario", required=True)
+    parser.add_argument("--target-robot-name", required=True)
+    parser.add_argument("--target-robot-def", required=True)
     parser.add_argument("--host", required=True)
     parser.add_argument("--port", required=True, type=int)
     parser.add_argument("--mode", default="fast")

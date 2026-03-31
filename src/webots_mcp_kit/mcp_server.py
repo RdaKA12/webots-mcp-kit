@@ -5,7 +5,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from .benchmark import run_line_follower_benchmark
+from .benchmark import run_benchmark
 from .client import SessionClient
 from .launcher import start_session
 
@@ -18,12 +18,23 @@ def _client(session: str | None) -> SessionClient:
 
 @mcp.tool()
 def webots_session_start(
+    scenario: str = "line-follower",
     world: str | None = None,
     controller: str | None = "example",
+    robot_name: str | None = None,
+    robot_def: str | None = None,
     mode: str = "fast",
     render: bool = False,
 ) -> dict[str, Any]:
-    manifest = start_session(world=world, controller=controller, mode=mode, render=render)
+    manifest = start_session(
+        world=world,
+        controller=controller,
+        mode=mode,
+        render=render,
+        scenario=scenario,
+        robot_name=robot_name,
+        robot_def=robot_def,
+    )
     return manifest.to_dict()
 
 
@@ -81,9 +92,14 @@ def webots_reset(session: str | None = None) -> Any:
 
 
 @mcp.tool()
-def webots_run_benchmark(controller: str | None = "example", duration_s: float = 20.0, output: str | None = None) -> dict[str, Any]:
-    output_path = Path(output or "line-follower-report.json")
-    report = run_line_follower_benchmark(controller=controller, output=output_path, duration_s=duration_s)
+def webots_run_benchmark(
+    scenario: str = "line-follower",
+    controller: str | None = "example",
+    duration_s: float = 20.0,
+    output: str | None = None,
+) -> dict[str, Any]:
+    output_path = Path(output or f"{scenario}-report.json")
+    report = run_benchmark(scenario=scenario, controller=controller, output=output_path, duration_s=duration_s)
     return report.to_dict()
 
 

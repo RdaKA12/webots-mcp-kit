@@ -14,6 +14,7 @@ def main() -> None:
     robot_node = supervisor.getFromDef(target_def)
     if robot_node is not None:
         robot_node.saveState("mcp_initial_state")
+        robot_node.enableContactPointsTracking(time_step, True)
 
     client = connect_runtime(
         os.environ["WEBOTS_MCP_HOST"],
@@ -51,6 +52,7 @@ def main() -> None:
         if robot_node is not None:
             state["robot_position"] = [round(value, 6) for value in robot_node.getPosition()]
             state["robot_velocity"] = [round(value, 6) for value in robot_node.getVelocity()]
+            state["contact_points_count"] = len(robot_node.getContactPoints(True))
         client.send({"kind": "telemetry", "role": "supervisor", "name": supervisor.getName(), "state": state})
 
 
