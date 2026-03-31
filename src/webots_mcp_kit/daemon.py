@@ -9,10 +9,21 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .benchmarks import get_scenario
 from .environment import build_process_env, current_python, get_webots_environment, repo_root
 from .models import RuntimeSnapshot, SessionManifest
 from .protocol import encode_message, request_id
-from .utils import choose_free_port, utc_now_iso
+from .utils import atomic_write_text, choose_free_port, utc_now_iso
+
+
+def distance_2d(position: list[float] | tuple[float, ...], target: list[float] | tuple[float, ...]) -> float:
+    dx = float(position[0]) - float(target[0])
+    dy = float(position[1]) - float(target[1])
+    return (dx * dx + dy * dy) ** 0.5
+
+
+def is_transient_runtime_reset_error(exc: Exception) -> bool:
+    return "Connection lost" in str(exc)
 
 
 class SessionDaemon:
@@ -36,6 +47,7 @@ class SessionDaemon:
         self.port = port
         self.mode = mode
         self.render = render
+        self.scenario_def = get_scenario(self.manifest.scenario)
         self.server: asyncio.AbstractServer | None = None
         self.webots_process: asyncio.subprocess.Process | None = None
         self.controller_processes: dict[str, tuple[asyncio.subprocess.Process, Any, Any]] = {}
@@ -69,7 +81,23 @@ class SessionDaemon:
         self.manifest.render = self.render
         self.manifest.world = str(self.world)
         self.manifest.robot_controller = str(self.robot_controller)
-        self.manifest_path.write_text(json.dumps(self.manifest.to_dict(), indent=2), encoding="utf-8")
+        self.manifest.runtime_summary = self.runtime_summary()
+        atomic_write_text(self.manifest_path, json.dumps(self.manifest.to_dict(), indent=2), encoding="utf-8")
+
+    def runtime_summary(self) -> dict[str, Any]:
+        return {
+            role: {
+                "name": snapshot.name,
+                "connected": snapshot.connected,
+                "meta": snapshot.meta,
+                "state_keys": sorted(snapshot.state),
+                "sensor_keys": sorted(snapshot.sensors),
+                "metric_keys": sorted(snapshot.metrics),
+                "actuator_keys": sorted(snapshot.actuators),
+                "device_count": len(snapshot.devices),
+            }
+            for role, snapshot in self.runtime_snapshots.items()
+        }
 
     async def run(self) -> None:
         self.write_manifest(status="starting")
@@ -249,6 +277,7 @@ class SessionDaemon:
         snapshot.meta = register_message.get("meta", {})
         self.runtime_snapshots[role] = snapshot
         self.runtime_connections[role] = writer
+        self.write_manifest()
         self.maybe_mark_ready()
 
         while True:
@@ -269,6 +298,7 @@ class SessionDaemon:
         snapshot.connected = False
         self.runtime_snapshots[role] = snapshot
         self.runtime_connections.pop(role, None)
+        self.write_manifest()
 
     def maybe_mark_ready(self) -> None:
         if self.ready_roles.issubset(self.runtime_connections):
@@ -290,6 +320,7 @@ class SessionDaemon:
         if "meta" in message:
             snapshot.meta = message["meta"]
         self.runtime_snapshots[role] = snapshot
+        self.write_manifest()
         self.telemetry_event.set()
 
     async def send_runtime_command(self, role: str, action: str, params: dict[str, Any] | None = None, timeout: float = 10.0) -> Any:
@@ -340,6 +371,7 @@ class SessionDaemon:
                 result = {
                     "session": self.manifest.to_dict(),
                     "control_paused": self.control_paused,
+                    "runtime_summary": self.runtime_summary(),
                     "runtimes": {role: snapshot.to_dict() for role, snapshot in self.runtime_snapshots.items()},
                 }
             elif action == "get_sensors":
@@ -396,16 +428,20 @@ class SessionDaemon:
 
     async def run_benchmark(self, *, benchmark: str, duration_s: float, fail_streak: int) -> dict[str, Any]:
         notes: list[str] = []
-        scenario_name = benchmark if benchmark in {"line-follower", "obstacle-avoidance"} else self.manifest.scenario
+        scenario_name = benchmark if benchmark in {"line-follower", "obstacle-avoidance", "waypoint-nav"} else self.manifest.scenario
+        scenario_def = get_scenario(scenario_name)
+        thresholds = scenario_def.benchmark_thresholds
         try:
             await self.send_runtime_command("agent", "set_paused", {"paused": False})
             await self.send_runtime_command("agent", "clear_manual_override", {})
         except Exception as exc:
-            notes.append(f"agent-reset-warning: {exc}")
+            if not is_transient_runtime_reset_error(exc):
+                notes.append(f"agent-reset-warning: {exc}")
         try:
             await self.send_runtime_command("supervisor", "reset", {}, timeout=15.0)
         except Exception as exc:
-            notes.append(f"supervisor-reset-warning: {exc}")
+            if not is_transient_runtime_reset_error(exc):
+                notes.append(f"supervisor-reset-warning: {exc}")
 
         await self.wait_for_steps(5, timeout=10.0)
         snapshot = self.runtime_snapshots["agent"]
@@ -425,6 +461,14 @@ class SessionDaemon:
         previous_collision = False
         previous_position = self.runtime_snapshots["supervisor"].state.get("robot_position")
         travelled_distance = 0.0
+        target_distance = None
+        target_position = thresholds.get("target_position")
+        target_reached = False
+        fail_streak = int(thresholds.get("line_loss_streak_fail", fail_streak))
+        max_collision_events = int(thresholds.get("max_collision_events", 0))
+        min_travelled_distance = float(thresholds.get("min_travelled_distance", 0.0))
+        min_mean_forward_speed = float(thresholds.get("min_mean_forward_speed", 0.0))
+        target_tolerance = float(thresholds.get("target_tolerance", 0.0))
 
         while True:
             self.telemetry_event.clear()
@@ -453,6 +497,10 @@ class SessionDaemon:
                     dy = float(position[1]) - float(previous_position[1])
                     travelled_distance += (dx * dx + dy * dy) ** 0.5
                 previous_position = position
+                if scenario_name == "waypoint-nav" and position and target_position:
+                    target_distance = distance_2d(position, target_position)
+                    if target_distance <= target_tolerance:
+                        target_reached = True
             center_sum += abs(float(metrics.get("center_error", 0.0)))
             ir_sum += abs(float(metrics.get("ir_balance_error", 0.0)))
             obstacle_pressure_sum += float(metrics.get("obstacle_pressure", 0.0))
@@ -464,18 +512,27 @@ class SessionDaemon:
                 passed = False
                 notes.append("line-loss-threshold-reached")
                 break
-            if scenario_name == "obstacle-avoidance" and collision_events > 0:
+            if scenario_name in {"obstacle-avoidance", "waypoint-nav"} and collision_events > max_collision_events:
                 passed = False
                 notes.append("collision-detected")
+                break
+            if scenario_name == "waypoint-nav" and target_reached:
+                notes.append("target-reached")
                 break
             if sim_time - start_time >= duration_s:
                 break
 
-        if scenario_name == "obstacle-avoidance" and travelled_distance < 0.15:
+        if scenario_name == "obstacle-avoidance" and travelled_distance < min_travelled_distance:
             notes.append("low-travel-distance")
-        if scenario_name == "obstacle-avoidance" and (mean_forward_speed_sum / max(sample_count, 1)) < 0.5:
+        if scenario_name == "waypoint-nav" and not target_reached and travelled_distance < min_travelled_distance:
+            notes.append("low-travel-distance")
+        mean_forward_speed = mean_forward_speed_sum / max(sample_count, 1)
+        if scenario_name in {"obstacle-avoidance", "waypoint-nav"} and mean_forward_speed < min_mean_forward_speed:
             passed = False
             notes.append("insufficient-forward-speed")
+        if scenario_name == "waypoint-nav" and not target_reached:
+            passed = False
+            notes.append("target-not-reached")
 
         return {
             "benchmark": scenario_name,
@@ -500,8 +557,11 @@ class SessionDaemon:
                 "travelled_distance": round(travelled_distance, 6),
                 "baseline_contact_points": baseline_contact_points,
                 "mean_obstacle_pressure": round(obstacle_pressure_sum / max(sample_count, 1), 6),
-                "mean_forward_speed": round(mean_forward_speed_sum / max(sample_count, 1), 6),
+                "mean_forward_speed": round(mean_forward_speed, 6),
                 "contact_points_count": int(self.runtime_snapshots["supervisor"].state.get("contact_points_count", 0)),
+                "target_position": list(target_position) if target_position else None,
+                "target_distance": round(target_distance, 6) if target_distance is not None else None,
+                "target_reached": target_reached,
             },
         }
 

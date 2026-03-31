@@ -30,4 +30,4 @@ def test_benchmark_report_formatting(tmp_path: Path) -> None:
     )
     formatted = format_benchmark_report(report_path)
     assert "benchmark: line-follower" in formatted
-    assert "pass: True" in formatted
+    assert "result: pass (completed)" in formatted

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .benchmark import format_benchmark_report, list_benchmarks, run_benchmark
 from .benchmarks import scenario_names
+from .controller_scaffold import scaffold_controller
 from .controller_validation import format_validation_report, validate_controller
 from .doctor import format_doctor_report, run_doctor
 from .launcher import inspect_session, start_session
@@ -54,7 +55,13 @@ def build_parser() -> argparse.ArgumentParser:
     controller_sub = controller.add_subparsers(dest="controller_command", required=True)
     validate = controller_sub.add_parser("validate")
     validate.add_argument("path")
+    validate.add_argument("--scenario", choices=scenario_names())
+    validate.add_argument("--strict", action="store_true")
     validate.add_argument("--json", action="store_true")
+    scaffold = controller_sub.add_parser("scaffold")
+    scaffold.add_argument("path")
+    scaffold.add_argument("--scenario", choices=scenario_names(), default="line-follower")
+    scaffold.add_argument("--force", action="store_true")
 
     mcp_parser = subparsers.add_parser("mcp")
     mcp_sub = mcp_parser.add_subparsers(dest="mcp_command", required=True)
@@ -118,11 +125,14 @@ def main(argv: list[str] | None = None) -> None:
             return
 
     if args.command == "controller" and args.controller_command == "validate":
-        result = validate_controller(Path(args.path))
+        result = validate_controller(Path(args.path), scenario=args.scenario, strict=args.strict)
         if args.json:
             print(json.dumps(result.to_dict(), indent=2))
         else:
             print(format_validation_report(result))
+        return
+    if args.command == "controller" and args.controller_command == "scaffold":
+        print(json.dumps(scaffold_controller(path=Path(args.path), scenario=args.scenario, force=args.force), indent=2))
         return
 
     if args.command == "mcp" and args.mcp_command == "serve":

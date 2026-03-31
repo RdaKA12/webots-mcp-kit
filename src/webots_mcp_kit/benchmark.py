@@ -11,7 +11,13 @@ from .models import BenchmarkReport
 
 def list_benchmarks() -> list[dict[str, str]]:
     return [
-        {"name": scenario.name, "description": scenario.description}
+        {
+            "name": scenario.name,
+            "description": scenario.description,
+            "benchmark_kind": scenario.benchmark_kind,
+            "world": str(scenario.world),
+            "controller": str(scenario.controller),
+        }
         for scenario in scenario_registry().values()
     ]
 
@@ -23,18 +29,12 @@ def run_benchmark(
     output: Path,
     duration_s: float = 20.0,
 ) -> BenchmarkReport:
+    scenario_def = get_scenario(scenario)
     session = start_session(world=None, controller=controller, mode="fast", render=False, scenario=scenario)
     client = SessionClient(session)
     try:
-        result = client.request(
-            "run_benchmark",
-            {
-                "benchmark": scenario,
-                "duration_s": duration_s,
-                "line_loss_streak_fail": 25,
-            },
-            timeout=max(duration_s + 20.0, 45.0),
-        )
+        request_payload = {"benchmark": scenario, "duration_s": duration_s, **scenario_def.benchmark_thresholds}
+        result = client.request("run_benchmark", request_payload, timeout=max(duration_s + 20.0, 45.0))
         report = BenchmarkReport(
             benchmark=result["benchmark"],
             world=result["world"],
@@ -67,8 +67,10 @@ def run_line_follower_benchmark(*, controller: str | None, output: Path, duratio
 
 def format_benchmark_report(path: Path) -> str:
     data = json.loads(path.read_text(encoding="utf-8"))
+    result_reason = data["notes"][0] if data.get("notes") else "completed"
     lines = [
         f"benchmark: {data['benchmark']}",
+        f"result: {'pass' if data['pass'] else 'fail'} ({result_reason})",
         f"world: {data['world']}",
         f"controller: {data['controller']}",
         f"session_mode: {data['session_mode']}",
@@ -78,7 +80,6 @@ def format_benchmark_report(path: Path) -> str:
         f"max_line_loss_streak: {data['max_line_loss_streak']}",
         f"mean_center_error: {data['mean_center_error']}",
         f"ir_balance_error: {data['ir_balance_error']}",
-        f"pass: {data['pass']}",
         f"artifacts: {data['artifacts']}",
         f"notes: {data['notes']}",
     ]

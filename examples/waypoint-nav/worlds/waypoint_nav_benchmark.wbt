@@ -1,0 +1,37 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+
+WorldInfo {
+  info [
+    "Bundled waypoint navigation benchmark for webots-mcp-kit."
+    "The task is to drive from the start pose to a fixed arena waypoint."
+  ]
+  title "webots-mcp-kit Waypoint Navigation"
+}
+Viewpoint {
+  orientation -0.23377742247284416 -0.14462426941825353 0.9614536434507968 4.02642814535917
+  position 0.31650922270931994 0.2246304652876164 0.30312892921312386
+  follow "epuck-waypoint-agent"
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 2 2
+}
+DEF EPUCK E-puck {
+  translation -0.65 0 0
+  name "epuck-waypoint-agent"
+  controller "<extern>"
+}
+Robot {
+  translation 0 -0.95 0.03
+  name "kit-supervisor"
+  controller "<extern>"
+  supervisor TRUE
+}

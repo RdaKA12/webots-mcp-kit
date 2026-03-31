@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.7.0
+
+- Stabilized the public `ControllerAgent` contract around `from_robot(...)`, `begin_step()`, and `report_step(...)`.
+- Added `webots-kit controller scaffold` and expanded `controller validate` with `--scenario` and `--strict`.
+- Added stable MCP payload normalization for `webots_list_devices` and `webots_get_sensors`.
+- Added session environment snapshots, runtime summaries, canonical log inventory, and richer `session inspect` output.
+- Added the bundled `waypoint-nav` scenario and moved benchmark thresholds into the scenario registry.
+- Added self-hosted runtime and MCP contract documentation.
+
 ## v0.4.3
 
 - Split hosted-safe CI from real Webots runtime smoke.

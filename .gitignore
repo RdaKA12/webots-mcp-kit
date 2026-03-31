@@ -10,3 +10,4 @@ build/
 .venv/
 session-data/
 artifacts/
+*.wbproj

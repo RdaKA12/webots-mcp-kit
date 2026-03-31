@@ -24,6 +24,8 @@ class SessionManifest:
     artifacts_dir: str
     stopped_at: str | None = None
     last_error: str | None = None
+    environment: dict[str, Any] = field(default_factory=dict)
+    runtime_summary: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -77,6 +79,11 @@ class ScenarioDefinition:
     target_robot_name: str
     target_robot_def: str
     benchmark_kind: str
+    default_camera: str | None = None
+    required_sensor_keys: tuple[str, ...] = ()
+    required_metric_keys: tuple[str, ...] = ()
+    required_actuator_keys: tuple[str, ...] = ()
+    benchmark_thresholds: dict[str, Any] = field(default_factory=dict)
 
 
 def repo_example_root() -> Path:

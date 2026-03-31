@@ -5,10 +5,11 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 from .benchmarks import get_scenario
 from .client import SessionClient
-from .environment import build_process_env, repo_root
+from .environment import build_process_env, get_webots_environment, repo_root
 from .models import SessionManifest
 from .session_store import SessionStore
 from .utils import choose_free_port, utc_now_iso
@@ -48,6 +49,7 @@ def start_session(
     scenario_def = get_scenario(scenario)
     world_path = resolve_world_path(world, scenario)
     controller_path = resolve_controller_path(controller, scenario)
+    environment = build_environment_snapshot(world_path=world_path, controller_path=controller_path, scenario=scenario, mode=mode, render=render)
     manifest = SessionManifest(
         session_id=session_id,
         host=host,
@@ -64,6 +66,7 @@ def start_session(
         created_at=utc_now_iso(),
         session_dir=str(session_dir),
         artifacts_dir=str(artifacts_dir),
+        environment=environment,
     )
     manifest_path = store.write_manifest(manifest)
 
@@ -150,6 +153,8 @@ def inspect_session(session_id: str) -> dict[str, object]:
     payload: dict[str, object] = {
         "manifest": manifest.to_dict(),
         "artifacts": store.list_artifacts(session_id),
+        "logs": store.log_inventory(session_id),
+        "log_summary": store.log_summary(session_id),
     }
     if manifest.status in {"ready", "starting", "stopping"}:
         try:
@@ -173,6 +178,9 @@ def timeout_diagnostics(store: SessionStore, manifest: SessionManifest) -> dict[
     payload: dict[str, object] = {
         "artifacts_dir": manifest.artifacts_dir,
         "artifacts": store.list_artifacts(manifest.session_id),
+        "logs": store.log_inventory(manifest.session_id),
+        "runtime_summary": manifest.runtime_summary,
+        "environment": manifest.environment,
     }
     for log_name in ("daemon.stdout.log", "daemon.stderr.log", "webots.stdout.log", "webots.stderr.log"):
         log_path = store.artifacts_dir(manifest.session_id) / log_name
@@ -184,3 +192,27 @@ def timeout_diagnostics(store: SessionStore, manifest: SessionManifest) -> dict[
         except OSError:
             continue
     return payload
+
+
+def build_environment_snapshot(
+    *,
+    world_path: Path,
+    controller_path: Path,
+    scenario: str,
+    mode: str,
+    render: bool,
+) -> dict[str, Any]:
+    webots = get_webots_environment()
+    return {
+        "python_executable": sys.executable,
+        "webots_home": str(webots.webots_home),
+        "webots_executable": str(webots.webots_executable),
+        "webots_version": webots.version,
+        "controller_python_path": str(webots.controller_python_path),
+        "scenario": scenario,
+        "world_path": str(world_path),
+        "controller_path": str(controller_path),
+        "mode": mode,
+        "render": render,
+        "session_start_timeout_s": session_start_timeout(30.0),
+    }

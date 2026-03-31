@@ -16,6 +16,33 @@ def _client(session: str | None) -> SessionClient:
     return SessionClient.from_session(session)
 
 
+def _normalize_device_payload(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        payload = {}
+    devices = payload.get("devices")
+    if not isinstance(devices, list):
+        devices = []
+    return {
+        "robot": payload.get("robot"),
+        "scenario": payload.get("scenario"),
+        "devices": devices,
+    }
+
+
+def _normalize_sensor_payload(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        payload = {}
+    return {
+        "robot": payload.get("robot"),
+        "scenario": payload.get("scenario"),
+        "state": payload.get("state") if isinstance(payload.get("state"), dict) else {},
+        "sensors": payload.get("sensors") if isinstance(payload.get("sensors"), dict) else {},
+        "metrics": payload.get("metrics") if isinstance(payload.get("metrics"), dict) else {},
+        "actuators": payload.get("actuators") if isinstance(payload.get("actuators"), dict) else {},
+        "meta": payload.get("meta") if isinstance(payload.get("meta"), dict) else {},
+    }
+
+
 @mcp.tool()
 def webots_session_start(
     scenario: str = "line-follower",
@@ -50,7 +77,7 @@ def webots_list_robots(session: str | None = None) -> Any:
 
 @mcp.tool()
 def webots_list_devices(session: str | None = None) -> Any:
-    return _client(session).request("list_devices")
+    return _normalize_device_payload(_client(session).request("list_devices"))
 
 
 @mcp.tool()
@@ -60,7 +87,7 @@ def webots_get_state(session: str | None = None) -> Any:
 
 @mcp.tool()
 def webots_get_sensors(session: str | None = None) -> Any:
-    return _client(session).request("get_sensors")
+    return _normalize_sensor_payload(_client(session).request("get_sensors"))
 
 
 @mcp.tool()

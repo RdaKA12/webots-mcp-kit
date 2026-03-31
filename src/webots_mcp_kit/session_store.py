@@ -8,6 +8,7 @@ from pathlib import Path
 from .benchmarks import get_scenario
 from .environment import app_state_root
 from .models import SessionManifest
+from .utils import atomic_write_text
 
 
 class SessionStore:
@@ -34,13 +35,23 @@ class SessionStore:
     def write_manifest(self, manifest: SessionManifest) -> Path:
         path = self.manifest_path(manifest.session_id)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(manifest.to_dict(), indent=2), encoding="utf-8")
+        atomic_write_text(path, json.dumps(manifest.to_dict(), indent=2), encoding="utf-8")
         return path
 
     def load_manifest(self, session_id: str) -> SessionManifest:
-        data = json.loads(self.manifest_path(session_id).read_text(encoding="utf-8"))
-        data = self._normalize_manifest_data(data)
-        return SessionManifest(**data)
+        path = self.manifest_path(session_id)
+        last_error: Exception | None = None
+        for _ in range(20):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                data = self._normalize_manifest_data(data)
+                return SessionManifest(**data)
+            except (FileNotFoundError, PermissionError, json.JSONDecodeError) as exc:
+                last_error = exc
+                time.sleep(0.05)
+        if last_error is not None:
+            raise last_error
+        raise FileNotFoundError(f"Session manifest was not found for {session_id}.")
 
     def list_manifests(self) -> list[SessionManifest]:
         manifests: list[SessionManifest] = []
@@ -74,6 +85,50 @@ class SessionStore:
             )
         return items
 
+    def log_inventory(self, session_id: str) -> list[dict[str, str | int | bool]]:
+        manifest = self.load_manifest(session_id)
+        expected = [
+            "daemon.stdout.log",
+            "daemon.stderr.log",
+            "webots.stdout.log",
+            "webots.stderr.log",
+            f"{manifest.target_robot_name}.stdout.log",
+            f"{manifest.target_robot_name}.stderr.log",
+            "kit-supervisor.stdout.log",
+            "kit-supervisor.stderr.log",
+        ]
+        artifacts_dir = self.artifacts_dir(session_id)
+        extras = sorted(
+            path.name
+            for path in artifacts_dir.glob("*")
+            if path.is_file() and path.name.endswith(".log") and path.name not in expected
+        )
+        inventory: list[dict[str, str | int | bool]] = []
+        for name in [*expected, *extras]:
+            path = artifacts_dir / name
+            inventory.append(
+                {
+                    "name": name,
+                    "path": str(path),
+                    "exists": path.exists(),
+                    "size": path.stat().st_size if path.exists() else 0,
+                }
+            )
+        return inventory
+
+    def log_summary(self, session_id: str, tail: int = 10) -> dict[str, list[str]]:
+        summary: dict[str, list[str]] = {}
+        for entry in self.log_inventory(session_id):
+            if not entry["exists"]:
+                continue
+            path = Path(str(entry["path"]))
+            try:
+                lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                continue
+            summary[str(entry["name"])] = lines[-tail:]
+        return summary
+
     def wait_for_status(self, session_id: str, statuses: set[str], timeout: float = 20.0) -> SessionManifest:
         deadline = time.time() + timeout
         while time.time() < deadline:
@@ -95,4 +150,6 @@ class SessionStore:
         data.setdefault("target_robot_def", scenario.target_robot_def)
         data.setdefault("stopped_at", None)
         data.setdefault("last_error", None)
+        data.setdefault("environment", {})
+        data.setdefault("runtime_summary", {})
         return data

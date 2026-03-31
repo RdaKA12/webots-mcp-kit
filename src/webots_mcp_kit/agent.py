@@ -6,6 +6,8 @@ from typing import Any
 
 from .runtime_io import RuntimeSocketClient, connect_runtime
 
+__all__ = ["ControllerAgent", "AgentBridge", "describe_device", "save_rgba_to_ppm"]
+
 
 DEVICE_CAPABILITY_MAP: dict[str, dict[str, Any]] = {
     "Accelerometer": {"category": "sensor", "capabilities": ["read-xyz"], "readable": True, "writable": False},
@@ -137,7 +139,13 @@ class AgentBridge:
 
 
 class ControllerAgent(AgentBridge):
-    """Public controller-side wrapper for Webots MCP integration."""
+    """Stable public controller-side wrapper for Webots MCP integration.
+
+    Supported public surface:
+    - ControllerAgent.from_robot(...)
+    - begin_step()
+    - report_step(...)
+    """
 
     @classmethod
     def from_robot(cls, robot: Any, *, default_camera: str, devices: dict[str, Any] | None = None) -> "ControllerAgent":
