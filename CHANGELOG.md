@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.0
+
+- Added controller SDK hardening through the public `ControllerAgent` wrapper.
+- Added `controller validate`, `session inspect`, `session logs`, and `doctor --json`.
+- Added benchmark registry support and the bundled `obstacle-avoidance` scenario.
+- Added Windows CI, repo templates, contributing guide, and release template.
+- Added smoke-test coverage for session, MCP, and benchmark workflows.
+
 ## v0.3.0
 
 - Added scenario registry with `line-follower` and `obstacle-avoidance`.

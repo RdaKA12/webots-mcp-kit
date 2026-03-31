@@ -8,14 +8,12 @@ on:
 jobs:
   windows-tests:
     runs-on: windows-latest
-    env:
-      WEBOTS_KIT_RUN_SMOKE: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -34,16 +32,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev]
 
+      - name: Verify Webots install
+        shell: powershell
+        run: |
+          if (-not (Test-Path 'C:\Program Files\Webots\resources\version.txt')) { throw 'Webots version file not found after install.' }
+          Get-Content 'C:\Program Files\Webots\resources\version.txt'
+          & 'C:\Program Files\Webots\msys64\mingw64\bin\webots.exe' --version
+
       - name: Unit tests
         shell: powershell
-        run: python -m pytest -q
+        run: python -m pytest -q -k "not smoke"
 
       - name: Doctor smoke
         shell: powershell
         run: webots-kit doctor --json
 
+      - name: Session smoke
+        shell: powershell
+        env:
+          WEBOTS_KIT_RUN_SMOKE: "1"
+        run: python -m pytest -q -k session_start_inspect_stop_smoke
+
       - name: MCP smoke
         shell: powershell
+        env:
+          WEBOTS_KIT_RUN_SMOKE: "1"
         run: |
           @'
           import asyncio
@@ -63,4 +76,15 @@ jobs:
 
       - name: Benchmark smoke
         shell: powershell
+        env:
+          WEBOTS_KIT_RUN_SMOKE: "1"
         run: webots-kit benchmark run line-follower --controller example --output .\ci-report.json --duration-s 3
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-ci-diagnostics
+          path: |
+            ${{ github.workspace }}\artifacts
+            C:\Users\runneradmin\AppData\Local\webots-mcp-kit\sessions
