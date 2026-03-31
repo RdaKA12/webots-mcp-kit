@@ -1,0 +1,4 @@
+version: 1
+display_name: Webots MCP Kit
+short_description: Webots controller, benchmark, and MCP workflow
+default_prompt: Run doctor, benchmark the controller, then use MCP tools if interactive inspection is needed.
