@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.2
+
+- Stopped launching the daemon with detached process flags on Windows and now capture daemon stdout/stderr into session artifacts.
+- Added richer `session start` timeout diagnostics, including daemon and Webots log tails.
+- Marked early Webots exit before runtime registration as session failure.
+- Increased GitHub Actions session startup timeout to 180 seconds.
+
 ## v0.4.1
 
 - Increased CI session startup tolerance through `WEBOTS_KIT_SESSION_START_TIMEOUT`.

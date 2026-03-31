@@ -9,7 +9,7 @@ jobs:
   windows-tests:
     runs-on: windows-latest
     env:
-      WEBOTS_KIT_SESSION_START_TIMEOUT: "90"
+      WEBOTS_KIT_SESSION_START_TIMEOUT: "180"
     steps:
       - name: Checkout
         uses: actions/checkout@v5

@@ -101,7 +101,10 @@ class SessionDaemon:
         for task in pending:
             task.cancel()
         if webots_task in done and not self.stop_event.is_set():
-            self.write_manifest(status="stopped")
+            if self.manifest.status == "ready":
+                self.write_manifest(status="stopped", last_error="Webots process exited unexpectedly after session became ready.")
+            else:
+                self.write_manifest(status="failed", last_error="Webots process exited before the runtime connected.")
         else:
             self.write_manifest(status="stopping")
 

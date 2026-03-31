@@ -70,6 +70,11 @@ def start_session(
     env = build_process_env()
     env["WEBOTS_MCP_MANIFEST"] = str(manifest_path)
 
+    daemon_stdout_path = artifacts_dir / "daemon.stdout.log"
+    daemon_stderr_path = artifacts_dir / "daemon.stderr.log"
+    daemon_stdout = daemon_stdout_path.open("w", encoding="utf-8")
+    daemon_stderr = daemon_stderr_path.open("w", encoding="utf-8")
+
     args = [
         sys.executable,
         "-m",
@@ -97,15 +102,19 @@ def start_session(
     ]
     creationflags = 0
     if os.name == "nt":
-        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-    subprocess.Popen(  # noqa: S603
-        args,
-        cwd=str(repo_root()),
-        env=env,
-        creationflags=creationflags,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        subprocess.Popen(  # noqa: S603
+            args,
+            cwd=str(repo_root()),
+            env=env,
+            creationflags=creationflags,
+            stdout=daemon_stdout,
+            stderr=daemon_stderr,
+        )
+    finally:
+        daemon_stdout.close()
+        daemon_stderr.close()
 
     timeout = session_start_timeout(timeout)
     deadline = time.time() + timeout
@@ -165,11 +174,13 @@ def timeout_diagnostics(store: SessionStore, manifest: SessionManifest) -> dict[
         "artifacts_dir": manifest.artifacts_dir,
         "artifacts": store.list_artifacts(manifest.session_id),
     }
-    webots_stdout = store.artifacts_dir(manifest.session_id) / "webots.stdout.log"
-    if webots_stdout.exists():
+    for log_name in ("daemon.stdout.log", "daemon.stderr.log", "webots.stdout.log", "webots.stderr.log"):
+        log_path = store.artifacts_dir(manifest.session_id) / log_name
+        if not log_path.exists():
+            continue
         try:
-            lines = webots_stdout.read_text(encoding="utf-8").splitlines()
-            payload["webots_stdout_tail"] = lines[-10:]
+            lines = log_path.read_text(encoding="utf-8").splitlines()
+            payload[f"{log_name}_tail"] = lines[-10:]
         except OSError:
-            pass
+            continue
     return payload
