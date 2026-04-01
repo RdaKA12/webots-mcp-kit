@@ -16,6 +16,14 @@ def run_doctor() -> dict[str, object]:
         "workflow": "Windows Runtime Smoke",
         "recommended_session_timeout_s": 180,
         "requires_self_hosted_runner": True,
+        "hosted_runtime_smoke_supported": False,
+        "recommended_next_step": "Run local runtime smoke or dispatch the self-hosted Windows Runtime Smoke workflow.",
+        "runner_requirements": [
+            "Windows machine",
+            "Webots R2025a installed and visible through WEBOTS_HOME",
+            "Python 3.11+",
+            "GitHub Actions self-hosted runner labeled webots",
+        ],
         "notes": [
             "Hosted GitHub Actions runners only cover unit, doctor, and MCP handshake smoke.",
             "Use a self-hosted Windows runner with Webots installed for runtime smoke and benchmark execution.",
@@ -66,8 +74,12 @@ def format_doctor_report(report: dict[str, object]) -> str:
                 f"  workflow: {readiness.get('workflow')}",
                 f"  recommended_session_timeout_s: {readiness.get('recommended_session_timeout_s')}",
                 f"  requires_self_hosted_runner: {readiness.get('requires_self_hosted_runner')}",
+                f"  hosted_runtime_smoke_supported: {readiness.get('hosted_runtime_smoke_supported')}",
+                f"  recommended_next_step: {readiness.get('recommended_next_step')}",
             ]
         )
+        for requirement in readiness.get("runner_requirements", []):
+            lines.append(f"  requirement: {requirement}")
         for note in readiness.get("notes", []):
             lines.append(f"  note: {note}")
     lines.extend(["", f"status: {report['status']}"])

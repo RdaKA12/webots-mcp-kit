@@ -1,6 +1,25 @@
 name: Windows Runtime Smoke
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/windows-runtime-smoke.yml"
+      - "src/webots_mcp_kit/daemon.py"
+      - "src/webots_mcp_kit/launcher.py"
+      - "src/webots_mcp_kit/runtime/**"
+      - "src/webots_mcp_kit/examples/**"
+      - "src/webots_mcp_kit/benchmarks.py"
+      - "tests/test_smoke_cli.py"
+  pull_request:
+    paths:
+      - ".github/workflows/windows-runtime-smoke.yml"
+      - "src/webots_mcp_kit/daemon.py"
+      - "src/webots_mcp_kit/launcher.py"
+      - "src/webots_mcp_kit/runtime/**"
+      - "src/webots_mcp_kit/examples/**"
+      - "src/webots_mcp_kit/benchmarks.py"
+      - "tests/test_smoke_cli.py"
   workflow_dispatch:
 
 jobs:

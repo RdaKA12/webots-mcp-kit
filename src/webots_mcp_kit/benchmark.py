@@ -68,6 +68,7 @@ def run_line_follower_benchmark(*, controller: str | None, output: Path, duratio
 def format_benchmark_report(path: Path) -> str:
     data = json.loads(path.read_text(encoding="utf-8"))
     result_reason = data["notes"][0] if data.get("notes") else "completed"
+    extra_metrics = data.get("extra_metrics", {})
     lines = [
         f"benchmark: {data['benchmark']}",
         f"result: {'pass' if data['pass'] else 'fail'} ({result_reason})",
@@ -83,7 +84,13 @@ def format_benchmark_report(path: Path) -> str:
         f"artifacts: {data['artifacts']}",
         f"notes: {data['notes']}",
     ]
-    extra_metrics = data.get("extra_metrics", {})
+    if data["benchmark"] in {"obstacle-avoidance", "waypoint-nav"}:
+        lines.append(f"collision_events: {extra_metrics.get('collision_events')}")
+        lines.append(f"travelled_distance: {extra_metrics.get('travelled_distance')}")
+        lines.append(f"mean_forward_speed: {extra_metrics.get('mean_forward_speed')}")
+    if data["benchmark"] == "waypoint-nav":
+        lines.append(f"target_reached: {extra_metrics.get('target_reached')}")
+        lines.append(f"target_distance: {extra_metrics.get('target_distance')}")
     if extra_metrics:
         lines.append(f"extra_metrics: {extra_metrics}")
     return "\n".join(lines)

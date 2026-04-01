@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.0
+
+- Added path-filtered self-hosted runtime workflow triggers while keeping manual dispatch.
+- Tightened runtime readiness output and contribution policy for runtime-affecting changes.
+- Added public-contract regression tests for `ControllerAgent`, benchmark report formatting, doctor output, and bundled package assets.
+- Promoted PyPI install and external-user onboarding docs, including a first-hour guide.
+- Updated MCP contract documentation toward the v1.0 stable contract language.
+
 ## v0.8.0
 
 - Added packaging-ready bundled scenario assets inside the package so wheel installs can run `benchmark list`.

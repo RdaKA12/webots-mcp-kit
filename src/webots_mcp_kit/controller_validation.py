@@ -221,14 +221,21 @@ def _literal_dict_keys(node: ast.AST) -> set[str] | None:
 
 
 def format_validation_report(result: ControllerValidationResult) -> str:
+    details = result.details
     lines = [
+        f"validation: {'pass' if result.valid else 'fail'}",
         f"path: {result.path}",
+        f"scenario: {details.get('scenario')}",
+        f"strict: {details.get('strict')}",
         f"valid: {result.valid}",
         f"integration_mode: {result.integration_mode}",
-        f"details: {result.details}",
+        f"default_camera: {details.get('default_camera')}",
+        f"report_step_keywords: {details.get('report_step_keywords')}",
     ]
     if result.errors:
-        lines.append(f"errors: {result.errors}")
+        lines.append("errors:")
+        lines.extend(f"- {error}" for error in result.errors)
     if result.warnings:
-        lines.append(f"warnings: {result.warnings}")
+        lines.append("warnings:")
+        lines.extend(f"- {warning}" for warning in result.warnings)
     return "\n".join(lines)

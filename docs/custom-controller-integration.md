@@ -28,6 +28,12 @@ webots-kit controller validate .\controllers\my_agent.py --scenario line-followe
 webots-kit benchmark run line-follower --controller .\controllers\my_agent.py --output .\report.json
 ```
 
+5. If you want live tool access, expose MCP:
+
+```powershell
+webots-kit mcp serve
+```
+
 ## Required contract
 
 - A `Robot()` instance must exist
@@ -40,3 +46,4 @@ webots-kit benchmark run line-follower --controller .\controllers\my_agent.py --
 
 - Camera tooling requires `default_camera="camera"` for bundled scenarios.
 - `--strict` is intended for release-grade validation, not quick sketches.
+- This flow is supported both from a source checkout and from a PyPI install.

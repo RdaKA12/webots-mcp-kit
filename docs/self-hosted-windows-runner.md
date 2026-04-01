@@ -50,6 +50,6 @@ Canonical log names:
 
 ## Recommended progression
 
-1. Keep the workflow on `workflow_dispatch` until the runner is stable.
-2. Run the manual workflow repeatedly until runtime smoke is consistently green.
-3. Only then consider adding path-filtered `push` and `pull_request` triggers for runtime-affecting changes.
+1. Keep using manual dispatch until the runner is stable.
+2. Run the workflow repeatedly until runtime smoke is consistently green.
+3. After stabilization, path-filtered `push` and `pull_request` triggers are expected for runtime-affecting changes.

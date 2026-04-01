@@ -1,6 +1,6 @@
 # MCP Contracts
 
-`webots-mcp-kit` keeps MCP tool names stable. The payloads below are the stable baseline for the current pre-1.0 contract.
+`webots-mcp-kit` keeps MCP tool names stable. The payloads below are the current public contract and are intended to remain stable through `v1.0.0`.
 
 ## Stable response shapes
 
@@ -97,6 +97,10 @@ Typical response fields:
 
 ## Notes
 
+- Public compatibility promise for this phase:
+  - tool names stay fixed
+  - `webots_list_devices` and `webots_get_sensors` keep these top-level keys
+  - response payloads may add fields, but existing keys should not be removed or renamed
 - `examples/` contains runnable bundled controllers and worlds.
 - Benchmark thresholds are scenario-specific and come from the registry in `src/webots_mcp_kit/benchmarks.py`.
 - Hosted GitHub runners do not execute real Webots runtime smoke; use the self-hosted Windows workflow for runtime verification.
