@@ -35,32 +35,61 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Resolve runner Python
+        id: python
+        run: |
+          $registryKeys = @(
+            'HKLM:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
+            'HKCU:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
+            'HKLM:\SOFTWARE\WOW6432Node\Python\PythonCore\3.11\InstallPath',
+            'HKCU:\SOFTWARE\WOW6432Node\Python\PythonCore\3.11\InstallPath'
+          )
+          $pythonExe = $null
+          foreach ($registryKey in $registryKeys) {
+            if (-not (Test-Path $registryKey)) {
+              continue
+            }
+            $registryItem = Get-Item -Path $registryKey
+            $installRoot = $registryItem.GetValue('')
+            if (-not [string]::IsNullOrWhiteSpace($installRoot)) {
+              $candidate = Join-Path $installRoot 'python.exe'
+              if (Test-Path $candidate) {
+                $pythonExe = $candidate
+                break
+              }
+            }
+          }
+          if (-not $pythonExe) {
+            throw 'Could not resolve a Python 3.11 installation from the Windows registry.'
+          }
+          "python_exe=$pythonExe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
       - name: Verify runner Python
         run: |
-          py -3.11 --version
-          py -3.11 -c "import sys; assert sys.version_info >= (3, 11), sys.version"
+          & "${{ steps.python.outputs.python_exe }}" --version
+          & "${{ steps.python.outputs.python_exe }}" -c "import sys; assert sys.version_info >= (3, 11), sys.version"
 
       - name: Install toolkit
         run: |
-          py -3.11 -m pip install --upgrade pip
-          py -3.11 -m pip install -e .[dev]
-          py -3.11 -m pip show pytest
-          py -3.11 -c "import webots_mcp_kit, pytest; print(webots_mcp_kit.__version__)"
+          & "${{ steps.python.outputs.python_exe }}" -m pip install --upgrade pip
+          & "${{ steps.python.outputs.python_exe }}" -m pip install -e .[dev]
+          & "${{ steps.python.outputs.python_exe }}" -m pip show pytest
+          & "${{ steps.python.outputs.python_exe }}" -c "import webots_mcp_kit, pytest; print(webots_mcp_kit.__version__)"
 
       - name: Doctor
-        run: webots-kit doctor --json
+        run: & "${{ steps.python.outputs.python_exe }}" -m webots_mcp_kit.cli doctor --json
 
       - name: Session runtime smoke
-        run: py -3.11 -m pytest -q -k session_start_inspect_stop_smoke
+        run: & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k session_start_inspect_stop_smoke
 
       - name: Benchmark runtime smoke
-        run: py -3.11 -m pytest -q -k benchmark_smoke
+        run: & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k benchmark_smoke
 
       - name: Upload failure diagnostics
         if: failure()
         run: |
           $diag = Join-Path $env:GITHUB_WORKSPACE '.ci-diagnostics'
-          py -3.11 -m webots_mcp_kit.diagnostics --output $diag
+          & "${{ steps.python.outputs.python_exe }}" -m webots_mcp_kit.diagnostics --output $diag
           $sessionRoot = Join-Path $env:LOCALAPPDATA 'webots-mcp-kit\sessions'
           if (Test-Path $sessionRoot) {
             Copy-Item -LiteralPath $sessionRoot -Destination (Join-Path $diag 'sessions') -Recurse -Force

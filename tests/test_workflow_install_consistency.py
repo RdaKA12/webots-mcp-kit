@@ -23,7 +23,16 @@ def test_runtime_workflow_bypasses_powershell_execution_policy() -> None:
     assert "-ExecutionPolicy Bypass" in content
 
 
-def test_runtime_workflow_uses_py_launcher() -> None:
+def test_runtime_workflow_resolves_registry_python() -> None:
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
-    assert "py -3.11" in content
+    assert "Resolve runner Python" in content
+    assert "HKLM:\\SOFTWARE\\Python\\PythonCore\\3.11\\InstallPath" in content
+    assert "steps.python.outputs.python_exe" in content
+
+
+def test_runtime_workflow_does_not_depend_on_console_script_path() -> None:
+    root = Path(__file__).resolve().parents[1]
+    content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
+    assert "webots-kit doctor --json" not in content
+    assert "-m webots_mcp_kit.cli doctor --json" in content

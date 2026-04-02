@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.5
+
+- Fixed the self-hosted Windows runtime workflow to resolve Python 3.11 from the Windows registry instead of relying on the `py` launcher, which was selecting a broken runner-local interpreter.
+- Removed PATH dependence from runtime smoke by invoking the doctor command as `python -m webots_mcp_kit.cli`.
+- Extended workflow regression coverage for registry-based Python resolution and module-based doctor invocation.
+
 ## v0.9.4
 
 - Fixed the self-hosted Windows runtime workflow to use the system `py` launcher with Python 3.11, avoiding PATH issues for the runner service account.
