@@ -77,13 +77,16 @@ jobs:
           & "${{ steps.python.outputs.python_exe }}" -c "import webots_mcp_kit, pytest; print(webots_mcp_kit.__version__)"
 
       - name: Doctor
-        run: & "${{ steps.python.outputs.python_exe }}" -m webots_mcp_kit.cli doctor --json
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m webots_mcp_kit.cli doctor --json
 
       - name: Session runtime smoke
-        run: & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k session_start_inspect_stop_smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k session_start_inspect_stop_smoke
 
       - name: Benchmark runtime smoke
-        run: & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k benchmark_smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k benchmark_smoke
 
       - name: Upload failure diagnostics
         if: failure()

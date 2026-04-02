@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.6
+
+- Fixed the self-hosted Windows runtime workflow YAML syntax by converting PowerShell invocations that started with `&` into block `run` sections.
+- Added regression coverage to keep the runtime workflow free of unquoted ampersand-prefixed `run:` lines.
+
 ## v0.9.5
 
 - Fixed the self-hosted Windows runtime workflow to resolve Python 3.11 from the Windows registry instead of relying on the `py` launcher, which was selecting a broken runner-local interpreter.

@@ -36,3 +36,9 @@ def test_runtime_workflow_does_not_depend_on_console_script_path() -> None:
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "webots-kit doctor --json" not in content
     assert "-m webots_mcp_kit.cli doctor --json" in content
+
+
+def test_runtime_workflow_does_not_use_unquoted_ampersand_run_lines() -> None:
+    root = Path(__file__).resolve().parents[1]
+    content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
+    assert "run: & " not in content
