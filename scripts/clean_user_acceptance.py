@@ -5,12 +5,22 @@ import subprocess
 import sys
 from pathlib import Path
 
-from webots_mcp_kit.acceptance import build_clean_user_acceptance_steps
+from webots_mcp_kit.acceptance import (
+    FULL_ACCEPTANCE_PROFILE,
+    HOSTED_SAFE_ACCEPTANCE_PROFILE,
+    build_clean_user_acceptance_steps,
+)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--workspace", required=True, help="Workspace root used for clean-user acceptance output.")
+    parser.add_argument(
+        "--profile",
+        default=FULL_ACCEPTANCE_PROFILE,
+        choices=[FULL_ACCEPTANCE_PROFILE, HOSTED_SAFE_ACCEPTANCE_PROFILE],
+        help="Acceptance profile. Use hosted-safe on runners without Webots.",
+    )
     parser.add_argument("--print-only", action="store_true", help="Print the planned commands without executing them.")
     return parser.parse_args(argv)
 
@@ -19,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     workspace = Path(args.workspace)
     workspace.mkdir(parents=True, exist_ok=True)
-    steps = build_clean_user_acceptance_steps(workspace)
+    steps = build_clean_user_acceptance_steps(workspace, profile=args.profile)
 
     for step in steps:
         rendered = " ".join(step.args)

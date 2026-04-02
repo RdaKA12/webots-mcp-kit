@@ -5,6 +5,9 @@ from pathlib import Path
 
 from .models import bundled_example_root
 
+HOSTED_SAFE_ACCEPTANCE_PROFILE = "hosted-safe"
+FULL_ACCEPTANCE_PROFILE = "full"
+
 
 @dataclass(frozen=True, slots=True)
 class AcceptanceStep:
@@ -12,7 +15,7 @@ class AcceptanceStep:
     args: tuple[str, ...]
 
 
-def build_clean_user_acceptance_steps(workspace: Path) -> list[AcceptanceStep]:
+def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_ACCEPTANCE_PROFILE) -> list[AcceptanceStep]:
     root = workspace.resolve()
     controller_path = root / "controllers" / "demo_agent.py"
     project_root = root / "demo-project"
@@ -22,8 +25,15 @@ def build_clean_user_acceptance_steps(workspace: Path) -> list[AcceptanceStep]:
     import_controller = bundle_root / "line-follower" / "controllers" / "line_follower_agent.py"
     import_project_root = root / "import-project"
 
-    return [
-        AcceptanceStep("doctor", ("doctor", "--json")),
+    if profile not in {FULL_ACCEPTANCE_PROFILE, HOSTED_SAFE_ACCEPTANCE_PROFILE}:
+        raise ValueError(f"Unsupported acceptance profile: {profile}")
+
+    steps: list[AcceptanceStep] = []
+    if profile == FULL_ACCEPTANCE_PROFILE:
+        steps.append(AcceptanceStep("doctor", ("doctor", "--json")))
+
+    steps.extend(
+        [
         AcceptanceStep("benchmark_list", ("benchmark", "list")),
         AcceptanceStep("controller_scaffold", ("controller", "scaffold", str(controller_path), "--scenario", "line-follower")),
         AcceptanceStep("controller_validate", ("controller", "validate", str(controller_path), "--scenario", "line-follower")),
@@ -37,4 +47,6 @@ def build_clean_user_acceptance_steps(workspace: Path) -> list[AcceptanceStep]:
             "project_import",
             ("project", "import", "--world", str(import_world), "--controller", str(import_controller), "--project-root", str(import_project_root)),
         ),
-    ]
+        ]
+    )
+    return steps

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.4
+
+- Fixed the centralized acceptance workflow for hosted Linux package smoke by adding an explicit `hosted-safe` profile that skips `doctor` when Webots is intentionally unavailable.
+- Kept the full clean-user acceptance path for Windows/TestPyPI/PyPI install smoke while routing `Packaging CI` through the hosted-safe profile.
+
 ## v0.10.3
 
 - Centralized the clean-user acceptance flow in a single reusable script so package CI, TestPyPI smoke, and PyPI smoke all exercise the same command sequence.

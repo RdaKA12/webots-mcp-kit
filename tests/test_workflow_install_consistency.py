@@ -84,7 +84,7 @@ def test_release_and_package_workflows_smoke_project_and_scenario_commands() -> 
     root = Path(__file__).resolve().parents[1]
     package_content = (root / ".github/workflows/package-ci.yml").read_text(encoding="utf-8")
     release_content = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
-    assert "python scripts/clean_user_acceptance.py --workspace package-smoke" in package_content
+    assert "python scripts/clean_user_acceptance.py --workspace package-smoke --profile hosted-safe" in package_content
     assert "python scripts\\clean_user_acceptance.py --workspace testpypi-smoke" in release_content
     assert "python scripts\\clean_user_acceptance.py --workspace pypi-smoke" in release_content
 
