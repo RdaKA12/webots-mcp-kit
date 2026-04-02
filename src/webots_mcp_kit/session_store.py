@@ -150,6 +150,8 @@ class SessionStore:
         data.setdefault("target_robot_def", scenario.target_robot_def)
         data.setdefault("stopped_at", None)
         data.setdefault("last_error", None)
+        data.setdefault("last_error_code", None)
+        data.setdefault("last_error_details", {})
         data.setdefault("environment", {})
         data.setdefault("runtime_summary", {})
         return data

@@ -26,6 +26,9 @@ def test_inspect_session_includes_environment_runtime_and_logs(tmp_path, monkeyp
         created_at="2026-03-31T00:00:00Z",
         session_dir=str(session_dir),
         artifacts_dir=str(session_dir / "artifacts"),
+        last_error="render failed",
+        last_error_code="render-init-failed",
+        last_error_details={"detail": "gpu"},
         environment={"webots_version": "R2025a", "python_executable": "python"},
         runtime_summary={"agent": {"connected": False}},
     )
@@ -38,5 +41,6 @@ def test_inspect_session_includes_environment_runtime_and_logs(tmp_path, monkeyp
 
     assert payload["manifest"]["environment"]["webots_version"] == "R2025a"
     assert payload["manifest"]["runtime_summary"]["agent"]["connected"] is False
+    assert payload["session_state"]["last_error_code"] == "render-init-failed"
     assert any(item["name"] == "daemon.stdout.log" for item in payload["logs"])
     assert payload["log_summary"]["daemon.stdout.log"] == ["daemon ok"]

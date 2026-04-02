@@ -19,10 +19,13 @@ def test_doctor_report_includes_runtime_readiness_fields() -> None:
         "runtime_readiness": {
             "status": "ready",
             "runner_label": "interactive-webots",
+            "runner_mode": {"mode": "interactive-session", "session_name": "Console"},
             "workflow": "Windows Runtime Smoke",
             "recommended_session_timeout_s": 180,
             "requires_self_hosted_runner": True,
             "hosted_runtime_smoke_supported": False,
+            "interactive_session_required": True,
+            "windows_service_runtime_supported": False,
             "recommended_next_step": "Run runtime smoke",
             "runner_requirements": ["Windows machine", "Interactive session"],
             "notes": ["Use self-hosted runner"],
@@ -30,6 +33,8 @@ def test_doctor_report_includes_runtime_readiness_fields() -> None:
         "status": "ok",
     }
     formatted = format_doctor_report(report)
+    assert "runtime_status: ready" in formatted
     assert "hosted_runtime_smoke_supported: False" in formatted
+    assert "interactive_session_required: True" in formatted
     assert "recommended_next_step: Run runtime smoke" in formatted
     assert "requirement: Windows machine" in formatted

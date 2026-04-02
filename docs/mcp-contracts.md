@@ -1,12 +1,82 @@
 # MCP Contracts
 
-`webots-mcp-kit` keeps MCP tool names stable. The payloads below are the current public contract and are intended to remain stable through `v1.0.0`.
+`webots-mcp-kit` keeps MCP tool names stable. Through `v1.0.0`, success payloads should remain additive-only and failure payloads should use the structured shape documented below.
 
-## Stable response shapes
+## Stable success payloads
+
+### `webots_session_start`
+
+Typical request:
+
+```json
+{
+  "scenario": "line-follower",
+  "controller": "example",
+  "mode": "fast",
+  "render": false
+}
+```
+
+Typical response:
+
+```json
+{
+  "session_id": "abc123def456",
+  "status": "ready",
+  "scenario": "line-follower",
+  "target_robot_name": "epuck-line-follower",
+  "host": "127.0.0.1",
+  "port": 55123,
+  "environment": {
+    "python_executable": "D:\\actions-runner\\python311-shared\\python.exe",
+    "webots_executable": "C:\\Program Files\\Webots\\msys64\\mingw64\\bin\\webots.exe"
+  }
+}
+```
+
+### `webots_get_state`
+
+Typical response:
+
+```json
+{
+  "session": {
+    "session_id": "abc123def456",
+    "status": "ready",
+    "scenario": "line-follower"
+  },
+  "session_state": {
+    "status": "ready",
+    "scenario": "line-follower",
+    "target_robot_name": "epuck-line-follower",
+    "last_error_code": null,
+    "last_error": null
+  },
+  "control_paused": false,
+  "runtime_summary": {
+    "agent": {
+      "connected": true,
+      "device_count": 5
+    },
+    "supervisor": {
+      "connected": true,
+      "device_count": 0
+    }
+  },
+  "runtimes": {
+    "agent": {
+      "state": {
+        "robot_time": 1.248,
+        "step_index": 39
+      }
+    }
+  }
+}
+```
 
 ### `webots_list_devices`
 
-Response shape:
+Stable top-level shape:
 
 ```json
 {
@@ -27,7 +97,7 @@ Response shape:
 
 ### `webots_get_sensors`
 
-Response shape:
+Stable top-level shape:
 
 ```json
 {
@@ -58,6 +128,14 @@ Response shape:
 
 ### `webots_capture_camera`
 
+Typical request:
+
+```json
+{
+  "session": "abc123def456"
+}
+```
+
 Typical response:
 
 ```json
@@ -70,13 +148,21 @@ Typical response:
 
 ### `webots_run_benchmark`
 
-Typical response fields:
+Typical request:
+
+```json
+{
+  "scenario": "line-follower",
+  "controller": "example",
+  "duration_s": 3.0
+}
+```
+
+Typical response:
 
 ```json
 {
   "benchmark": "line-follower",
-  "world": "D:\\Projects\\webots-mcp-kit\\examples\\line-follower\\worlds\\line_follower_benchmark.wbt",
-  "controller": "D:\\Projects\\webots-mcp-kit\\examples\\line-follower\\controllers\\line_follower_agent.py",
   "session_mode": "fast",
   "sim_time_s": 3.136,
   "steps": 17,
@@ -95,12 +181,38 @@ Typical response fields:
 }
 ```
 
-## Notes
+## Structured failure payload
 
-- Public compatibility promise for this phase:
-  - tool names stay fixed
-  - `webots_list_devices` and `webots_get_sensors` keep these top-level keys
-  - response payloads may add fields, but existing keys should not be removed or renamed
-- `examples/` contains runnable bundled controllers and worlds.
-- Benchmark thresholds are scenario-specific and come from the registry in `src/webots_mcp_kit/benchmarks.py`.
-- Hosted GitHub runners do not execute real Webots runtime smoke; use the self-hosted Windows workflow for runtime verification.
+When a tool cannot complete successfully, it should return:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "render-init-failed",
+    "message": "Webots could not initialize the rendering system before the runtimes connected.",
+    "details": {
+      "session_id": "abc123def456"
+    },
+    "retriable": false
+  }
+}
+```
+
+Known error codes currently used by runtime/session flows:
+
+- `render-init-failed`
+- `controller-launch-failed`
+- `supervisor-connect-timeout`
+- `agent-connect-timeout`
+- `session-start-timeout`
+- `webots-unexpected-exit`
+- `admin-request-failed`
+- `mcp-tool-failed`
+
+## Contract notes
+
+- Tool names stay fixed.
+- Success payloads may add fields, but existing top-level keys should not be removed or renamed.
+- `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
+- Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.

@@ -4,7 +4,8 @@
 
 - `python -m pytest -q`
 - hosted MCP smoke is green
-- self-hosted runtime smoke is green if runtime code changed
+- interactive self-hosted runtime smoke is green if runtime code changed
+- latest `interactive-webots` runner runtime smoke passed in a logged-in desktop session
 - `Packaging CI` is green
 - changelog and README version notes are updated
 

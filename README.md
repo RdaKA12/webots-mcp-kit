@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.9.12`
+`v0.9.15`
 
 Current focus:
 
@@ -26,6 +26,23 @@ Current focus:
 - hosted-safe CI with separate self-hosted runtime smoke
 - release pipeline for GitHub Release, TestPyPI, and PyPI
 - public-contract regression coverage and external-user onboarding
+- MCP reliability for LLM-driven Webots sessions
+
+## Current support
+
+Supported now:
+
+- Windows
+- Webots `R2025a`
+- Python `3.11+`
+- interactive self-hosted runtime through the `interactive-webots` runner label
+
+Not supported in the pre-`v1.0.0` line:
+
+- Windows service runner runtime
+- Linux/macOS runtime support
+- ROS2 integration
+- multi-robot orchestration
 
 ## Bundled scenarios
 
@@ -65,33 +82,23 @@ $env:WEBOTS_KIT_SESSION_START_TIMEOUT='90'
 
 ## Quick start
 
+### I want to connect an agent to Webots
+
 ```powershell
 webots-kit doctor
+webots-kit session start --scenario line-follower --controller example --mode fast --render off
+webots-kit mcp serve
 webots-kit benchmark list
 webots-kit benchmark run line-follower --controller example --output .\report.json --duration-s 3
 webots-kit benchmark report .\report.json
 ```
 
-For an interactive session:
-
-```powershell
-webots-kit session start --scenario line-follower --controller example --mode fast --render off
-webots-kit session inspect --session <session-id>
-webots-kit session logs --session <session-id>
-webots-kit session stop --session <session-id>
-```
-
-For a custom controller scaffold:
+### I want to integrate my own controller
 
 ```powershell
 webots-kit controller scaffold .\controllers\my_agent.py --scenario line-follower
 webots-kit controller validate .\controllers\my_agent.py --scenario line-follower --strict --json
-```
-
-To expose the toolkit as an MCP server:
-
-```powershell
-webots-kit mcp serve
+webots-kit benchmark run line-follower --controller .\controllers\my_agent.py --output .\report.json
 ```
 
 ## CLI surface
@@ -164,6 +171,7 @@ Stable payload shapes:
 
 - `webots_list_devices -> { robot, scenario, devices }`
 - `webots_get_sensors -> { robot, scenario, state, sensors, metrics, actuators, meta }`
+- failed MCP tool calls -> `{ ok: false, error: { code, message, details, retriable } }`
 
 Reference docs:
 
@@ -212,8 +220,9 @@ Packaging and release verification are handled by GitHub workflows:
 
 - If `doctor` fails, ensure `WEBOTS_HOME` is set or Webots is installed in `C:\Program Files\Webots`.
 - If MCP or session startup closes immediately, inspect `session logs` for the session artifacts.
+- Session failures now report structured error codes such as `render-init-failed`, `agent-connect-timeout`, and `supervisor-connect-timeout`.
 - If package installation changes global Python web dependencies, recreate a dedicated virtual environment and reinstall there.
 - GitHub-hosted `windows-latest` runners are only used for unit tests, `doctor`, and MCP handshake smoke. Real Webots runtime smoke is exposed as a separate manual workflow for self-hosted Windows runners with Webots installed.
-- Runtime-affecting changes now also path-trigger the self-hosted runtime workflow when the `webots` runner is available.
+- Runtime-affecting changes now also path-trigger the self-hosted runtime workflow when the `interactive-webots` runner is available.
 - `examples/` contains runnable demo assets; benchmark thresholds and pass/fail logic live in the benchmark registry inside the toolkit code.
 - Wheel installs use bundled package-local scenario assets; source checkouts continue to use repo-local `examples/`.

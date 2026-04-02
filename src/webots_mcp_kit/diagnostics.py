@@ -30,11 +30,19 @@ def collect_runtime_diagnostics(*, output_dir: Path, session_id: str | None = No
     payload["inspect"] = inspect_session(manifest.session_id)
     payload["log_inventory"] = store.log_inventory(manifest.session_id)
     payload["log_summary"] = store.log_summary(manifest.session_id)
+    payload["runtime_environment"] = {
+        "runner_mode": manifest.environment.get("launch_context", {}).get("runner"),
+        "python_executable": manifest.environment.get("python_executable"),
+        "webots_executable": manifest.environment.get("webots_executable"),
+        "webots_launch": manifest.environment.get("webots_launch", {}),
+        "last_error_code": manifest.last_error_code,
+    }
 
     atomic_write_text(output / "session.json", json.dumps(payload["latest_session"], indent=2), encoding="utf-8")
     atomic_write_text(output / "inspect.json", json.dumps(payload["inspect"], indent=2), encoding="utf-8")
     atomic_write_text(output / "log_inventory.json", json.dumps(payload["log_inventory"], indent=2), encoding="utf-8")
     atomic_write_text(output / "log_summary.json", json.dumps(payload["log_summary"], indent=2), encoding="utf-8")
+    atomic_write_text(output / "runtime_environment.json", json.dumps(payload["runtime_environment"], indent=2), encoding="utf-8")
     atomic_write_text(output / "summary.json", json.dumps(payload, indent=2), encoding="utf-8")
     return payload
 

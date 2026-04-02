@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.15
+
+- Stabilized the self-hosted runtime contract around the `interactive-webots` runner model and enriched diagnostics with runner mode, launch environment, and categorized startup failures.
+- Added structured runtime and MCP error payloads with stable error codes such as `render-init-failed`, `controller-launch-failed`, `agent-connect-timeout`, and `supervisor-connect-timeout`.
+- Tightened the LLM-facing MCP surface by documenting request/response contracts, keeping stable success shapes, and returning structured failure payloads instead of free-form dumps.
+- Improved agent-user output and onboarding with clearer `doctor`, `controller validate`, and `benchmark report` flows plus two explicit documentation entry paths: connect an agent or integrate a controller.
+- Added regression coverage for runtime error classification, MCP failure payloads, diagnostics artifacts, environment detection, and controller validation formatting.
+
 ## v0.9.12
 
 - Moved the self-hosted runtime workflow to the dedicated `interactive-webots` runner label so Webots runtime smoke runs in a logged-in desktop session instead of a Windows service session.

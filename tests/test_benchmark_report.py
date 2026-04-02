@@ -31,6 +31,7 @@ def test_benchmark_report_formatting(tmp_path: Path) -> None:
     formatted = format_benchmark_report(report_path)
     assert "benchmark: line-follower" in formatted
     assert "result: pass (completed)" in formatted
+    assert "next_step:" in formatted
 
 
 def test_benchmark_report_formatting_waypoint_fields(tmp_path: Path) -> None:
@@ -66,3 +67,4 @@ def test_benchmark_report_formatting_waypoint_fields(tmp_path: Path) -> None:
     assert "result: fail (target-not-reached)" in formatted
     assert "target_reached: False" in formatted
     assert "target_distance: 0.3" in formatted
+    assert "next_step:" in formatted

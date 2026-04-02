@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .benchmarks import get_scenario
+from .errors import error_dict
 from .environment import build_process_env, current_python, get_webots_environment, repo_root, software_opengl_requested
 from .models import RuntimeSnapshot, SessionManifest
 from .protocol import encode_message, request_id
@@ -67,13 +68,24 @@ class SessionDaemon:
         self.webots_stdout_path = self.artifacts_dir / "webots.stdout.log"
         self.webots_stderr_path = self.artifacts_dir / "webots.stderr.log"
 
-    def write_manifest(self, *, status: str | None = None, last_error: str | None = None) -> None:
+    def write_manifest(
+        self,
+        *,
+        status: str | None = None,
+        last_error: str | None = None,
+        last_error_code: str | None = None,
+        last_error_details: dict[str, Any] | None = None,
+    ) -> None:
         if status is not None:
             self.manifest.status = status
             if status in {"stopped", "failed"}:
                 self.manifest.stopped_at = utc_now_iso()
         if last_error is not None:
             self.manifest.last_error = last_error
+        if last_error_code is not None:
+            self.manifest.last_error_code = last_error_code
+        if last_error_details is not None:
+            self.manifest.last_error_details = last_error_details
         self.manifest.daemon_pid = os.getpid()
         self.manifest.host = self.host
         self.manifest.port = self.port
@@ -110,7 +122,12 @@ class SessionDaemon:
             stderr_task = asyncio.create_task(self.consume_webots_stderr())
             await self.wait_for_stop()
         except Exception as exc:
-            self.write_manifest(status="failed", last_error=str(exc))
+            self.write_manifest(
+                status="failed",
+                last_error=str(exc),
+                last_error_code="daemon-run-failed",
+                last_error_details={"exception_type": exc.__class__.__name__},
+            )
             raise
         finally:
             self.stop_event.set()
@@ -130,9 +147,25 @@ class SessionDaemon:
             task.cancel()
         if webots_task in done and not self.stop_event.is_set():
             if self.manifest.status == "ready":
-                self.write_manifest(status="stopped", last_error="Webots process exited unexpectedly after session became ready.")
+                error = error_dict(
+                    "webots-unexpected-exit",
+                    "Webots process exited unexpectedly after the session became ready.",
+                    details={"webots_stderr_tail": self.read_log_tail(self.webots_stderr_path), "webots_stdout_tail": self.read_log_tail(self.webots_stdout_path)},
+                )
+                self.write_manifest(
+                    status="stopped",
+                    last_error=error["message"],
+                    last_error_code=error["code"],
+                    last_error_details=error["details"],
+                )
             else:
-                self.write_manifest(status="failed", last_error="Webots process exited before the runtime connected.")
+                error = self.classify_early_webots_exit()
+                self.write_manifest(
+                    status="failed",
+                    last_error=error["message"],
+                    last_error_code=error["code"],
+                    last_error_details=error["details"],
+                )
         else:
             self.write_manifest(status="stopping")
 
@@ -160,6 +193,14 @@ class SessionDaemon:
 
     async def start_webots(self) -> None:
         webots = get_webots_environment()
+        webots_env = build_process_env(prefer_software_opengl=(not self.render and software_opengl_requested()))
+        self.manifest.environment["webots_launch"] = {
+            "qt_opengl": webots_env.get("QT_OPENGL"),
+            "software_opengl_dir": webots_env.get("WEBOTS_KIT_SOFTWARE_OPENGL_DIR"),
+            "runner_session_name": os.environ.get("SESSIONNAME"),
+            "runner_user": os.environ.get("USERNAME"),
+        }
+        self.write_manifest()
         args = [
             str(webots.webots_executable),
             f"--port={self.webots_port}",
@@ -175,7 +216,7 @@ class SessionDaemon:
         self.webots_process = await asyncio.create_subprocess_exec(
             *args,
             cwd=str(repo_root()),
-            env=build_process_env(prefer_software_opengl=(not self.render and software_opengl_requested())),
+            env=webots_env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -370,6 +411,13 @@ class SessionDaemon:
             elif action == "get_state":
                 result = {
                     "session": self.manifest.to_dict(),
+                    "session_state": {
+                        "status": self.manifest.status,
+                        "scenario": self.manifest.scenario,
+                        "target_robot_name": self.manifest.target_robot_name,
+                        "last_error_code": self.manifest.last_error_code,
+                        "last_error": self.manifest.last_error,
+                    },
                     "control_paused": self.control_paused,
                     "runtime_summary": self.runtime_summary(),
                     "runtimes": {role: snapshot.to_dict() for role, snapshot in self.runtime_snapshots.items()},
@@ -424,7 +472,16 @@ class SessionDaemon:
                 raise ValueError(f"Unsupported admin action: {action}")
             return {"kind": "admin_response", "id": message["id"], "ok": True, "result": result}
         except Exception as exc:
-            return {"kind": "admin_response", "id": message["id"], "ok": False, "error": str(exc)}
+            return {
+                "kind": "admin_response",
+                "id": message["id"],
+                "ok": False,
+                "error": error_dict(
+                    "admin-request-failed",
+                    str(exc),
+                    details={"action": action, "exception_type": exc.__class__.__name__},
+                ),
+            }
 
     async def run_benchmark(self, *, benchmark: str, duration_s: float, fail_streak: int) -> dict[str, Any]:
         notes: list[str] = []
@@ -564,6 +621,49 @@ class SessionDaemon:
                 "target_reached": target_reached,
             },
         }
+
+    def read_log_tail(self, path: Path, tail: int = 10) -> list[str]:
+        if not path.exists():
+            return []
+        try:
+            return path.read_text(encoding="utf-8", errors="replace").splitlines()[-tail:]
+        except OSError:
+            return []
+
+    def classify_early_webots_exit(self) -> dict[str, Any]:
+        stderr_tail = self.read_log_tail(self.webots_stderr_path)
+        stdout_tail = self.read_log_tail(self.webots_stdout_path)
+        lower_stderr = "\n".join(stderr_tail).lower()
+        runtime_summary = self.runtime_summary()
+        if "failed to load and resolve wgl/opengl functions" in lower_stderr or "could not initialize the rendering system" in lower_stderr:
+            return error_dict(
+                "render-init-failed",
+                "Webots could not initialize the rendering system before the runtimes connected.",
+                details={"webots_stderr_tail": stderr_tail, "webots_stdout_tail": stdout_tail, "runtime_summary": runtime_summary},
+            )
+        if "requires opengl 3.3" in lower_stderr:
+            return error_dict(
+                "render-init-failed",
+                "Webots requires an OpenGL 3.3 context, but the current runner session could not initialize one.",
+                details={"webots_stderr_tail": stderr_tail, "webots_stdout_tail": stdout_tail, "runtime_summary": runtime_summary},
+            )
+        if self.runtime_connections.get("supervisor") and not self.runtime_connections.get("agent"):
+            return error_dict(
+                "agent-connect-timeout",
+                "The agent runtime did not connect before Webots exited.",
+                details={"webots_stderr_tail": stderr_tail, "webots_stdout_tail": stdout_tail, "runtime_summary": runtime_summary},
+            )
+        if self.runtime_connections.get("agent") and not self.runtime_connections.get("supervisor"):
+            return error_dict(
+                "supervisor-connect-timeout",
+                "The supervisor runtime did not connect before Webots exited.",
+                details={"webots_stderr_tail": stderr_tail, "webots_stdout_tail": stdout_tail, "runtime_summary": runtime_summary},
+            )
+        return error_dict(
+            "controller-launch-failed",
+            "Webots exited before the controller runtimes connected.",
+            details={"webots_stderr_tail": stderr_tail, "webots_stdout_tail": stdout_tail, "runtime_summary": runtime_summary},
+        )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

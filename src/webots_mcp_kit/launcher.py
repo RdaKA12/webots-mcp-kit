@@ -9,7 +9,8 @@ from typing import Any
 
 from .benchmarks import get_scenario
 from .client import SessionClient
-from .environment import build_process_env, get_webots_environment, repo_root
+from .errors import KitError, error_dict
+from .environment import build_process_env, describe_launch_environment, get_webots_environment, repo_root, software_opengl_requested
 from .models import SessionManifest
 from .session_store import SessionStore
 from .utils import choose_free_port, utc_now_iso
@@ -126,13 +127,16 @@ def start_session(
         if current.status == "ready":
             return current
         if current.status == "failed":
-            raise RuntimeError(current.last_error or f"Session {session_id} failed to initialize.")
+            raise error_from_manifest(current)
         time.sleep(0.25)
     current = store.load_manifest(session_id)
     diagnostics = timeout_diagnostics(store, current)
-    raise TimeoutError(
-        f"Timed out waiting for session {session_id} to become ready after {timeout:.1f}s. "
-        f"status={current.status} session_dir={current.session_dir} diagnostics={diagnostics}"
+    timeout_error = classify_start_timeout(current, diagnostics)
+    raise KitError(
+        timeout_error["code"],
+        timeout_error["message"],
+        details=timeout_error["details"],
+        retriable=True,
     )
 
 
@@ -152,6 +156,15 @@ def inspect_session(session_id: str) -> dict[str, object]:
     manifest = store.load_manifest(session_id)
     payload: dict[str, object] = {
         "manifest": manifest.to_dict(),
+        "session_state": {
+            "status": manifest.status,
+            "created_at": manifest.created_at,
+            "stopped_at": manifest.stopped_at,
+            "last_error_code": manifest.last_error_code,
+            "last_error": manifest.last_error,
+            "target_robot_name": manifest.target_robot_name,
+            "scenario": manifest.scenario,
+        },
         "artifacts": store.list_artifacts(session_id),
         "logs": store.log_inventory(session_id),
         "log_summary": store.log_summary(session_id),
@@ -181,6 +194,11 @@ def timeout_diagnostics(store: SessionStore, manifest: SessionManifest) -> dict[
         "logs": store.log_inventory(manifest.session_id),
         "runtime_summary": manifest.runtime_summary,
         "environment": manifest.environment,
+        "session_state": {
+            "status": manifest.status,
+            "last_error_code": manifest.last_error_code,
+            "last_error": manifest.last_error,
+        },
     }
     for log_name in ("daemon.stdout.log", "daemon.stderr.log", "webots.stdout.log", "webots.stderr.log"):
         log_path = store.artifacts_dir(manifest.session_id) / log_name
@@ -192,6 +210,57 @@ def timeout_diagnostics(store: SessionStore, manifest: SessionManifest) -> dict[
         except OSError:
             continue
     return payload
+
+
+def classify_start_timeout(manifest: SessionManifest, diagnostics: dict[str, object]) -> dict[str, Any]:
+    runtime_summary = manifest.runtime_summary if isinstance(manifest.runtime_summary, dict) else {}
+    agent = runtime_summary.get("agent") if isinstance(runtime_summary.get("agent"), dict) else {}
+    supervisor = runtime_summary.get("supervisor") if isinstance(runtime_summary.get("supervisor"), dict) else {}
+    details = {
+        "session_id": manifest.session_id,
+        "status": manifest.status,
+        "session_dir": manifest.session_dir,
+        "artifacts_dir": manifest.artifacts_dir,
+        "runtime_summary": runtime_summary,
+        "diagnostics": diagnostics,
+    }
+    if supervisor.get("connected") and not agent.get("connected"):
+        return error_dict(
+            "agent-connect-timeout",
+            f"Agent runtime did not connect before timeout for session {manifest.session_id}.",
+            details=details,
+            retriable=True,
+        )
+    if agent.get("connected") and not supervisor.get("connected"):
+        return error_dict(
+            "supervisor-connect-timeout",
+            f"Supervisor runtime did not connect before timeout for session {manifest.session_id}.",
+            details=details,
+            retriable=True,
+        )
+    return error_dict(
+        "session-start-timeout",
+        f"Timed out waiting for session {manifest.session_id} to become ready.",
+        details=details,
+        retriable=True,
+    )
+
+
+def error_from_manifest(manifest: SessionManifest) -> KitError:
+    return KitError(
+        manifest.last_error_code or "session-start-failed",
+        manifest.last_error or f"Session {manifest.session_id} failed to initialize.",
+        details={
+            "session_id": manifest.session_id,
+            "status": manifest.status,
+            "session_dir": manifest.session_dir,
+            "artifacts_dir": manifest.artifacts_dir,
+            "last_error_details": manifest.last_error_details,
+            "runtime_summary": manifest.runtime_summary,
+            "environment": manifest.environment,
+        },
+        retriable=(manifest.last_error_code or "").endswith("timeout"),
+    )
 
 
 def build_environment_snapshot(
@@ -215,4 +284,5 @@ def build_environment_snapshot(
         "mode": mode,
         "render": render,
         "session_start_timeout_s": session_start_timeout(30.0),
+        "launch_context": describe_launch_environment(prefer_software_opengl=(not render and software_opengl_requested())),
     }

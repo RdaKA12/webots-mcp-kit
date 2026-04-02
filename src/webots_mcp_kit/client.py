@@ -3,6 +3,7 @@ from __future__ import annotations
 import socket
 from typing import Any
 
+from .errors import KitError, coerce_error_payload
 from .models import SessionManifest
 from .protocol import decode_message, encode_message, read_line, request_id
 from .session_store import SessionStore
@@ -31,5 +32,11 @@ class SessionClient:
             sock.sendall(encode_message(payload))
             response = decode_message(read_line(sock))
         if not response.get("ok", False):
-            raise RuntimeError(response.get("error", "Unknown daemon error"))
+            error = coerce_error_payload(response.get("error"), fallback_message="Unknown daemon error.")
+            raise KitError(
+                error["code"],
+                error["message"],
+                details={"session_id": self.manifest.session_id, **error.get("details", {})},
+                retriable=bool(error.get("retriable", False)),
+            )
         return response.get("result")

@@ -56,3 +56,4 @@ def test_collect_runtime_diagnostics_with_session(tmp_path, monkeypatch) -> None
     payload = collect_runtime_diagnostics(output_dir=tmp_path / "diag")
     assert payload["session_id"] == "diagtest"
     assert (tmp_path / "diag" / "inspect.json").exists()
+    assert (tmp_path / "diag" / "runtime_environment.json").exists()

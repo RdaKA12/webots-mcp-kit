@@ -7,6 +7,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .benchmark import run_benchmark
 from .client import SessionClient
+from .errors import KitError, error_dict
 from .launcher import start_session
 
 mcp = FastMCP("webots-mcp-kit", json_response=True)
@@ -43,6 +44,12 @@ def _normalize_sensor_payload(payload: Any) -> dict[str, Any]:
     }
 
 
+def _tool_error(exc: Exception) -> dict[str, Any]:
+    if isinstance(exc, KitError):
+        return {"ok": False, "error": exc.to_dict()}
+    return {"ok": False, "error": error_dict("mcp-tool-failed", str(exc))}
+
+
 @mcp.tool()
 def webots_session_start(
     scenario: str = "line-follower",
@@ -53,69 +60,102 @@ def webots_session_start(
     mode: str = "fast",
     render: bool = False,
 ) -> dict[str, Any]:
-    manifest = start_session(
-        world=world,
-        controller=controller,
-        mode=mode,
-        render=render,
-        scenario=scenario,
-        robot_name=robot_name,
-        robot_def=robot_def,
-    )
-    return manifest.to_dict()
+    try:
+        manifest = start_session(
+            world=world,
+            controller=controller,
+            mode=mode,
+            render=render,
+            scenario=scenario,
+            robot_name=robot_name,
+            robot_def=robot_def,
+        )
+        return manifest.to_dict()
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_session_stop(session: str | None = None) -> dict[str, Any]:
-    return _client(session).request("stop")
+    try:
+        return _client(session).request("stop")
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_list_robots(session: str | None = None) -> Any:
-    return _client(session).request("list_robots")
+    try:
+        return _client(session).request("list_robots")
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_list_devices(session: str | None = None) -> Any:
-    return _normalize_device_payload(_client(session).request("list_devices"))
+    try:
+        return _normalize_device_payload(_client(session).request("list_devices"))
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_get_state(session: str | None = None) -> Any:
-    return _client(session).request("get_state")
+    try:
+        return _client(session).request("get_state")
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_get_sensors(session: str | None = None) -> Any:
-    return _normalize_sensor_payload(_client(session).request("get_sensors"))
+    try:
+        return _normalize_sensor_payload(_client(session).request("get_sensors"))
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_capture_camera(session: str | None = None, camera: str | None = None, path: str | None = None) -> Any:
-    return _client(session).request("capture_camera", {"camera": camera, "path": path})
+    try:
+        return _client(session).request("capture_camera", {"camera": camera, "path": path})
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_set_motor_velocity(left: float, right: float, duration_steps: int = 1, session: str | None = None) -> Any:
-    return _client(session).request(
-        "set_motor_velocity",
-        {"left": left, "right": right, "duration_steps": duration_steps},
-    )
+    try:
+        return _client(session).request(
+            "set_motor_velocity",
+            {"left": left, "right": right, "duration_steps": duration_steps},
+        )
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_step(steps: int = 1, session: str | None = None) -> Any:
-    return _client(session).request("step", {"steps": steps})
+    try:
+        return _client(session).request("step", {"steps": steps})
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_pause_resume(paused: bool = True, session: str | None = None) -> Any:
-    return _client(session).request("pause_resume", {"paused": paused})
+    try:
+        return _client(session).request("pause_resume", {"paused": paused})
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
 def webots_reset(session: str | None = None) -> Any:
-    return _client(session).request("reset")
+    try:
+        return _client(session).request("reset")
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @mcp.tool()
@@ -125,9 +165,12 @@ def webots_run_benchmark(
     duration_s: float = 20.0,
     output: str | None = None,
 ) -> dict[str, Any]:
-    output_path = Path(output or f"{scenario}-report.json")
-    report = run_benchmark(scenario=scenario, controller=controller, output=output_path, duration_s=duration_s)
-    return report.to_dict()
+    try:
+        output_path = Path(output or f"{scenario}-report.json")
+        report = run_benchmark(scenario=scenario, controller=controller, output=output_path, duration_s=duration_s)
+        return report.to_dict()
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 def run() -> None:

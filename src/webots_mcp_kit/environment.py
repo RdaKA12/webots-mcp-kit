@@ -4,6 +4,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 SOFTWARE_OPENGL_ENV = "WEBOTS_KIT_OPENGL32SW_DIR"
 FORCE_SOFTWARE_OPENGL_ENV = "WEBOTS_KIT_FORCE_SOFTWARE_OPENGL"
@@ -93,6 +94,22 @@ def software_opengl_requested() -> bool:
     return os.environ.get(FORCE_SOFTWARE_OPENGL_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def detect_runner_mode() -> dict[str, Any]:
+    session_name = (os.environ.get("SESSIONNAME") or "").strip()
+    if session_name.lower() == "services":
+        mode = "windows-service"
+    elif session_name:
+        mode = "interactive-session"
+    else:
+        mode = "unknown"
+    return {
+        "mode": mode,
+        "session_name": session_name or None,
+        "user": os.environ.get("USERNAME"),
+        "computer": os.environ.get("COMPUTERNAME"),
+    }
+
+
 def build_process_env(*, include_src: bool = True, prefer_software_opengl: bool = False) -> dict[str, str]:
     env = os.environ.copy()
     webots = get_webots_environment()
@@ -111,6 +128,17 @@ def build_process_env(*, include_src: bool = True, prefer_software_opengl: bool 
     else:
         env["PYTHONPATH"] = python_path_entries()
     return env
+
+
+def describe_launch_environment(*, prefer_software_opengl: bool = False) -> dict[str, Any]:
+    software_gl_dir = detect_software_opengl_dir() if prefer_software_opengl else None
+    return {
+        "runner": detect_runner_mode(),
+        "python_executable": current_python(),
+        "software_opengl_requested": prefer_software_opengl,
+        "software_opengl_dir": str(software_gl_dir) if software_gl_dir is not None else None,
+        "qt_opengl": "software" if software_gl_dir is not None and prefer_software_opengl else None,
+    }
 
 
 def current_python() -> str:

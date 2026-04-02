@@ -222,13 +222,14 @@ def _literal_dict_keys(node: ast.AST) -> set[str] | None:
 
 def format_validation_report(result: ControllerValidationResult) -> str:
     details = result.details
+    summary = f"{len(result.errors)} errors, {len(result.warnings)} warnings"
     lines = [
-        f"validation: {'pass' if result.valid else 'fail'}",
+        f"controller_validation: {'pass' if result.valid else 'fail'}",
         f"path: {result.path}",
         f"scenario: {details.get('scenario')}",
         f"strict: {details.get('strict')}",
-        f"valid: {result.valid}",
         f"integration_mode: {result.integration_mode}",
+        f"summary: {summary}",
         f"default_camera: {details.get('default_camera')}",
         f"report_step_keywords: {details.get('report_step_keywords')}",
     ]
@@ -238,4 +239,8 @@ def format_validation_report(result: ControllerValidationResult) -> str:
     if result.warnings:
         lines.append("warnings:")
         lines.extend(f"- {warning}" for warning in result.warnings)
+    if result.valid:
+        lines.append("next_step: Run `webots-kit benchmark run <scenario> --controller <path> ...` or expose MCP with `webots-kit mcp serve`.")
+    else:
+        lines.append("next_step: Fix the listed controller contract issues, then rerun validation with `--strict`.")
     return "\n".join(lines)

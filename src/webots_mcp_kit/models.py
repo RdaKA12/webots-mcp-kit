@@ -24,6 +24,8 @@ class SessionManifest:
     artifacts_dir: str
     stopped_at: str | None = None
     last_error: str | None = None
+    last_error_code: str | None = None
+    last_error_details: dict[str, Any] = field(default_factory=dict)
     environment: dict[str, Any] = field(default_factory=dict)
     runtime_summary: dict[str, Any] = field(default_factory=dict)
 

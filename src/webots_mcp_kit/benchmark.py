@@ -69,6 +69,7 @@ def format_benchmark_report(path: Path) -> str:
     data = json.loads(path.read_text(encoding="utf-8"))
     result_reason = data["notes"][0] if data.get("notes") else "completed"
     extra_metrics = data.get("extra_metrics", {})
+    next_step = benchmark_next_step(data["benchmark"], result_reason)
     lines = [
         f"benchmark: {data['benchmark']}",
         f"result: {'pass' if data['pass'] else 'fail'} ({result_reason})",
@@ -81,6 +82,7 @@ def format_benchmark_report(path: Path) -> str:
         f"max_line_loss_streak: {data['max_line_loss_streak']}",
         f"mean_center_error: {data['mean_center_error']}",
         f"ir_balance_error: {data['ir_balance_error']}",
+        f"next_step: {next_step}",
         f"artifacts: {data['artifacts']}",
         f"notes: {data['notes']}",
     ]
@@ -94,6 +96,20 @@ def format_benchmark_report(path: Path) -> str:
     if extra_metrics:
         lines.append(f"extra_metrics: {extra_metrics}")
     return "\n".join(lines)
+
+
+def benchmark_next_step(benchmark: str, result_reason: str) -> str:
+    if result_reason == "completed":
+        return "Use `webots-kit mcp serve` or run a longer benchmark to inspect live telemetry."
+    if result_reason == "line-loss-threshold-reached":
+        return "Inspect camera metrics and center_error, then tune the controller around line reacquisition."
+    if result_reason == "collision-detected":
+        return "Inspect proximity telemetry and contact-point metrics to reduce obstacle hits."
+    if result_reason in {"target-not-reached", "low-travel-distance"}:
+        return "Inspect waypoint progress and forward-speed metrics, then rerun with session logs enabled."
+    if result_reason == "insufficient-forward-speed":
+        return "Inspect actuator outputs and pause/manual-override state before rerunning the benchmark."
+    return f"Review session artifacts and logs for benchmark `{benchmark}` before rerunning."
 
 
 def resolve_example_controller(scenario: str) -> str:
