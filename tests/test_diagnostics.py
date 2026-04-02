@@ -16,6 +16,11 @@ def test_collect_runtime_diagnostics_without_session(tmp_path, monkeypatch) -> N
     )
     payload = collect_runtime_diagnostics(output_dir=tmp_path / "diag")
     assert payload["latest_session"] is None
+    assert (tmp_path / "diag" / "session.json").exists()
+    assert (tmp_path / "diag" / "inspect.json").exists()
+    assert (tmp_path / "diag" / "log_inventory.json").exists()
+    assert (tmp_path / "diag" / "log_summary.json").exists()
+    assert (tmp_path / "diag" / "runtime_environment.json").exists()
     summary = json.loads((tmp_path / "diag" / "summary.json").read_text(encoding="utf-8"))
     assert summary["doctor"]["status"] == "ok"
 

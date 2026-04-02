@@ -5,7 +5,8 @@
 Status:
 
 - `project import`, `session export`, and `session replay` command names are treated as stable
-- their file formats and metadata are `experimental-foundation` until the post-`v1.0.0` replay/import expansion milestone
+- only the CLI command names are in the `v1.0.0` stable contract scope
+- replay/export metadata and deeper file schemas remain `experimental-foundation` until the post-`v1.0.0` replay/import expansion milestone
 
 ## Import an existing project
 
@@ -36,6 +37,8 @@ The export bundle includes:
 - `log_inventory.json`
 - `log_summary.json`
 - `runtime_environment.json`
+- `summary.json`
+- `export.json`
 - copied log files under `logs/`
 - copied session artifacts under `artifacts/`
 
@@ -44,6 +47,8 @@ The export bundle includes:
 ```powershell
 webots-kit session replay .\artifacts\exports\123456abcdef
 ```
+
+`session replay` also accepts the canonical `export.json` path directly when you want to point at an already-exported manifest.
 
 Replay is observability-focused. It does not rerun physics. Instead, it gives you:
 

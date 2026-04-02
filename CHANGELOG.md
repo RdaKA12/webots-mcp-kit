@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.10.1
+
+- Tightened the pre-`v1.0.0` MCP contract freeze by normalizing stable success payloads for `webots_session_start`, `webots_get_state`, `webots_capture_camera`, and `webots_run_benchmark` while preserving additive extra fields.
+- Preserved structured runtime/admin error codes through the daemon request path so lower-level failures are no longer collapsed into a generic `admin-request-failed` code.
+- Standardized runtime diagnostics artifacts even when no session manifest is available and promoted `export.json` plus the standard artifact paths into the canonical session export manifest.
+- Hardened `session replay` around the canonical export manifest while keeping directory-based replay compatibility.
+- Expanded package and publish smoke flows to cover `controller scaffold` and `scenario validate`, and updated runtime/release docs to treat `interactive-webots` as the single supported runtime execution model.
+
 ## v0.10.0
 
 - Added zero-to-sim foundations with `project init`, `scenario init`, `scenario validate`, `scenario build`, `scenario describe`, and `scenario doctor`.

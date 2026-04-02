@@ -124,9 +124,14 @@ jobs:
         run: |
           webots-kit doctor --json
           webots-kit benchmark list
+          webots-kit controller scaffold testpypi-smoke\controllers\demo_agent.py --scenario line-follower
+          webots-kit controller validate testpypi-smoke\controllers\demo_agent.py --scenario line-follower
           webots-kit project init testpypi-smoke
           webots-kit scenario init testpypi-smoke\scenarios\demo-waypoint --template epuck-waypoint
+          webots-kit scenario validate testpypi-smoke\scenarios\demo-waypoint\webots-kit.scenario.json
           webots-kit scenario build testpypi-smoke\scenarios\demo-waypoint\webots-kit.scenario.json
+          $bundleRoot = python -c "from webots_mcp_kit.models import bundled_example_root; print(bundled_example_root())"
+          webots-kit project import --world (Join-Path $bundleRoot 'line-follower\worlds\line_follower_benchmark.wbt') --controller (Join-Path $bundleRoot 'line-follower\controllers\line_follower_agent.py') --project-root testpypi-import-smoke
 
   publish-pypi:
     runs-on: ubuntu-latest
@@ -187,6 +192,11 @@ jobs:
         run: |
           webots-kit doctor --json
           webots-kit benchmark list
+          webots-kit controller scaffold pypi-smoke\controllers\demo_agent.py --scenario line-follower
+          webots-kit controller validate pypi-smoke\controllers\demo_agent.py --scenario line-follower
           webots-kit project init pypi-smoke
           webots-kit scenario init pypi-smoke\scenarios\demo-waypoint --template epuck-waypoint
+          webots-kit scenario validate pypi-smoke\scenarios\demo-waypoint\webots-kit.scenario.json
           webots-kit scenario build pypi-smoke\scenarios\demo-waypoint\webots-kit.scenario.json
+          $bundleRoot = python -c "from webots_mcp_kit.models import bundled_example_root; print(bundled_example_root())"
+          webots-kit project import --world (Join-Path $bundleRoot 'line-follower\worlds\line_follower_benchmark.wbt') --controller (Join-Path $bundleRoot 'line-follower\controllers\line_follower_agent.py') --project-root pypi-import-smoke

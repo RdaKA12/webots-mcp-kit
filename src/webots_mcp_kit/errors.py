@@ -3,6 +3,17 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+STABLE_RUNTIME_ERROR_CODES: tuple[str, ...] = (
+    "render-init-failed",
+    "controller-launch-failed",
+    "supervisor-connect-timeout",
+    "agent-connect-timeout",
+    "session-start-timeout",
+    "webots-unexpected-exit",
+    "admin-request-failed",
+    "mcp-tool-failed",
+)
+
 
 @dataclass(slots=True)
 class StructuredError:
@@ -66,3 +77,25 @@ def coerce_error_payload(
         return error_dict(fallback_code, error.strip())
     return error_dict(fallback_code, fallback_message)
 
+
+def error_from_exception(
+    exc: Exception,
+    *,
+    fallback_code: str,
+    fallback_message: str,
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if isinstance(exc, KitError):
+        payload = exc.to_dict()
+    else:
+        raw_error = exc.args[0] if getattr(exc, "args", ()) else None
+        payload = coerce_error_payload(
+            raw_error,
+            fallback_code=fallback_code,
+            fallback_message=fallback_message,
+        )
+    merged_details = payload.get("details") if isinstance(payload.get("details"), dict) else {}
+    if details:
+        merged_details = {**merged_details, **details}
+    payload["details"] = merged_details
+    return payload

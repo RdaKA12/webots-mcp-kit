@@ -1,6 +1,6 @@
 # First Hour Guide
 
-Use one of the two supported entry paths below.
+Use the supported `interactive-webots` runtime model below. There are two entry paths, but only one supported operational runtime path for real Webots execution.
 
 ## Path A: I want to connect an agent to Webots
 
@@ -24,6 +24,8 @@ You should confirm:
 - `runtime_readiness.status` is `ready`
 - `runtime_readiness.runner_label` is `interactive-webots`
 - Webots `R2025a` is detected
+
+The human-readable CLI outputs for `controller validate`, `benchmark report`, `scenario validate`, `scenario doctor`, and `session replay` all follow the same short-summary plus `next_step` style. Use the text output when you want a compact operator-facing readout, and `--json` when you want machine parsing.
 
 ### 3. Start a bundled session
 
@@ -99,5 +101,5 @@ webots-kit mcp serve
 ## Notes
 
 - Hosted GitHub Actions runners do not run full Webots runtime smoke.
-- Real runtime smoke requires an `interactive-webots` self-hosted runner started from a logged-in desktop session.
+- Real runtime smoke and real session execution require an `interactive-webots` self-hosted runner started from a logged-in desktop session.
 - Windows service mode is not a supported runtime path for Webots session execution.

@@ -36,9 +36,14 @@ jobs:
       - name: Package smoke
         run: |
           webots-kit benchmark list
+          webots-kit controller scaffold package-smoke/controllers/demo_agent.py --scenario line-follower
+          webots-kit controller validate package-smoke/controllers/demo_agent.py --scenario line-follower
           webots-kit project init package-smoke
           webots-kit scenario init package-smoke/scenarios/demo-waypoint --template epuck-waypoint
+          webots-kit scenario validate package-smoke/scenarios/demo-waypoint/webots-kit.scenario.json
           webots-kit scenario build package-smoke/scenarios/demo-waypoint/webots-kit.scenario.json
+          bundle_root="$(python -c 'from webots_mcp_kit.models import bundled_example_root; print(bundled_example_root())')"
+          webots-kit project import --world "$bundle_root/line-follower/worlds/line_follower_benchmark.wbt" --controller "$bundle_root/line-follower/controllers/line_follower_agent.py" --project-root package-import-smoke
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v4

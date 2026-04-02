@@ -170,6 +170,9 @@ class SessionExport:
     log_inventory_path: str
     log_summary_path: str
     runtime_environment_path: str
+    doctor_path: str = ""
+    summary_path: str = ""
+    export_manifest_path: str = ""
     copied_logs: list[str] = field(default_factory=list)
     copied_artifacts: list[str] = field(default_factory=list)
 

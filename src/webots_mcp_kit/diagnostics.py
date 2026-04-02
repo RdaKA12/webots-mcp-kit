@@ -22,6 +22,21 @@ def collect_runtime_diagnostics(*, output_dir: Path, session_id: str | None = No
     manifest = store.load_manifest(session_id) if session_id else store.latest_manifest()
     if manifest is None:
         payload["latest_session"] = None
+        payload["inspect"] = {}
+        payload["log_inventory"] = []
+        payload["log_summary"] = {}
+        payload["runtime_environment"] = {
+            "runner_mode": None,
+            "python_executable": None,
+            "webots_executable": None,
+            "webots_launch": {},
+            "last_error_code": None,
+        }
+        atomic_write_text(output / "session.json", json.dumps({}, indent=2), encoding="utf-8")
+        atomic_write_text(output / "inspect.json", json.dumps(payload["inspect"], indent=2), encoding="utf-8")
+        atomic_write_text(output / "log_inventory.json", json.dumps(payload["log_inventory"], indent=2), encoding="utf-8")
+        atomic_write_text(output / "log_summary.json", json.dumps(payload["log_summary"], indent=2), encoding="utf-8")
+        atomic_write_text(output / "runtime_environment.json", json.dumps(payload["runtime_environment"], indent=2), encoding="utf-8")
         atomic_write_text(output / "summary.json", json.dumps(payload, indent=2), encoding="utf-8")
         return payload
 

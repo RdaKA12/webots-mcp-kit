@@ -126,6 +126,7 @@ def test_export_and_replay_session(tmp_path: Path, monkeypatch) -> None:
             "session_id": session_id,
             "runtime_environment": {"python_executable": "python.exe"},
         }
+        (output_dir / "doctor.json").write_text(json.dumps({"status": "ready"}), encoding="utf-8")
         (output_dir / "summary.json").write_text(json.dumps(payload), encoding="utf-8")
         (output_dir / "session.json").write_text(json.dumps(manifest.to_dict()), encoding="utf-8")
         (output_dir / "inspect.json").write_text(
@@ -139,10 +140,15 @@ def test_export_and_replay_session(tmp_path: Path, monkeypatch) -> None:
 
     monkeypatch.setattr("webots_mcp_kit.scenario_ops.collect_runtime_diagnostics", fake_collect_runtime_diagnostics)
     exported = export_session("session123", output=tmp_path / "export", store=store)
-    replay = replay_session(Path(exported.export_dir))
+    replay = replay_session(Path(exported.export_manifest_path))
 
     assert Path(exported.export_dir).exists()
+    assert Path(exported.doctor_path).exists()
+    assert Path(exported.summary_path).exists()
+    assert Path(exported.export_manifest_path).exists()
     assert replay["session_id"] == "session123"
     assert replay["last_error_code"] == "render-init-failed"
+    assert replay["session_state"]["status"] == "failed"
     assert replay["support_tier"] == "experimental-foundation"
+    assert "session_state_status: failed" in format_session_replay(replay)
     assert "summary:" in format_session_replay(replay)

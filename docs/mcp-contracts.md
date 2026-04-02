@@ -1,12 +1,12 @@
 # MCP Contracts
 
-`webots-mcp-kit` keeps MCP tool names stable. Through `v1.0.0`, success payloads should remain additive-only and failure payloads should use the structured shape documented below.
+`webots-mcp-kit` keeps MCP tool names stable. The `v0.10.1` contract-freeze track locks the six tool surfaces below for the `v1.0.0` line: success payloads stay additive-only, documented top-level keys do not get renamed or removed, and failure payloads use the structured shape documented below.
 
 ## Stable success payloads
 
 ### `webots_session_start`
 
-Typical request:
+Stable top-level response shape:
 
 ```json
 {
@@ -36,7 +36,7 @@ Typical response:
 
 ### `webots_get_state`
 
-Typical response:
+Stable top-level response shape:
 
 ```json
 {
@@ -136,7 +136,7 @@ Typical request:
 }
 ```
 
-Typical response:
+Stable top-level response shape:
 
 ```json
 {
@@ -158,7 +158,7 @@ Typical request:
 }
 ```
 
-Typical response:
+Stable top-level response shape:
 
 ```json
 {
@@ -210,9 +210,12 @@ Known error codes currently used by runtime/session flows:
 - `admin-request-failed`
 - `mcp-tool-failed`
 
+The current code values above are frozen for the pre-`v1.0.0` line. Future codes may be added, but existing codes should not be renamed or repurposed.
+
 ## Contract notes
 
 - Tool names stay fixed.
 - Success payloads may add fields, but existing top-level keys should not be removed or renamed.
+- The six success shapes above are the stable contract surface for the `v1.0.0` release gate.
 - `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
 - Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.

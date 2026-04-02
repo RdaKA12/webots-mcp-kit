@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .benchmarks import get_scenario
-from .errors import error_dict
+from .errors import error_dict, error_from_exception
 from .environment import build_process_env, current_python, get_webots_environment, repo_root, software_opengl_requested
 from .models import RuntimeSnapshot, SessionManifest
 from .protocol import encode_message, request_id
@@ -487,9 +487,10 @@ class SessionDaemon:
                 "kind": "admin_response",
                 "id": message["id"],
                 "ok": False,
-                "error": error_dict(
-                    "admin-request-failed",
-                    str(exc),
+                "error": error_from_exception(
+                    exc,
+                    fallback_code="admin-request-failed",
+                    fallback_message=str(exc) or "Admin request failed.",
                     details={"action": action, "exception_type": exc.__class__.__name__},
                 ),
             }

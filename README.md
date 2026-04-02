@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.10.0`
+`v0.10.1`
 
 Current focus:
 
@@ -29,6 +29,11 @@ Current focus:
 - MCP reliability for LLM-driven Webots sessions
 - zero-to-sim foundations through template-driven project and scenario generation
 
+Operational runtime model:
+
+- `interactive-webots` is the single supported runtime execution path for real Webots sessions, benchmarks, and runtime smoke
+- Windows service mode is not a supported runtime path at the active pre-`v1.0.0` contract line
+
 ## Current support
 
 Supported now:
@@ -36,7 +41,7 @@ Supported now:
 - Windows
 - Webots `R2025a`
 - Python `3.11+`
-- interactive self-hosted runtime through the `interactive-webots` runner label
+- interactive self-hosted runtime through the `interactive-webots` runner label as the only supported runtime execution model
 - experimental-foundation zero-to-sim commands: `project/scenario/import/replay`
 
 Not supported in the pre-`v1.0.0` line:
@@ -203,9 +208,14 @@ Use `webots-kit controller scaffold` when you want a working starter file based 
 
 Stable payload shapes:
 
+- `webots_session_start ->` stable session/readiness top-level keys with additive extras only
+- `webots_get_state -> { session, session_state, control_paused, runtime_summary, runtimes }`
 - `webots_list_devices -> { robot, scenario, devices }`
 - `webots_get_sensors -> { robot, scenario, state, sensors, metrics, actuators, meta }`
+- `webots_capture_camera -> { path, width, height }`
+- `webots_run_benchmark ->` stable benchmark report top-level keys with additive `extra_metrics`
 - failed MCP tool calls -> `{ ok: false, error: { code, message, details, retriable } }`
+- existing MCP/runtime failure codes will not be renamed before `v1.0.0`; new codes may only be added
 
 Reference docs:
 
@@ -262,3 +272,4 @@ Packaging and release verification are handled by GitHub workflows:
 - Runtime-affecting changes now also path-trigger the self-hosted runtime workflow when the `interactive-webots` runner is available.
 - `examples/` contains runnable demo assets; benchmark thresholds and pass/fail logic live in the benchmark registry inside the toolkit code.
 - Wheel installs use bundled package-local scenario assets; source checkouts continue to use repo-local `examples/`.
+- The self-hosted machine standard for runtime smoke is the runner-owned Python install at `D:\actions-runner\python311-shared`.

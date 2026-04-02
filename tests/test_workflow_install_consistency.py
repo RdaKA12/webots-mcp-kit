@@ -78,6 +78,10 @@ def test_release_and_package_workflows_smoke_project_and_scenario_commands() -> 
     package_content = (root / ".github/workflows/package-ci.yml").read_text(encoding="utf-8")
     release_content = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
     for content in (package_content, release_content):
+        assert "webots-kit controller scaffold" in content
+        assert "webots-kit controller validate" in content
         assert "webots-kit project init" in content
+        assert "webots-kit project import" in content
         assert "webots-kit scenario init" in content
+        assert "webots-kit scenario validate" in content
         assert "webots-kit scenario build" in content

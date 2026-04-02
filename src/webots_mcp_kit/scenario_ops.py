@@ -379,9 +379,11 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         }
     spec = load_scenario_spec(spec_path)
     benchmark_name = report.benchmark_name
-    next_step = "Run `webots-kit scenario build <spec>` once the validation issues are fixed."
+    next_step = f"Run `webots-kit scenario build \"{spec_path}\"` once the validation issues are fixed."
     if report.valid and benchmark_name:
-        next_step = f"Run `webots-kit scenario build \"{spec_path}\"`, then `{benchmark_name}` benchmark smoke."
+        next_step = (
+            f"Run `webots-kit scenario build \"{spec_path}\"` to generate the world and controller artifacts for `{benchmark_name}` smoke."
+        )
     return {
         "status": "ready" if report.valid else "misconfigured",
         "spec_path": str(spec_path),
@@ -473,6 +475,9 @@ def export_session(session_id: str, *, output: Path | None = None, store: Sessio
         log_inventory_path=str(export_dir / "log_inventory.json"),
         log_summary_path=str(export_dir / "log_summary.json"),
         runtime_environment_path=str(export_dir / "runtime_environment.json"),
+        doctor_path=str(export_dir / "doctor.json"),
+        summary_path=str(export_dir / "summary.json"),
+        export_manifest_path=str(export_dir / "export.json"),
         copied_logs=copied_logs,
         copied_artifacts=copied_artifacts,
     )
@@ -481,29 +486,42 @@ def export_session(session_id: str, *, output: Path | None = None, store: Sessio
 
 
 def replay_session(export_path: Path) -> dict[str, Any]:
-    export_root = export_path if export_path.is_absolute() else (Path.cwd() / export_path).resolve()
-    summary_path = export_root / "summary.json"
-    session_path = export_root / "session.json"
-    inspect_path = export_root / "inspect.json"
-    if not summary_path.exists():
-        raise FileNotFoundError(f"Session export summary was not found at {summary_path}")
+    resolved_path = export_path if export_path.is_absolute() else (Path.cwd() / export_path).resolve()
+    export_root = resolved_path.parent if resolved_path.is_file() else resolved_path
+    export_manifest_path = resolved_path if resolved_path.is_file() else (export_root / "export.json")
+    export_manifest = json.loads(export_manifest_path.read_text(encoding="utf-8")) if export_manifest_path.exists() else {}
 
-    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary_path = Path(str(export_manifest.get("summary_path") or (export_root / "summary.json")))
+    session_path = Path(str(export_manifest.get("manifest_path") or (export_root / "session.json")))
+    inspect_path = Path(str(export_manifest.get("inspect_path") or (export_root / "inspect.json")))
+    runtime_environment_path = Path(str(export_manifest.get("runtime_environment_path") or (export_root / "runtime_environment.json")))
+    if not session_path.exists() and not summary_path.exists():
+        raise FileNotFoundError(f"Session export was not found under {export_root}")
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
     session = json.loads(session_path.read_text(encoding="utf-8")) if session_path.exists() else {}
     inspect = json.loads(inspect_path.read_text(encoding="utf-8")) if inspect_path.exists() else {}
+    runtime_environment = json.loads(runtime_environment_path.read_text(encoding="utf-8")) if runtime_environment_path.exists() else {}
     session_state = inspect.get("session_state") if isinstance(inspect.get("session_state"), dict) else {}
     result_reason = session_state.get("last_error_code") or session_state.get("status") or "completed"
     benchmark_name = str(session.get("scenario") or "line-follower")
+    copied_logs = export_manifest.get("copied_logs") if isinstance(export_manifest.get("copied_logs"), list) else None
+    copied_artifacts = export_manifest.get("copied_artifacts") if isinstance(export_manifest.get("copied_artifacts"), list) else None
     return {
         "export_dir": str(export_root),
         "session_id": summary.get("session_id"),
         "scenario": session.get("scenario"),
         "status": session.get("status"),
+        "session_state": session_state,
         "last_error_code": session_state.get("last_error_code"),
         "last_error": session_state.get("last_error"),
-        "runtime_environment": summary.get("runtime_environment"),
-        "copied_logs": sorted(path.name for path in (export_root / "logs").glob("*")),
-        "copied_artifacts": sorted(path.name for path in (export_root / "artifacts").glob("*")),
+        "runtime_environment": summary.get("runtime_environment") if isinstance(summary.get("runtime_environment"), dict) else runtime_environment,
+        "copied_logs": sorted(Path(path).name for path in copied_logs) if copied_logs is not None else sorted(path.name for path in (export_root / "logs").glob("*")),
+        "copied_artifacts": (
+            sorted(Path(path).name for path in copied_artifacts)
+            if copied_artifacts is not None
+            else sorted(path.name for path in (export_root / "artifacts").glob("*"))
+        ),
         "next_step": benchmark_next_step(benchmark_name, result_reason),
         "support_tier": "experimental-foundation",
     }
@@ -581,6 +599,7 @@ def format_session_replay(payload: dict[str, Any]) -> str:
         f"session_replay: {payload['status']}",
         f"session_id: {payload['session_id']}",
         f"scenario: {payload['scenario']}",
+        f"session_state_status: {payload.get('session_state', {}).get('status')}",
         f"last_error_code: {payload['last_error_code']}",
         f"last_error: {payload['last_error']}",
         f"copied_logs: {payload['copied_logs']}",
