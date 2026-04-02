@@ -84,11 +84,14 @@ def test_release_and_package_workflows_smoke_project_and_scenario_commands() -> 
     root = Path(__file__).resolve().parents[1]
     package_content = (root / ".github/workflows/package-ci.yml").read_text(encoding="utf-8")
     release_content = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
-    for content in (package_content, release_content):
-        assert "webots-kit controller scaffold" in content
-        assert "webots-kit controller validate" in content
-        assert "webots-kit project init" in content
-        assert "webots-kit project import" in content
-        assert "webots-kit scenario init" in content
-        assert "webots-kit scenario validate" in content
-        assert "webots-kit scenario build" in content
+    assert "python scripts/clean_user_acceptance.py --workspace package-smoke" in package_content
+    assert "python scripts\\clean_user_acceptance.py --workspace testpypi-smoke" in release_content
+    assert "python scripts\\clean_user_acceptance.py --workspace pypi-smoke" in release_content
+
+
+def test_release_install_smoke_jobs_checkout_repo_for_acceptance_script() -> None:
+    root = Path(__file__).resolve().parents[1]
+    release_content = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    assert "test-install-testpypi:" in release_content
+    assert "test-install-pypi:" in release_content
+    assert release_content.count("uses: actions/checkout@v5") >= 2

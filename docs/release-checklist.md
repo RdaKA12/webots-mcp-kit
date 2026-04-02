@@ -29,6 +29,8 @@
   - `webots-kit project init`
   - `webots-kit scenario init`
   - `webots-kit scenario build`
+- the centralized acceptance script still matches the clean-user flow:
+  - `python scripts/clean_user_acceptance.py --workspace <path>`
 
 ## Trusted Publishing setup
 

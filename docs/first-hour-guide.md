@@ -2,6 +2,11 @@
 
 Use the supported `interactive-webots` runtime model below. There are two entry paths, but only one supported operational runtime path for real Webots execution.
 
+If you are looking for the other public onboarding paths, use:
+
+- [Generate a scenario from a spec](./zero-to-sim.md)
+- [Import and replay](./project-import-and-replay.md)
+
 ## Path A: I want to connect an agent to Webots
 
 ### 1. Install

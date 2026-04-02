@@ -15,6 +15,8 @@
 - run `webots-kit scenario init <path> --template epuck-waypoint`
 - run `webots-kit scenario validate <spec-path>`
 - run `webots-kit scenario build <spec-path>`
+- or run the centralized flow:
+  - `python scripts/clean_user_acceptance.py --workspace <path>`
 - confirm bundled scenario assets resolve correctly
 
 ## Release smoke

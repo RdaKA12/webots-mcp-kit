@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.10.2`
+`v0.10.3`
 
 Current focus:
 
@@ -29,6 +29,7 @@ Current focus:
 - MCP reliability for LLM-driven Webots sessions
 - zero-to-sim foundations through template-driven project and scenario generation
 - standardized runtime artifact and replay bundles for exported sessions
+- centralized clean-user acceptance flow for package and publish smoke
 
 Operational runtime model:
 
@@ -117,6 +118,14 @@ webots-kit scenario init .\my-webots-project\scenarios\warehouse-demo --template
 webots-kit scenario validate .\my-webots-project\scenarios\warehouse-demo\webots-kit.scenario.json
 webots-kit scenario build .\my-webots-project\scenarios\warehouse-demo\webots-kit.scenario.json
 webots-kit scenario doctor .\my-webots-project\scenarios\warehouse-demo\webots-kit.scenario.json
+```
+
+### I want to import and replay
+
+```powershell
+webots-kit project import --world .\worlds\demo.wbt --controller .\controllers\demo_agent.py
+webots-kit session export <session-id> --output .\artifacts\exports\<session-id>
+webots-kit session replay .\artifacts\exports\<session-id>
 ```
 
 ## CLI surface
@@ -220,6 +229,7 @@ Stable payload shapes:
 
 Reference docs:
 
+- [Onboarding flows](./docs/onboarding-flows.md)
 - [First hour guide](./docs/first-hour-guide.md)
 - [MCP contracts](./docs/mcp-contracts.md)
 - [Self-hosted runtime smoke](./docs/self-hosted-windows-runner.md)

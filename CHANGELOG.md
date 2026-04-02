@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.3
+
+- Centralized the clean-user acceptance flow in a single reusable script so package CI, TestPyPI smoke, and PyPI smoke all exercise the same command sequence.
+- Added an explicit onboarding index that points users to the four pre-`v1.0.0` public entry paths: connect an agent, integrate a controller, generate a scenario from a spec, and import/replay.
+- Tightened release-hardening docs and workflow regression coverage around the clean-user acceptance script and checkout requirements in publish-install smoke jobs.
+
 ## v0.10.2
 
 - Finalized the runtime export bundle around a canonical standard-artifact manifest, including explicit artifact-version and replay-mode metadata in `export.json`.
