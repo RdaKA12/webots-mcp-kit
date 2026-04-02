@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.6
+
+- Moved more contract coverage off monkeypatched dummy clients and onto real normalization paths plus real runtime smoke checks, especially around MCP tool outputs and export/replay diagnostics.
+- Added live runtime smoke for MCP tool contracts and `session export -> diagnostics -> replay`, while keeping only the inherently synthetic OS/error-branch tests in the unit layer.
+- Removed unnecessary `SessionStore` monkeypatching from `inspect_session` and diagnostics regression coverage by allowing store-backed inspection paths to be exercised directly in tests.
+
 ## v0.10.5
 
 - Added an explicit no-mock `v1.0.0` gate script that exercises the real CLI/runtime flows for bundled benchmarks, generated scenarios, and import/export/replay.

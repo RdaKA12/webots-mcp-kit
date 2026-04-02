@@ -158,6 +158,14 @@ jobs:
         run: |
           & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k imported_project_smoke
 
+      - name: MCP contract runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k mcp_contract_smoke
+
+      - name: Export replay diagnostics runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k session_export_replay_diagnostics_smoke
+
       - name: Upload failure diagnostics
         if: failure()
         run: |

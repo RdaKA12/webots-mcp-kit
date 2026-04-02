@@ -4,10 +4,9 @@ import json
 from pathlib import Path
 
 from webots_mcp_kit.controller_validation import validate_controller
-from webots_mcp_kit.models import SessionManifest
+from webots_mcp_kit.models import SESSION_EXPORT_ARTIFACT_STANDARD_VERSION, SESSION_EXPORT_STANDARD_ARTIFACTS, SessionExport, SessionManifest
 from webots_mcp_kit.scenario_ops import (
     build_scenario,
-    export_session,
     format_scenario_doctor_report,
     format_scenario_validation_report,
     format_session_replay,
@@ -18,7 +17,6 @@ from webots_mcp_kit.scenario_ops import (
     scenario_doctor,
     validate_scenario,
 )
-from webots_mcp_kit.session_store import SessionStore
 from webots_mcp_kit.utils import utc_now_iso
 
 
@@ -94,9 +92,16 @@ def test_project_import_creates_metadata(tmp_path: Path) -> None:
     assert payload["support_tier"] == "experimental-foundation"
 
 
-def test_export_and_replay_session(tmp_path: Path, monkeypatch) -> None:
-    store = SessionStore(root=tmp_path / "sessions")
-    session_dir = store.create_session_dir("session123")
+def test_replay_session_reads_canonical_export_manifest(tmp_path: Path) -> None:
+    export_dir = tmp_path / "export"
+    export_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir = export_dir / "logs"
+    logs_dir.mkdir()
+    artifacts_dir = export_dir / "artifacts"
+    artifacts_dir.mkdir()
+    session_dir = tmp_path / "session123"
+    session_dir.mkdir()
+    (session_dir / "artifacts").mkdir()
     manifest = SessionManifest(
         session_id="session123",
         host="127.0.0.1",
@@ -117,43 +122,54 @@ def test_export_and_replay_session(tmp_path: Path, monkeypatch) -> None:
         last_error_code="render-init-failed",
         environment={"python_executable": "python.exe", "webots_executable": "webots.exe"},
     )
-    store.write_manifest(manifest)
-    (session_dir / "artifacts" / "daemon.stdout.log").write_text("daemon\n", encoding="utf-8")
+    standard_artifacts = {name: str(export_dir / filename) for name, filename in SESSION_EXPORT_STANDARD_ARTIFACTS}
+    (export_dir / "doctor.json").write_text(json.dumps({"status": "ready"}), encoding="utf-8")
+    (export_dir / "summary.json").write_text(
+        json.dumps({"session_id": "session123", "runtime_environment": {"python_executable": "python.exe"}}, indent=2),
+        encoding="utf-8",
+    )
+    (export_dir / "session.json").write_text(json.dumps(manifest.to_dict(), indent=2), encoding="utf-8")
+    (export_dir / "inspect.json").write_text(
+        json.dumps({"session_state": {"status": manifest.status, "last_error_code": manifest.last_error_code, "last_error": manifest.last_error}}, indent=2),
+        encoding="utf-8",
+    )
+    (export_dir / "log_inventory.json").write_text("[]", encoding="utf-8")
+    (export_dir / "log_summary.json").write_text(json.dumps({"daemon.stdout.log": ["daemon"]}, indent=2), encoding="utf-8")
+    (export_dir / "runtime_environment.json").write_text(json.dumps({"python_executable": "python.exe"}, indent=2), encoding="utf-8")
+    copied_log = logs_dir / "daemon.stdout.log"
+    copied_log.write_text("daemon\n", encoding="utf-8")
+    copied_artifact = artifacts_dir / "daemon.stdout.log"
+    copied_artifact.write_text("daemon\n", encoding="utf-8")
+    exported = SessionExport(
+        export_dir=str(export_dir),
+        session_id="session123",
+        manifest_path=standard_artifacts["session"],
+        inspect_path=standard_artifacts["inspect"],
+        log_inventory_path=standard_artifacts["log_inventory"],
+        log_summary_path=standard_artifacts["log_summary"],
+        runtime_environment_path=standard_artifacts["runtime_environment"],
+        doctor_path=standard_artifacts["doctor"],
+        summary_path=standard_artifacts["summary"],
+        export_manifest_path=standard_artifacts["export_manifest"],
+        artifact_standard_version=SESSION_EXPORT_ARTIFACT_STANDARD_VERSION,
+        replay_mode="observability",
+        standard_artifacts=standard_artifacts,
+        copied_logs=[str(copied_log)],
+        copied_artifacts=[str(copied_artifact)],
+    )
+    (export_dir / "export.json").write_text(json.dumps(exported.to_dict(), indent=2), encoding="utf-8")
 
-    def fake_collect_runtime_diagnostics(*, output_dir: Path, session_id: str | None = None) -> dict[str, object]:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "session_id": session_id,
-            "runtime_environment": {"python_executable": "python.exe"},
-        }
-        (output_dir / "doctor.json").write_text(json.dumps({"status": "ready"}), encoding="utf-8")
-        (output_dir / "summary.json").write_text(json.dumps(payload), encoding="utf-8")
-        (output_dir / "session.json").write_text(json.dumps(manifest.to_dict()), encoding="utf-8")
-        (output_dir / "inspect.json").write_text(
-            json.dumps({"session_state": {"status": manifest.status, "last_error_code": manifest.last_error_code, "last_error": manifest.last_error}}),
-            encoding="utf-8",
-        )
-        (output_dir / "log_inventory.json").write_text("[]", encoding="utf-8")
-        (output_dir / "log_summary.json").write_text("{}", encoding="utf-8")
-        (output_dir / "runtime_environment.json").write_text(json.dumps(payload["runtime_environment"]), encoding="utf-8")
-        return payload
+    replay = replay_session(export_dir / "export.json")
+    replay_from_dir = replay_session(export_dir)
 
-    monkeypatch.setattr("webots_mcp_kit.scenario_ops.collect_runtime_diagnostics", fake_collect_runtime_diagnostics)
-    exported = export_session("session123", output=tmp_path / "export", store=store)
-    replay = replay_session(Path(exported.export_manifest_path))
-
-    assert Path(exported.export_dir).exists()
-    assert Path(exported.doctor_path).exists()
-    assert Path(exported.summary_path).exists()
-    assert Path(exported.export_manifest_path).exists()
-    assert exported.standard_artifacts["session"] == exported.manifest_path
     assert replay["session_id"] == "session123"
     assert replay["artifact_standard_version"] == 1
     assert replay["replay_mode"] == "observability"
-    assert replay["standard_artifacts"]["doctor"].endswith("doctor.json")
+    assert replay["standard_artifacts"]["doctor"] == str(export_dir / "doctor.json")
     assert replay["last_error_code"] == "render-init-failed"
     assert replay["session_state"]["status"] == "failed"
     assert replay["support_tier"] == "experimental-foundation"
     assert "session_state_status: failed" in format_session_replay(replay)
     assert "replay_mode: observability" in format_session_replay(replay)
     assert "summary:" in format_session_replay(replay)
+    assert replay_from_dir["session_id"] == "session123"

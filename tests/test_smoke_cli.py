@@ -4,10 +4,14 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
+from webots_mcp_kit import mcp_server
 from webots_mcp_kit.models import bundled_example_root
 
 
@@ -27,6 +31,30 @@ def run_cli(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
         timeout=timeout,
         check=True,
     )
+
+
+def run_diagnostics(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(  # noqa: S603
+        [sys.executable, "-m", "webots_mcp_kit.diagnostics", *args],
+        cwd=str(REPO_ROOT),
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        timeout=timeout,
+        check=True,
+    )
+
+
+def wait_for_camera_capture(session_id: str, path: Path, *, attempts: int = 3, delay_s: float = 1.0) -> dict[str, object]:
+    last_payload: dict[str, object] | None = None
+    for _ in range(attempts):
+        payload = mcp_server.webots_capture_camera(session=session_id, path=str(path))
+        if isinstance(payload.get("path"), str):
+            return payload
+        last_payload = payload
+        time.sleep(delay_s)
+    return last_payload or {}
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
@@ -160,6 +188,80 @@ def test_imported_project_smoke(tmp_path: Path) -> None:
     stopped = run_cli("session", "stop", "--session", manifest["session_id"], timeout=60)
     stopped_manifest = json.loads(stopped.stdout)
     assert stopped_manifest["status"] in {"stopped", "failed"}
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_mcp_contract_smoke(tmp_path: Path) -> None:
+    report_path = tmp_path / "mcp-benchmark-report.json"
+    start_payload = mcp_server.webots_session_start(scenario="line-follower", controller="example", mode="fast", render=False)
+    session_id = str(start_payload["session_id"])
+    try:
+        state_payload = mcp_server.webots_get_state(session=session_id)
+        devices_payload = mcp_server.webots_list_devices(session=session_id)
+        sensors_payload = mcp_server.webots_get_sensors(session=session_id)
+        capture_payload = wait_for_camera_capture(session_id, tmp_path / "mcp-capture.ppm")
+    finally:
+        stop_payload = mcp_server.webots_session_stop(session=session_id)
+
+    benchmark_payload = mcp_server.webots_run_benchmark(
+        scenario="line-follower",
+        controller="example",
+        duration_s=3.0,
+        output=str(report_path),
+    )
+
+    assert start_payload["status"] == "ready"
+    assert start_payload["environment"]["webots_version"] == "R2025a"
+    assert state_payload["session"]["session_id"] == session_id
+    assert isinstance(state_payload["session_state"], dict)
+    assert isinstance(devices_payload["devices"], list)
+    assert devices_payload["robot"]
+    assert isinstance(sensors_payload["metrics"], dict)
+    assert isinstance(sensors_payload["state"], dict)
+    if "path" in capture_payload:
+        assert capture_payload["path"] == str(tmp_path / "mcp-capture.ppm")
+    else:
+        assert capture_payload["ok"] is False
+        assert isinstance(capture_payload["error"]["message"], str)
+        assert isinstance(capture_payload["error"]["details"], dict)
+        assert capture_payload["error"]["retriable"] is False
+        assert capture_payload["error"]["code"] in {"admin-request-failed", "mcp-tool-failed"}
+    assert stop_payload["status"] in {"stopping", "stopped", "failed"}
+    assert benchmark_payload["benchmark"] == "line-follower"
+    assert isinstance(benchmark_payload["artifacts"], dict)
+    assert isinstance(benchmark_payload["notes"], list)
+    assert isinstance(benchmark_payload["extra_metrics"], dict)
+    assert report_path.exists()
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_session_export_replay_diagnostics_smoke(tmp_path: Path) -> None:
+    diagnostics_dir = tmp_path / "diagnostics"
+    export_dir = tmp_path / "export"
+    started = run_cli("session", "start", "--scenario", "line-follower", "--controller", "example", "--mode", "fast", "--render", "off")
+    manifest = json.loads(started.stdout)
+    session_id = manifest["session_id"]
+    run_cli("session", "stop", "--session", session_id, timeout=60)
+
+    diagnostics = run_diagnostics("--output", str(diagnostics_dir), "--session", session_id, timeout=120)
+    diagnostics_payload = json.loads(diagnostics.stdout)
+    exported = run_cli("session", "export", session_id, "--output", str(export_dir), timeout=120)
+    export_payload = json.loads(exported.stdout)
+    replayed = run_cli("session", "replay", str(export_dir / "export.json"), "--json", timeout=120)
+    replay_payload = json.loads(replayed.stdout)
+
+    assert diagnostics_payload["session_id"] == session_id
+    assert (diagnostics_dir / "doctor.json").exists()
+    assert (diagnostics_dir / "session.json").exists()
+    assert (diagnostics_dir / "inspect.json").exists()
+    assert (diagnostics_dir / "log_inventory.json").exists()
+    assert (diagnostics_dir / "log_summary.json").exists()
+    assert (diagnostics_dir / "runtime_environment.json").exists()
+    assert (diagnostics_dir / "summary.json").exists()
+    assert Path(export_payload["export_manifest_path"]).exists()
+    assert replay_payload["session_id"] == session_id
+    assert replay_payload["artifact_standard_version"] == 1
+    assert replay_payload["replay_mode"] == "observability"
 
 
 @pytest.mark.skipif(not RUN_SMOKE, reason="Smoke tests are disabled unless WEBOTS_KIT_RUN_SMOKE=1.")

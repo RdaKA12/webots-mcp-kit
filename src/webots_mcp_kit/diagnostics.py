@@ -11,15 +11,20 @@ from .session_store import SessionStore
 from .utils import atomic_write_text
 
 
-def collect_runtime_diagnostics(*, output_dir: Path, session_id: str | None = None) -> dict[str, Any]:
+def collect_runtime_diagnostics(
+    *,
+    output_dir: Path,
+    session_id: str | None = None,
+    store: SessionStore | None = None,
+) -> dict[str, Any]:
     output = output_dir if output_dir.is_absolute() else (Path.cwd() / output_dir).resolve()
     output.mkdir(parents=True, exist_ok=True)
 
     payload: dict[str, Any] = {"doctor": run_doctor(), "session_id": session_id}
     atomic_write_text(output / "doctor.json", json.dumps(payload["doctor"], indent=2), encoding="utf-8")
 
-    store = SessionStore()
-    manifest = store.load_manifest(session_id) if session_id else store.latest_manifest()
+    session_store = store or SessionStore()
+    manifest = session_store.load_manifest(session_id) if session_id else session_store.latest_manifest()
     if manifest is None:
         payload["latest_session"] = None
         payload["inspect"] = {}
@@ -42,9 +47,9 @@ def collect_runtime_diagnostics(*, output_dir: Path, session_id: str | None = No
 
     payload["session_id"] = manifest.session_id
     payload["latest_session"] = manifest.to_dict()
-    payload["inspect"] = inspect_session(manifest.session_id)
-    payload["log_inventory"] = store.log_inventory(manifest.session_id)
-    payload["log_summary"] = store.log_summary(manifest.session_id)
+    payload["inspect"] = inspect_session(manifest.session_id, store=session_store)
+    payload["log_inventory"] = session_store.log_inventory(manifest.session_id)
+    payload["log_summary"] = session_store.log_summary(manifest.session_id)
     payload["runtime_environment"] = {
         "runner_mode": manifest.environment.get("launch_context", {}).get("runner"),
         "python_executable": manifest.environment.get("python_executable"),

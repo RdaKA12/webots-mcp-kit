@@ -151,9 +151,9 @@ def stop_session(session_id: str, timeout: float = 20.0) -> SessionManifest:
     return store.wait_for_status(session_id, {"stopped", "failed"}, timeout=timeout)
 
 
-def inspect_session(session_id: str) -> dict[str, object]:
-    store = SessionStore()
-    manifest = store.load_manifest(session_id)
+def inspect_session(session_id: str, *, store: SessionStore | None = None) -> dict[str, object]:
+    session_store = store or SessionStore()
+    manifest = session_store.load_manifest(session_id)
     payload: dict[str, object] = {
         "manifest": manifest.to_dict(),
         "session_state": {
@@ -165,9 +165,9 @@ def inspect_session(session_id: str) -> dict[str, object]:
             "target_robot_name": manifest.target_robot_name,
             "scenario": manifest.scenario,
         },
-        "artifacts": store.list_artifacts(session_id),
-        "logs": store.log_inventory(session_id),
-        "log_summary": store.log_summary(session_id),
+        "artifacts": session_store.list_artifacts(session_id),
+        "logs": session_store.log_inventory(session_id),
+        "log_summary": session_store.log_summary(session_id),
     }
     if manifest.status in {"ready", "starting", "stopping"}:
         try:

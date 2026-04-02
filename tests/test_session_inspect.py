@@ -7,7 +7,7 @@ from webots_mcp_kit.models import SessionManifest
 from webots_mcp_kit.session_store import SessionStore
 
 
-def test_inspect_session_includes_environment_runtime_and_logs(tmp_path, monkeypatch) -> None:
+def test_inspect_session_includes_environment_runtime_and_logs(tmp_path) -> None:
     store = SessionStore(root=tmp_path / "sessions")
     session_dir = store.create_session_dir("inspecttest")
     manifest = SessionManifest(
@@ -36,8 +36,7 @@ def test_inspect_session_includes_environment_runtime_and_logs(tmp_path, monkeyp
     (session_dir / "artifacts" / "daemon.stdout.log").write_text("daemon ok\n", encoding="utf-8")
     (session_dir / "artifacts" / "webots.stdout.log").write_text("webots ok\n", encoding="utf-8")
 
-    monkeypatch.setattr("webots_mcp_kit.launcher.SessionStore", lambda: store)
-    payload = inspect_session("inspecttest")
+    payload = inspect_session("inspecttest", store=store)
 
     assert payload["manifest"]["environment"]["webots_version"] == "R2025a"
     assert payload["manifest"]["runtime_summary"]["agent"]["connected"] is False
