@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.9.10
+
+- Ensured the self-hosted Windows runtime workflow bootstraps `pip` with `python -m ensurepip --upgrade` before installing toolkit dependencies.
+- Aligned the shared runner-owned Python 3.11 path with a guaranteed pip bootstrap path.
+
+## v0.9.9
+
+- Preferred a machine-local shared Python 3.11 install at `D:\actions-runner\python311-shared` for the self-hosted Windows runtime workflow, avoiding both the broken toolcache registration and inaccessible user-profile installs.
+- Kept the Python bootstrap path as a fallback, but moved the workflow to a stable runner-owned interpreter first.
+
 ## v0.9.8
 
 - Fixed the self-hosted Windows runtime workflow to skip inaccessible Python candidates instead of failing on `AccessDenied`.

@@ -40,6 +40,7 @@ jobs:
         run: |
           $candidateRoots = [System.Collections.Generic.List[string]]::new()
           $installerCandidates = [System.Collections.Generic.List[string]]::new()
+          [void]$candidateRoots.Add('D:\actions-runner\python311-shared')
           $registryKeys = @(
             'HKCU:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
             'HKLM:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
@@ -129,6 +130,7 @@ jobs:
 
       - name: Install toolkit
         run: |
+          & "${{ steps.python.outputs.python_exe }}" -m ensurepip --upgrade
           & "${{ steps.python.outputs.python_exe }}" -m pip install --upgrade pip
           & "${{ steps.python.outputs.python_exe }}" -m pip install -e .[dev]
           & "${{ steps.python.outputs.python_exe }}" -m pip show pytest
