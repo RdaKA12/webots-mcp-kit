@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 WORKFLOWS = (
+    ".github/workflows/package-ci.yml",
     ".github/workflows/windows-ci.yml",
     ".github/workflows/windows-runtime-smoke.yml",
     ".github/workflows/release.yml",
@@ -62,3 +63,21 @@ def test_runtime_workflow_uses_interactive_runner_label() -> None:
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "runs-on: [self-hosted, windows, interactive-webots]" in content
+    assert '"src/webots_mcp_kit/scenario_ops.py"' in content
+
+
+def test_runtime_workflow_includes_generated_scenario_smoke() -> None:
+    root = Path(__file__).resolve().parents[1]
+    content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
+    assert "Generated scenario runtime smoke" in content
+    assert "-k generated_scenario_smoke" in content
+
+
+def test_release_and_package_workflows_smoke_project_and_scenario_commands() -> None:
+    root = Path(__file__).resolve().parents[1]
+    package_content = (root / ".github/workflows/package-ci.yml").read_text(encoding="utf-8")
+    release_content = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    for content in (package_content, release_content):
+        assert "webots-kit project init" in content
+        assert "webots-kit scenario init" in content
+        assert "webots-kit scenario build" in content

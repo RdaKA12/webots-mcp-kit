@@ -12,6 +12,20 @@ from .doctor import format_doctor_report, run_doctor
 from .launcher import inspect_session, start_session
 from .mcp_server import run as run_mcp_server
 from .session_ops import read_session_log, session_log_paths, stop_session_json
+from .scenario_ops import (
+    build_scenario,
+    describe_scenario,
+    export_session,
+    format_scenario_doctor_report,
+    format_scenario_validation_report,
+    format_session_replay,
+    import_project,
+    init_project,
+    init_scenario,
+    replay_session,
+    scenario_doctor,
+    validate_scenario,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -39,6 +53,12 @@ def build_parser() -> argparse.ArgumentParser:
     logs.add_argument("--session", required=True)
     logs.add_argument("--name")
     logs.add_argument("--tail", type=int, default=40)
+    export = session_sub.add_parser("export")
+    export.add_argument("session")
+    export.add_argument("--output")
+    replay = session_sub.add_parser("replay")
+    replay.add_argument("path")
+    replay.add_argument("--json", action="store_true")
 
     benchmark = subparsers.add_parser("benchmark")
     benchmark_sub = benchmark.add_subparsers(dest="benchmark_command", required=True)
@@ -48,6 +68,9 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run.add_argument("--controller", default="example")
     benchmark_run.add_argument("--output", required=True)
     benchmark_run.add_argument("--duration-s", type=float, default=20.0)
+    benchmark_run.add_argument("--world")
+    benchmark_run.add_argument("--robot-name")
+    benchmark_run.add_argument("--robot-def")
     benchmark_report = benchmark_sub.add_parser("report")
     benchmark_report.add_argument("report_path")
 
@@ -62,6 +85,35 @@ def build_parser() -> argparse.ArgumentParser:
     scaffold.add_argument("path")
     scaffold.add_argument("--scenario", choices=scenario_names(), default="line-follower")
     scaffold.add_argument("--force", action="store_true")
+
+    project = subparsers.add_parser("project")
+    project_sub = project.add_subparsers(dest="project_command", required=True)
+    project_init = project_sub.add_parser("init")
+    project_init.add_argument("path")
+    project_init.add_argument("--name")
+    project_init.add_argument("--force", action="store_true")
+    project_import = project_sub.add_parser("import")
+    project_import.add_argument("--world", required=True)
+    project_import.add_argument("--controller", required=True)
+    project_import.add_argument("--project-root")
+
+    scenario = subparsers.add_parser("scenario")
+    scenario_sub = scenario.add_subparsers(dest="scenario_command", required=True)
+    scenario_init = scenario_sub.add_parser("init")
+    scenario_init.add_argument("path")
+    scenario_init.add_argument("--template", required=True)
+    scenario_init.add_argument("--force", action="store_true")
+    scenario_validate = scenario_sub.add_parser("validate")
+    scenario_validate.add_argument("spec_path")
+    scenario_validate.add_argument("--json", action="store_true")
+    scenario_build = scenario_sub.add_parser("build")
+    scenario_build.add_argument("spec_path")
+    scenario_build.add_argument("--force", action="store_true")
+    scenario_describe = scenario_sub.add_parser("describe")
+    scenario_describe.add_argument("spec_path")
+    scenario_doctor_parser = scenario_sub.add_parser("doctor")
+    scenario_doctor_parser.add_argument("spec_path")
+    scenario_doctor_parser.add_argument("--json", action="store_true")
 
     mcp_parser = subparsers.add_parser("mcp")
     mcp_sub = mcp_parser.add_subparsers(dest="mcp_command", required=True)
@@ -106,6 +158,16 @@ def main(argv: list[str] | None = None) -> None:
             else:
                 print(json.dumps(session_log_paths(args.session), indent=2))
             return
+        if args.session_command == "export":
+            print(json.dumps(export_session(args.session, output=Path(args.output) if args.output else None).to_dict(), indent=2))
+            return
+        if args.session_command == "replay":
+            payload = replay_session(Path(args.path))
+            if args.json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print(format_session_replay(payload))
+            return
 
     if args.command == "benchmark":
         if args.benchmark_command == "list":
@@ -117,6 +179,9 @@ def main(argv: list[str] | None = None) -> None:
                 controller=args.controller,
                 output=Path(args.output),
                 duration_s=args.duration_s,
+                world=args.world,
+                robot_name=args.robot_name,
+                robot_def=args.robot_def,
             )
             print(json.dumps(report.to_dict(), indent=2))
             return
@@ -133,6 +198,46 @@ def main(argv: list[str] | None = None) -> None:
         return
     if args.command == "controller" and args.controller_command == "scaffold":
         print(json.dumps(scaffold_controller(path=Path(args.path), scenario=args.scenario, force=args.force), indent=2))
+        return
+
+    if args.command == "project" and args.project_command == "init":
+        print(json.dumps(init_project(Path(args.path), name=args.name, force=args.force), indent=2))
+        return
+    if args.command == "project" and args.project_command == "import":
+        print(
+            json.dumps(
+                import_project(
+                    world=Path(args.world),
+                    controller=Path(args.controller),
+                    project_root=Path(args.project_root) if args.project_root else None,
+                ),
+                indent=2,
+            )
+        )
+        return
+
+    if args.command == "scenario" and args.scenario_command == "init":
+        print(json.dumps(init_scenario(Path(args.path), template=args.template, force=args.force), indent=2))
+        return
+    if args.command == "scenario" and args.scenario_command == "validate":
+        payload = validate_scenario(Path(args.spec_path))
+        if args.json:
+            print(json.dumps(payload.to_dict(), indent=2))
+        else:
+            print(format_scenario_validation_report(payload))
+        return
+    if args.command == "scenario" and args.scenario_command == "build":
+        print(json.dumps(build_scenario(Path(args.spec_path), force=args.force).to_dict(), indent=2))
+        return
+    if args.command == "scenario" and args.scenario_command == "describe":
+        print(describe_scenario(Path(args.spec_path)))
+        return
+    if args.command == "scenario" and args.scenario_command == "doctor":
+        payload = scenario_doctor(Path(args.spec_path))
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(format_scenario_doctor_report(payload))
         return
 
     if args.command == "mcp" and args.mcp_command == "serve":

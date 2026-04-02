@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -53,6 +54,7 @@ class SessionDaemon:
         self.webots_process: asyncio.subprocess.Process | None = None
         self.controller_processes: dict[str, tuple[asyncio.subprocess.Process, Any, Any]] = {}
         self.runtime_connections: dict[str, asyncio.StreamWriter] = {}
+        self.runtime_url_aliases: dict[str, str] = {}
         self.runtime_snapshots: dict[str, RuntimeSnapshot] = {
             "agent": RuntimeSnapshot(role="agent", name=self.manifest.target_robot_name),
             "supervisor": RuntimeSnapshot(role="supervisor", name="kit-supervisor"),
@@ -232,6 +234,7 @@ class SessionDaemon:
                 text = line.decode("utf-8", errors="replace").rstrip()
                 log_file.write(text + "\n")
                 log_file.flush()
+                self._record_runtime_alias(text)
                 if text.startswith("ipc://"):
                     await self.launch_runtime_for_url(text)
 
@@ -248,7 +251,8 @@ class SessionDaemon:
                 log_file.flush()
 
     async def launch_runtime_for_url(self, url: str) -> None:
-        name = next((part for part in reversed(url.split("/")) if part and ":" not in part), "")
+        raw_name = next((part for part in reversed(url.split("/")) if part and ":" not in part), "")
+        name = self.runtime_url_aliases.get(raw_name, raw_name)
         if name == self.manifest.target_robot_name:
             command = [current_python(), str(self.robot_controller)]
             cwd = str(self.robot_controller.parent)
@@ -283,6 +287,13 @@ class SessionDaemon:
             stderr=stderr_handle,
         )
         self.controller_processes[name] = (process, stdout_handle, stderr_handle)
+
+    def _record_runtime_alias(self, text: str) -> None:
+        match = re.search(r"INFO: '([^']+)' extern controller: .* \(([A-Za-z0-9]+)\)\.$", text)
+        if not match:
+            return
+        controller_name, alias = match.groups()
+        self.runtime_url_aliases[alias] = controller_name
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:

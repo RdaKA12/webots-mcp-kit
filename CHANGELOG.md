@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.10.3
+
+- Finalized the pre-`v1.0.0` contract polish around `doctor`, `scenario validate`, `scenario doctor`, `session replay`, and runtime documentation so all active user surfaces now use the same short summary plus `next_step` style.
+- Promoted generated-scenario runtime smoke into the official self-hosted workflow and expanded package/release smoke so published installs also cover `project init`, `scenario init`, and `scenario build`.
+- Hardened the runtime daemon for generated scenarios by mapping hashed extern-controller aliases back to long robot names, allowing built scenarios to connect under real Webots runtime smoke.
+- Marked `project/scenario/import/replay` as `experimental-foundation`: CLI names are now stable, but deeper schema evolution remains additive until the post-`v1.0.0` zero-to-sim milestone.
+- Tightened release and runner documentation around the `interactive-webots` runtime model and the shared runner-owned Python installation.
+
+## v0.10.0
+
+- Added zero-to-sim foundations with `project init`, `scenario init`, `scenario validate`, `scenario build`, `scenario describe`, and `scenario doctor`.
+- Added deterministic template-driven scenario generation for `epuck-arena`, `epuck-line-track`, `epuck-waypoint`, and `epuck-obstacle-course`.
+- Added `project import`, `session export`, and `session replay` to bring existing Webots projects and finished runtime sessions into kit-managed workflows.
+- Extended `benchmark run` so generated worlds can reuse bundled benchmark profiles through additive `--world`, `--robot-name`, and `--robot-def` overrides.
+- Added regression coverage for project/scenario lifecycle, generated assets, import metadata, and session export/replay flows.
+
 ## v0.9.15
 
 - Stabilized the self-hosted runtime contract around the `interactive-webots` runner model and enriched diagnostics with runner mode, launch environment, and categorized startup failures.

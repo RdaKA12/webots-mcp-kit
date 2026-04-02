@@ -6,6 +6,7 @@ Use this when you want the `Windows Runtime Smoke` GitHub workflow to execute re
 
 - Windows machine with Webots `R2025a`
 - Python `3.11+`
+- runner-owned shared Python at `D:\actions-runner\python311-shared`
 - Repository checked out and installable with `pip install -e .[dev]`
 - GitHub Actions self-hosted runner labeled `interactive-webots`
 - Runner launched from an interactive user session
@@ -35,6 +36,8 @@ webots-kit doctor --json
 $env:WEBOTS_KIT_RUN_RUNTIME_SMOKE='1'
 python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke"
 ```
+
+The repository workflows prefer a runner-owned shared interpreter at `D:\actions-runner\python311-shared` so the interactive runner and release smoke jobs do not depend on per-user PATH state.
 
 ## Failure diagnosis
 

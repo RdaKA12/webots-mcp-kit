@@ -6,6 +6,7 @@
 - hosted MCP smoke is green
 - interactive self-hosted runtime smoke is green if runtime code changed
 - latest `interactive-webots` runner runtime smoke passed in a logged-in desktop session
+- generated-scenario runtime smoke passed on the interactive runner
 - `Packaging CI` is green
 - changelog and README version notes are updated
 
@@ -27,6 +28,7 @@ Configure PyPI and TestPyPI trusted publishers for:
 5. Verify TestPyPI install smoke
 6. Verify PyPI publish
 7. Verify PyPI install smoke
+8. Verify `project init -> scenario init -> scenario build` works from the published package
 
 ## After release
 

@@ -124,6 +124,9 @@ jobs:
         run: |
           webots-kit doctor --json
           webots-kit benchmark list
+          webots-kit project init testpypi-smoke
+          webots-kit scenario init testpypi-smoke\scenarios\demo-waypoint --template epuck-waypoint
+          webots-kit scenario build testpypi-smoke\scenarios\demo-waypoint\webots-kit.scenario.json
 
   publish-pypi:
     runs-on: ubuntu-latest
@@ -184,3 +187,6 @@ jobs:
         run: |
           webots-kit doctor --json
           webots-kit benchmark list
+          webots-kit project init pypi-smoke
+          webots-kit scenario init pypi-smoke\scenarios\demo-waypoint --template epuck-waypoint
+          webots-kit scenario build pypi-smoke\scenarios\demo-waypoint\webots-kit.scenario.json

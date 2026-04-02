@@ -19,6 +19,8 @@ def run_cli(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
         [sys.executable, "-m", "webots_mcp_kit.cli", *args],
         cwd=str(REPO_ROOT),
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=timeout,
         check=True,
@@ -56,6 +58,65 @@ def test_benchmark_smoke() -> None:
     report = json.loads(completed.stdout)
     assert report["benchmark"] == "line-follower"
     assert report["pass"] is True
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_generated_scenario_smoke(tmp_path: Path) -> None:
+    project_root = tmp_path / "generated-project"
+    run_cli("project", "init", str(project_root))
+    scenario_dir = project_root / "scenarios" / "demo-waypoint"
+    run_cli("scenario", "init", str(scenario_dir), "--template", "epuck-waypoint")
+    validation = run_cli("scenario", "validate", str(scenario_dir / "webots-kit.scenario.json"), "--json")
+    validation_payload = json.loads(validation.stdout)
+    assert validation_payload["valid"] is True
+
+    built = run_cli("scenario", "build", str(scenario_dir / "webots-kit.scenario.json"))
+    generated = json.loads(built.stdout)
+    started = run_cli(
+        "session",
+        "start",
+        "--scenario",
+        generated["benchmark_name"],
+        "--world",
+        generated["world_path"],
+        "--controller",
+        generated["controller_path"],
+        "--robot-name",
+        generated["target_robot_name"],
+        "--robot-def",
+        generated["target_robot_def"],
+        "--mode",
+        "fast",
+        "--render",
+        "off",
+        timeout=180,
+    )
+    manifest = json.loads(started.stdout)
+    assert manifest["status"] == "ready"
+    run_cli("session", "stop", "--session", manifest["session_id"], timeout=60)
+
+    report_path = project_root / "artifacts" / "generated-report.json"
+    benchmark = run_cli(
+        "benchmark",
+        "run",
+        generated["benchmark_name"],
+        "--controller",
+        generated["controller_path"],
+        "--world",
+        generated["world_path"],
+        "--robot-name",
+        generated["target_robot_name"],
+        "--robot-def",
+        generated["target_robot_def"],
+        "--output",
+        str(report_path),
+        "--duration-s",
+        "5",
+        timeout=240,
+    )
+    payload = json.loads(benchmark.stdout)
+    assert payload["benchmark"] == generated["benchmark_name"]
+    assert report_path.exists()
 
 
 @pytest.mark.skipif(not RUN_SMOKE, reason="Smoke tests are disabled unless WEBOTS_KIT_RUN_SMOKE=1.")

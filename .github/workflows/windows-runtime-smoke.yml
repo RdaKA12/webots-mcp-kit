@@ -10,6 +10,7 @@ on:
       - "src/webots_mcp_kit/runtime/**"
       - "src/webots_mcp_kit/examples/**"
       - "src/webots_mcp_kit/benchmarks.py"
+      - "src/webots_mcp_kit/scenario_ops.py"
       - "tests/test_smoke_cli.py"
   pull_request:
     paths:
@@ -19,6 +20,7 @@ on:
       - "src/webots_mcp_kit/runtime/**"
       - "src/webots_mcp_kit/examples/**"
       - "src/webots_mcp_kit/benchmarks.py"
+      - "src/webots_mcp_kit/scenario_ops.py"
       - "tests/test_smoke_cli.py"
   workflow_dispatch:
 
@@ -147,6 +149,10 @@ jobs:
       - name: Benchmark runtime smoke
         run: |
           & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k benchmark_smoke
+
+      - name: Generated scenario runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k generated_scenario_smoke
 
       - name: Upload failure diagnostics
         if: failure()

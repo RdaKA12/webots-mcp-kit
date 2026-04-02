@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.9.15`
+`v0.10.3`
 
 Current focus:
 
@@ -27,6 +27,7 @@ Current focus:
 - release pipeline for GitHub Release, TestPyPI, and PyPI
 - public-contract regression coverage and external-user onboarding
 - MCP reliability for LLM-driven Webots sessions
+- zero-to-sim foundations through template-driven project and scenario generation
 
 ## Current support
 
@@ -36,6 +37,7 @@ Supported now:
 - Webots `R2025a`
 - Python `3.11+`
 - interactive self-hosted runtime through the `interactive-webots` runner label
+- experimental-foundation zero-to-sim commands: `project/scenario/import/replay`
 
 Not supported in the pre-`v1.0.0` line:
 
@@ -101,19 +103,51 @@ webots-kit controller validate .\controllers\my_agent.py --scenario line-followe
 webots-kit benchmark run line-follower --controller .\controllers\my_agent.py --output .\report.json
 ```
 
+### I want to generate a scenario from a spec
+
+```powershell
+webots-kit project init .\my-webots-project
+webots-kit scenario init .\my-webots-project\scenarios\warehouse-demo --template epuck-waypoint
+webots-kit scenario validate .\my-webots-project\scenarios\warehouse-demo\webots-kit.scenario.json
+webots-kit scenario build .\my-webots-project\scenarios\warehouse-demo\webots-kit.scenario.json
+webots-kit scenario doctor .\my-webots-project\scenarios\warehouse-demo\webots-kit.scenario.json
+```
+
 ## CLI surface
 
 - `webots-kit doctor [--json]`
 - `webots-kit session start --scenario <name> --world <path> --controller <path-or-id> [--robot-name <name>] [--robot-def <def>] [--mode fast|realtime|pause] [--render on|off]`
 - `webots-kit session inspect --session <id>`
 - `webots-kit session logs --session <id> [--name <file>] [--tail <n>]`
+- `webots-kit session export <id> [--output <path>]`
+- `webots-kit session replay <export-path> [--json]`
 - `webots-kit session stop --session <id>`
 - `webots-kit benchmark list`
-- `webots-kit benchmark run <scenario> --controller <path-or-id> --output <report.json> [--duration-s <seconds>]`
+- `webots-kit benchmark run <scenario> --controller <path-or-id> --output <report.json> [--duration-s <seconds>] [--world <path>] [--robot-name <name>] [--robot-def <def>]`
 - `webots-kit benchmark report <report.json>`
 - `webots-kit controller validate <path> [--scenario <name>] [--strict] [--json]`
 - `webots-kit controller scaffold <path> [--scenario <name>] [--force]`
+- `webots-kit project init <path> [--name <name>] [--force]`
+- `webots-kit project import --world <path> --controller <path> [--project-root <path>]`
+- `webots-kit scenario init <path> --template <template> [--force]`
+- `webots-kit scenario validate <spec-path> [--json]`
+- `webots-kit scenario build <spec-path> [--force]`
+- `webots-kit scenario describe <spec-path>`
+- `webots-kit scenario doctor <spec-path> [--json]`
 - `webots-kit mcp serve`
+
+Supported zero-to-sim templates:
+
+- `epuck-arena`
+- `epuck-line-track`
+- `epuck-waypoint`
+- `epuck-obstacle-course`
+
+Foundation status for the zero-to-sim surface:
+
+- CLI command names are now treated as stable
+- the underlying JSON `ScenarioSpec` schema is still `experimental-foundation`
+- the schema is documented and supported, but not yet frozen for additive refinement before `v1.1.0`
 
 ## Controller integration
 
@@ -180,6 +214,8 @@ Reference docs:
 - [Self-hosted runtime smoke](./docs/self-hosted-windows-runner.md)
 - [Custom controller integration](./docs/custom-controller-integration.md)
 - [Add a new scenario](./docs/new-scenario-guide.md)
+- [Zero-to-sim guide](./docs/zero-to-sim.md)
+- [Project import and session replay](./docs/project-import-and-replay.md)
 - [Failed runtime smoke triage](./docs/failed-runtime-smoke-triage.md)
 - [PyPI install and upgrade](./docs/pypi-install-and-upgrade.md)
 - [Release checklist](./docs/release-checklist.md)

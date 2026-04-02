@@ -28,9 +28,20 @@ def run_benchmark(
     controller: str | None,
     output: Path,
     duration_s: float = 20.0,
+    world: str | None = None,
+    robot_name: str | None = None,
+    robot_def: str | None = None,
 ) -> BenchmarkReport:
     scenario_def = get_scenario(scenario)
-    session = start_session(world=None, controller=controller, mode="fast", render=False, scenario=scenario)
+    session = start_session(
+        world=world,
+        controller=controller,
+        mode="fast",
+        render=False,
+        scenario=scenario,
+        robot_name=robot_name,
+        robot_def=robot_def,
+    )
     client = SessionClient(session)
     try:
         request_payload = {"benchmark": scenario, "duration_s": duration_s, **scenario_def.benchmark_thresholds}
@@ -61,8 +72,24 @@ def run_benchmark(
             pass
 
 
-def run_line_follower_benchmark(*, controller: str | None, output: Path, duration_s: float = 20.0) -> BenchmarkReport:
-    return run_benchmark(scenario="line-follower", controller=controller, output=output, duration_s=duration_s)
+def run_line_follower_benchmark(
+    *,
+    controller: str | None,
+    output: Path,
+    duration_s: float = 20.0,
+    world: str | None = None,
+    robot_name: str | None = None,
+    robot_def: str | None = None,
+) -> BenchmarkReport:
+    return run_benchmark(
+        scenario="line-follower",
+        controller=controller,
+        output=output,
+        duration_s=duration_s,
+        world=world,
+        robot_name=robot_name,
+        robot_def=robot_def,
+    )
 
 
 def format_benchmark_report(path: Path) -> str:

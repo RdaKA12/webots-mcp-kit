@@ -9,18 +9,42 @@ from .environment import current_python, detect_runner_mode, get_webots_environm
 
 def run_doctor() -> dict[str, object]:
     webots = get_webots_environment()
-    ok = webots.webots_executable.exists() and webots.controller_python_path.exists()
+    runner_mode = detect_runner_mode()
+    webots_ready = webots.webots_executable.exists() and webots.controller_python_path.exists()
+    if not webots_ready:
+        readiness_status = "blocked"
+        recommended_next_step = "Install Webots R2025a or set WEBOTS_HOME, then rerun `webots-kit doctor`."
+        notes = [
+            "Hosted GitHub Actions runners only cover unit, doctor, and MCP handshake smoke.",
+            "Use a self-hosted Windows runner with Webots installed for runtime smoke and benchmark execution.",
+            "Webots runtime smoke is not supported from a Windows service session because the rendering stack fails before controllers can connect.",
+        ]
+    elif runner_mode.get("mode") == "windows-service":
+        readiness_status = "misconfigured"
+        recommended_next_step = "Restart the runtime runner inside a logged-in desktop session labeled interactive-webots."
+        notes = [
+            "Webots runtime smoke is not supported from a Windows service session because the rendering stack fails before controllers can connect.",
+            "Keep the service runner only for non-interactive tasks and use an interactive runner for real Webots execution.",
+        ]
+    else:
+        readiness_status = "ready"
+        recommended_next_step = "Run local runtime smoke or dispatch the self-hosted Windows Runtime Smoke workflow."
+        notes = [
+            "Hosted GitHub Actions runners only cover unit, doctor, and MCP handshake smoke.",
+            "Use a self-hosted Windows runner with Webots installed for runtime smoke and benchmark execution.",
+            "Interactive runtime smoke is the only supported path for real Webots execution on Windows.",
+        ]
     readiness = {
-        "status": "ready" if ok else "blocked",
+        "status": readiness_status,
         "runner_label": "interactive-webots",
-        "runner_mode": detect_runner_mode(),
+        "runner_mode": runner_mode,
         "workflow": "Windows Runtime Smoke",
         "recommended_session_timeout_s": 180,
         "requires_self_hosted_runner": True,
         "hosted_runtime_smoke_supported": False,
         "interactive_session_required": True,
         "windows_service_runtime_supported": False,
-        "recommended_next_step": "Run local runtime smoke or dispatch the self-hosted Windows Runtime Smoke workflow.",
+        "recommended_next_step": recommended_next_step,
         "runner_requirements": [
             "Windows machine",
             "Webots R2025a installed and visible through WEBOTS_HOME",
@@ -28,11 +52,7 @@ def run_doctor() -> dict[str, object]:
             "GitHub Actions self-hosted runner labeled interactive-webots",
             "Runner must execute inside an interactive user session, not as a Windows service",
         ],
-        "notes": [
-            "Hosted GitHub Actions runners only cover unit, doctor, and MCP handshake smoke.",
-            "Use a self-hosted Windows runner with Webots installed for runtime smoke and benchmark execution.",
-            "Webots runtime smoke is not supported from a Windows service session because the rendering stack fails before controllers can connect.",
-        ],
+        "notes": notes,
     }
     report = {
         "python": current_python(),
@@ -44,9 +64,9 @@ def run_doctor() -> dict[str, object]:
         "webots_executable_exists": webots.webots_executable.exists(),
         "controller_python_exists": webots.controller_python_path.exists(),
         "platform": sys.platform,
-        "status": "ok" if ok else "failed",
+        "status": readiness_status,
         "recommended_python": "3.11+",
-        "supports_batch_mode": bool(ok),
+        "supports_batch_mode": bool(webots_ready),
         "runtime_readiness": readiness,
     }
     return report

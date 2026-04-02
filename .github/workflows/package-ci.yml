@@ -36,6 +36,9 @@ jobs:
       - name: Package smoke
         run: |
           webots-kit benchmark list
+          webots-kit project init package-smoke
+          webots-kit scenario init package-smoke/scenarios/demo-waypoint --template epuck-waypoint
+          webots-kit scenario build package-smoke/scenarios/demo-waypoint/webots-kit.scenario.json
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v4
