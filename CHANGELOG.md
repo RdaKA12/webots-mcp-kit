@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.9.12
+
+- Moved the self-hosted runtime workflow to the dedicated `interactive-webots` runner label so Webots runtime smoke runs in a logged-in desktop session instead of a Windows service session.
+- Updated doctor output and runner documentation to mark interactive runner execution as a hard requirement for Webots runtime smoke on Windows.
+
+## v0.9.11
+
+- Added automatic software OpenGL detection for headless Webots launches by wiring `QT_OPENGL=software` and a discovered `opengl32sw.dll` directory into the Webots process environment.
+- Enabled the runtime daemon to prefer software OpenGL automatically when sessions run with `--render off`.
+- Added unit coverage for configured `opengl32sw.dll` discovery.
+
 ## v0.9.10
 
 - Ensured the self-hosted Windows runtime workflow bootstraps `pip` with `python -m ensurepip --upgrade` before installing toolkit dependencies.

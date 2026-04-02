@@ -24,7 +24,7 @@ on:
 
 jobs:
   runtime-smoke:
-    runs-on: [self-hosted, windows, webots]
+    runs-on: [self-hosted, windows, interactive-webots]
     defaults:
       run:
         shell: powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {0}

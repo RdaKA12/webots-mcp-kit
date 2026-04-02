@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.9.0`
+`v0.9.12`
 
 Current focus:
 
@@ -200,7 +200,8 @@ $env:WEBOTS_KIT_RUN_RUNTIME_SMOKE='1'
 python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke"
 ```
 
-The self-hosted GitHub workflow for runtime smoke expects a Windows runner labeled `webots`.
+The self-hosted GitHub workflow for runtime smoke expects a Windows runner labeled `interactive-webots`.
+That runner must be started from an interactive user session. Windows service mode is not sufficient for Webots runtime smoke because Webots exits during OpenGL initialization before controllers connect.
 The self-hosted runtime workflow also auto-triggers for runtime-affecting changes and still supports manual dispatch.
 Packaging and release verification are handled by GitHub workflows:
 

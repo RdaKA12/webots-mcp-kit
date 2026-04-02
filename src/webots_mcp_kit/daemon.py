@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .benchmarks import get_scenario
-from .environment import build_process_env, current_python, get_webots_environment, repo_root
+from .environment import build_process_env, current_python, get_webots_environment, repo_root, software_opengl_requested
 from .models import RuntimeSnapshot, SessionManifest
 from .protocol import encode_message, request_id
 from .utils import atomic_write_text, choose_free_port, utc_now_iso
@@ -175,7 +175,7 @@ class SessionDaemon:
         self.webots_process = await asyncio.create_subprocess_exec(
             *args,
             cwd=str(repo_root()),
-            env=build_process_env(),
+            env=build_process_env(prefer_software_opengl=(not self.render and software_opengl_requested())),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

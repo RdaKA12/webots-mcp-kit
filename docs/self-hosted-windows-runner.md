@@ -7,7 +7,8 @@ Use this when you want the `Windows Runtime Smoke` GitHub workflow to execute re
 - Windows machine with Webots `R2025a`
 - Python `3.11+`
 - Repository checked out and installable with `pip install -e .[dev]`
-- GitHub Actions self-hosted runner labeled `webots`
+- GitHub Actions self-hosted runner labeled `interactive-webots`
+- Runner launched from an interactive user session
 
 ## Runner labels
 
@@ -15,9 +16,15 @@ Keep the runtime runner labels stable:
 
 - `self-hosted`
 - `windows`
-- `webots`
+- `interactive-webots`
 
-The workflow file expects `runs-on: [self-hosted, windows, webots]`.
+The workflow file expects `runs-on: [self-hosted, windows, interactive-webots]`.
+
+## Why interactive mode matters
+
+Webots runtime smoke is not supported from a Windows service session on this machine.
+In service mode, Webots exits before controllers connect because the rendering stack cannot initialize a sufficient OpenGL context.
+Use an interactive runner process in the logged-in desktop session instead.
 
 ## Local readiness check
 

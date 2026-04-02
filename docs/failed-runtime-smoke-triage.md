@@ -5,7 +5,8 @@ Use this order when a self-hosted runtime smoke run fails.
 ## 1. Readiness
 
 - Run `webots-kit doctor --json`
-- Confirm runner labels include `webots`
+- Confirm runner labels include `interactive-webots`
+- Confirm the runner is running in an interactive desktop session, not as a Windows service
 - Confirm `WEBOTS_HOME` and Python point to the expected install
 - Confirm the failing change actually touched a runtime-triggering path or was manually dispatched
 

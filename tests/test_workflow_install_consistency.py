@@ -56,3 +56,9 @@ def test_runtime_workflow_handles_missing_python_output_in_diagnostics() -> None
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "python_exe output was empty" in content
+
+
+def test_runtime_workflow_uses_interactive_runner_label() -> None:
+    root = Path(__file__).resolve().parents[1]
+    content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
+    assert "runs-on: [self-hosted, windows, interactive-webots]" in content

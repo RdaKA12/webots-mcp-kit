@@ -38,7 +38,8 @@ python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke"
 - Prefer adding new scenario/example directories instead of overloading the line follower example.
 - Treat `ControllerAgent` as the public controller SDK surface.
 - Use `webots-kit controller scaffold` when starting a new bundled-scenario controller.
-- Keep the self-hosted Windows runner label as `webots`.
+- Keep the self-hosted Windows runtime runner label as `interactive-webots`.
+- Run runtime smoke from an interactive user session; do not rely on a Windows service runner for Webots execution.
 - `examples/` are demo assets; benchmark thresholds belong in the scenario registry.
 - Bundled runtime assets that must ship in wheels live under `src/webots_mcp_kit/examples/`.
 - Keep `Packaging CI` green before tagging a release.

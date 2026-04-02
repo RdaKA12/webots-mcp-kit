@@ -12,7 +12,7 @@ def run_doctor() -> dict[str, object]:
     ok = webots.webots_executable.exists() and webots.controller_python_path.exists()
     readiness = {
         "status": "ready" if ok else "blocked",
-        "runner_label": "webots",
+        "runner_label": "interactive-webots",
         "workflow": "Windows Runtime Smoke",
         "recommended_session_timeout_s": 180,
         "requires_self_hosted_runner": True,
@@ -22,11 +22,13 @@ def run_doctor() -> dict[str, object]:
             "Windows machine",
             "Webots R2025a installed and visible through WEBOTS_HOME",
             "Python 3.11+",
-            "GitHub Actions self-hosted runner labeled webots",
+            "GitHub Actions self-hosted runner labeled interactive-webots",
+            "Runner must execute inside an interactive user session, not as a Windows service",
         ],
         "notes": [
             "Hosted GitHub Actions runners only cover unit, doctor, and MCP handshake smoke.",
             "Use a self-hosted Windows runner with Webots installed for runtime smoke and benchmark execution.",
+            "Webots runtime smoke is not supported from a Windows service session because the rendering stack fails before controllers can connect.",
         ],
     }
     report = {

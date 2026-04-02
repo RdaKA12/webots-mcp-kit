@@ -12,7 +12,7 @@ def test_collect_runtime_diagnostics_without_session(tmp_path, monkeypatch) -> N
     monkeypatch.setattr("webots_mcp_kit.diagnostics.SessionStore", lambda: store)
     monkeypatch.setattr(
         "webots_mcp_kit.diagnostics.run_doctor",
-        lambda: {"status": "ok", "runtime_readiness": {"runner_label": "webots"}},
+        lambda: {"status": "ok", "runtime_readiness": {"runner_label": "interactive-webots"}},
     )
     payload = collect_runtime_diagnostics(output_dir=tmp_path / "diag")
     assert payload["latest_session"] is None
@@ -46,7 +46,7 @@ def test_collect_runtime_diagnostics_with_session(tmp_path, monkeypatch) -> None
     monkeypatch.setattr("webots_mcp_kit.diagnostics.SessionStore", lambda: store)
     monkeypatch.setattr(
         "webots_mcp_kit.diagnostics.run_doctor",
-        lambda: {"status": "ok", "runtime_readiness": {"runner_label": "webots"}},
+        lambda: {"status": "ok", "runtime_readiness": {"runner_label": "interactive-webots"}},
     )
     monkeypatch.setattr(
         "webots_mcp_kit.diagnostics.inspect_session",

@@ -1,6 +1,6 @@
 # Self-Hosted Runner Maintenance
 
-Use this checklist to keep the `webots` runner reliable.
+Use this checklist to keep the `interactive-webots` runner reliable.
 
 ## Baseline
 
@@ -13,7 +13,8 @@ Use this checklist to keep the `webots` runner reliable.
 
 - `webots-kit doctor --json`
 - local runtime smoke
-- runner service account permissions
+- runner is started from an interactive user session
+- service mode is disabled or excluded from runtime smoke labels
 - cleanup of stale `LOCALAPPDATA\\webots-mcp-kit\\sessions`
 
 ## When changing runtime code
