@@ -12,7 +12,7 @@
 - PyPI/TestPyPI install smoke expectations are ready to pass
 - changelog and README version notes are updated
 
-## Pre-`v1.0.0` hardening gate
+## Historical pre-`v1.0.0` hardening gate
 
 - at least a few consecutive `v0.10.x` patch releases have passed the GitHub Release, TestPyPI, and PyPI flow cleanly
 - hosted CI stays green
@@ -60,7 +60,7 @@ Configure PyPI and TestPyPI trusted publishers for:
 - add package link to release summary
 - confirm `pip install webots-mcp-kit` install path works on a clean machine
 
-## `v1.0.0` gate
+## `v1.0.0` baseline gate
 
 - hosted CI is continuously green
 - interactive runtime smoke has stayed green across several patch releases

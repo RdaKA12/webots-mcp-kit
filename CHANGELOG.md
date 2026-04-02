@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0
+
+- Declared the Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots` runtime model as the stable supported baseline.
+- Promoted the MCP tool names and documented success/failure payload shapes to the stable public contract.
+- Documented `ControllerAgent.from_robot(...)`, `begin_step()`, and `report_step(...)` as the stable controller-side API.
+- Kept zero-to-sim and import/export/replay workflows supported at a foundation level while explicitly leaving deeper JSON schema refinement additive until `v1.1.0`.
+- Carried the no-mock real-runtime gate, clean-user acceptance flow, and published release pipeline forward from the `v0.10.x` hardening series.
+
 ## v0.10.7
 
 - Stabilized real `capture_camera` success-path execution by hardening runtime socket I/O, delaying `ready` until both runtimes have published telemetry, and retrying capture only after fresh agent steps.

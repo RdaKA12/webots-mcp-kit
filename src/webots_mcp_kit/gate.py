@@ -40,10 +40,10 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
             "bundled_benchmark_waypoint",
             ("benchmark", "run", "waypoint-nav", "--controller", "example", "--output", str(reports_dir / "waypoint-nav.json"), "--duration-s", "20"),
         ),
-        GateStep("generated_project_init", ("project", "init", str(generated_project))),
-        GateStep("generated_scenario_init", ("scenario", "init", str(generated_scenario_dir), "--template", "epuck-waypoint")),
+        GateStep("generated_project_init", ("project", "init", str(generated_project), "--force")),
+        GateStep("generated_scenario_init", ("scenario", "init", str(generated_scenario_dir), "--template", "epuck-waypoint", "--force")),
         GateStep("generated_scenario_validate", ("scenario", "validate", str(generated_spec_path))),
-        GateStep("generated_scenario_build", ("scenario", "build", str(generated_spec_path))),
+        GateStep("generated_scenario_build", ("scenario", "build", str(generated_spec_path), "--force")),
         GateStep(
             "generated_session_start",
             (

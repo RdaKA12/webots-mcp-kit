@@ -22,6 +22,14 @@ def test_clean_user_acceptance_steps_cover_expected_flow(tmp_path: Path) -> None
         "project_import",
     ]
     project_import = steps[-1]
+    controller_scaffold = next(step for step in steps if step.name == "controller_scaffold")
+    project_init = next(step for step in steps if step.name == "project_init")
+    scenario_init = next(step for step in steps if step.name == "scenario_init")
+    scenario_build = next(step for step in steps if step.name == "scenario_build")
+    assert "--force" in controller_scaffold.args
+    assert "--force" in project_init.args
+    assert "--force" in scenario_init.args
+    assert "--force" in scenario_build.args
     assert "--world" in project_import.args
     assert "--controller" in project_import.args
 

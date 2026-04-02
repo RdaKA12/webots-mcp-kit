@@ -35,12 +35,12 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
     steps.extend(
         [
         AcceptanceStep("benchmark_list", ("benchmark", "list")),
-        AcceptanceStep("controller_scaffold", ("controller", "scaffold", str(controller_path), "--scenario", "line-follower")),
+        AcceptanceStep("controller_scaffold", ("controller", "scaffold", str(controller_path), "--scenario", "line-follower", "--force")),
         AcceptanceStep("controller_validate", ("controller", "validate", str(controller_path), "--scenario", "line-follower")),
-        AcceptanceStep("project_init", ("project", "init", str(project_root))),
-        AcceptanceStep("scenario_init", ("scenario", "init", str(project_root / "scenarios" / "demo-waypoint"), "--template", "epuck-waypoint")),
+        AcceptanceStep("project_init", ("project", "init", str(project_root), "--force")),
+        AcceptanceStep("scenario_init", ("scenario", "init", str(project_root / "scenarios" / "demo-waypoint"), "--template", "epuck-waypoint", "--force")),
         AcceptanceStep("scenario_validate", ("scenario", "validate", str(spec_path))),
-        AcceptanceStep("scenario_build", ("scenario", "build", str(spec_path))),
+        AcceptanceStep("scenario_build", ("scenario", "build", str(spec_path), "--force")),
         AcceptanceStep("scenario_describe", ("scenario", "describe", str(spec_path))),
         AcceptanceStep("scenario_doctor", ("scenario", "doctor", str(spec_path))),
         AcceptanceStep(

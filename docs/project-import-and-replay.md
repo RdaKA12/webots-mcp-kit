@@ -4,9 +4,9 @@
 
 Status:
 
-- `project import`, `session export`, and `session replay` command names are treated as stable
-- only the CLI command names are in the `v1.0.0` stable contract scope
-- replay/export metadata and deeper file schemas remain `experimental-foundation` until the post-`v1.0.0` replay/import expansion milestone
+- `project import`, `session export`, and `session replay` are supported foundation workflows in `v1.0.0`
+- the CLI command names are stable
+- replay/export metadata and deeper file schemas remain `experimental-foundation` and additive until the `v1.1.0` replay/import expansion milestone
 
 ## Import an existing project
 

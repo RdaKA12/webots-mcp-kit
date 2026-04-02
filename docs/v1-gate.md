@@ -1,11 +1,11 @@
 # v1.0.0 Gate
 
-This page defines the no-mock release gate that should be satisfied before cutting `v1.0.0`.
+This page documents the no-mock release gate used to cut `v1.0.0`.
 
 ## Important distinction
 
 - unit and regression tests in `tests/` may still use monkeypatching or fake payloads to lock contracts
-- the `v1.0.0` release gate must also pass a real-runtime CLI validation run with no mocked runtime components
+- the stable release gate must also pass a real-runtime CLI validation run with no mocked runtime components
 
 ## Real-runtime gate script
 
@@ -29,4 +29,4 @@ This script validates:
 
 ## Release expectation
 
-`v1.0.0` should only be cut after the documented release checklist and this no-mock gate both pass.
+`v1.0.0` was cut only after the documented release checklist and this no-mock gate both passed. Keep this gate green for later stable releases.

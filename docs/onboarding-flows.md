@@ -1,6 +1,6 @@
 # Onboarding Flows
 
-Use this page as the index for the four public onboarding paths that matter before `v1.0.0`.
+Use this page as the index for the four public onboarding paths supported at `v1.0.0`.
 
 ## 1. Connect An Agent
 

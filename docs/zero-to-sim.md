@@ -4,9 +4,9 @@
 
 Status:
 
-- the CLI command names are treated as stable
-- the generated JSON spec shape is `experimental-foundation`
-- additive schema refinement is still allowed before the dedicated zero-to-sim deepening milestone
+- the CLI command names are stable in `v1.0.0`
+- the generated JSON spec shape remains `experimental-foundation`
+- additive schema refinement is still allowed until the dedicated `v1.1.0` zero-to-sim deepening milestone
 
 ## Supported templates
 

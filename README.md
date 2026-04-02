@@ -12,11 +12,11 @@ It combines:
 The bundled line follower is not the product itself. It is the first reference example.
 The toolkit is meant to be reusable across other Webots robots, controllers, and worlds.
 
-## Current release
+## Release
 
-`v0.10.7`
+`v1.0.0`
 
-Current focus:
+Stable baseline:
 
 - Windows-first local development
 - Webots `R2025a`
@@ -35,24 +35,30 @@ Current focus:
 Operational runtime model:
 
 - `interactive-webots` is the single supported runtime execution path for real Webots sessions, benchmarks, and runtime smoke
-- Windows service mode is not a supported runtime path at the active pre-`v1.0.0` contract line
+- Windows service mode is not a supported runtime path
 
-## Current support
+## Support statement
 
-Supported now:
+Supported:
 
 - Windows
 - Webots `R2025a`
 - Python `3.11+`
 - interactive self-hosted runtime through the `interactive-webots` runner label as the only supported runtime execution model
-- experimental-foundation zero-to-sim commands: `project/scenario/import/replay`
+- foundation workflows for `project init`, `scenario init`, `scenario validate`, `scenario build`, `scenario describe`, `scenario doctor`, `project import`, `session export`, and `session replay`
 
-Not supported in the pre-`v1.0.0` line:
+Foundation schema note:
+
+- CLI command names are stable in `v1.0.0`
+- deeper `ScenarioSpec`, import metadata, and replay/export JSON schema refinement remains additive and `experimental-foundation` until `v1.1.0`
+
+Unsupported at `v1.0.0`:
 
 - Windows service runner runtime
 - Linux/macOS runtime support
 - ROS2 integration
 - multi-robot orchestration
+- free-form natural-language-to-world generation
 
 ## Bundled scenarios
 
@@ -161,9 +167,9 @@ Supported zero-to-sim templates:
 
 Foundation status for the zero-to-sim surface:
 
-- CLI command names are now treated as stable
+- CLI command names are stable in `v1.0.0`
 - the underlying JSON `ScenarioSpec` schema is still `experimental-foundation`
-- the schema is documented and supported, but not yet frozen for additive refinement before `v1.1.0`
+- the schema is documented, supported, and still additive until `v1.1.0`
 
 ## Controller integration
 
@@ -226,7 +232,7 @@ Stable payload shapes:
 - `webots_capture_camera -> { path, width, height }`
 - `webots_run_benchmark ->` stable benchmark report top-level keys with additive `extra_metrics`
 - failed MCP tool calls -> `{ ok: false, error: { code, message, details, retriable } }`
-- existing MCP/runtime failure codes will not be renamed before `v1.0.0`; new codes may only be added
+- existing MCP/runtime failure codes are stable at `v1.0.0`; new codes may only be added
 
 Reference docs:
 
@@ -264,7 +270,7 @@ Full runtime smoke tests with real Webots execution:
 
 ```powershell
 $env:WEBOTS_KIT_RUN_RUNTIME_SMOKE='1'
-python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke or generated_scenario_smoke or imported_project_smoke"
+python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke or generated_scenario_smoke or imported_project_smoke or mcp_contract_smoke or session_export_replay_diagnostics_smoke"
 ```
 
 The self-hosted GitHub workflow for runtime smoke expects a Windows runner labeled `interactive-webots`.
