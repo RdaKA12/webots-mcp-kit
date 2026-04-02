@@ -34,6 +34,37 @@ def main(argv: list[str] | None = None) -> int:
     workspace.mkdir(parents=True, exist_ok=True)
     reports_dir = workspace / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
+    plans_dir = workspace / "plans"
+    plans_dir.mkdir(parents=True, exist_ok=True)
+    bundle_root = Path(__file__).resolve().parents[1] / "examples"
+    imported_world_source = bundle_root / "line-follower" / "worlds" / "line_follower_benchmark.wbt"
+    imported_world_copy = workspace / "editable-imported-line.wbt"
+    imported_world_copy.write_text(imported_world_source.read_text(encoding="utf-8"), encoding="utf-8")
+    (plans_dir / "generated-waypoint-world-edit.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {"type": "set_spawn", "translation": [-0.6, 0.0, 0.0], "rotation_z": 0.0},
+                    {"type": "add_landmark", "name": "gate-landmark", "position": [0.1, 0.1], "radius": 0.04},
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (plans_dir / "imported-world-edit.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {"type": "add_landmark", "name": "imported-gate-landmark", "position": [0.0, 0.0], "radius": 0.04},
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     summary: list[dict[str, str]] = []
     session_ids: dict[str, str] = {}
 

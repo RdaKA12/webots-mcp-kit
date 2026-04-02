@@ -8,6 +8,8 @@
 - interactive self-hosted runtime smoke is green if runtime code changed
 - latest `interactive-webots` runner runtime smoke passed in a logged-in desktop session
 - generated-scenario runtime smoke passed on the interactive runner
+- generated-world authoring runtime smoke passed on the interactive runner when authoring code changed
+- imported-world authoring runtime smoke passed on the interactive runner when authoring code changed
 - package build and `twine check` are green
 - PyPI/TestPyPI install smoke expectations are ready to pass
 - changelog and README version notes are updated

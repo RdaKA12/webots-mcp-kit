@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.4.0-alpha.1
+
+- Added generated-world and imported-world authoring runtime smoke coverage so world edits are now exercised through real `world edit -> validate -> session start` flows.
+- Extended the preview gate and self-hosted runtime workflow with authoring lanes for generated and imported world edit paths.
+- Promoted the feature-branch preview versioning to `v1.4.0-alpha.1` while keeping the work isolated on `feature/agent-authoring-platform`.
+
 ## v1.3.0-alpha.1
 
 - Added an agent-authoring preview branch foundation for controller scaffold, inspect, edit, and validate across Python and C++ sources.

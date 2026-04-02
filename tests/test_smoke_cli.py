@@ -25,6 +25,11 @@ GENERATED_SCENARIO_CASES = [
 ]
 
 
+def write_json(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def run_cli(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603
         [sys.executable, "-m", "webots_mcp_kit.cli", *args],
@@ -157,6 +162,85 @@ def test_generated_scenario_smoke(tmp_path: Path, template: str, scenario_name: 
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_generated_world_edit_smoke(tmp_path: Path) -> None:
+    project_root = tmp_path / "generated-authoring-project"
+    run_cli("project", "init", str(project_root))
+    scenario_dir = project_root / "scenarios" / "authoring-waypoint"
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    run_cli("scenario", "init", str(scenario_dir), "--template", "epuck-waypoint")
+    built = run_cli("scenario", "build", str(spec_path))
+    generated = json.loads(built.stdout)
+
+    world_path = Path(generated["world_path"])
+    plan_path = project_root / "plans" / "generated-world-edit.json"
+    write_json(
+        plan_path,
+        {
+            "schema_version": 1,
+            "operations": [
+                {"type": "set_spawn", "translation": [-0.6, 0.0, 0.0], "rotation_z": 0.0},
+                {"type": "add_landmark", "name": "landmark-generated", "position": [0.1, 0.1], "radius": 0.04},
+            ],
+        },
+    )
+
+    inspect_payload = json.loads(run_cli("world", "inspect", str(world_path), "--json").stdout)
+    assert inspect_payload["status"] == "ready"
+    assert inspect_payload["target_robot"]["def_name"] == generated["target_robot_def"]
+
+    edited = json.loads(run_cli("world", "edit", str(world_path), "--plan", str(plan_path)).stdout)
+    assert edited["status"] == "ready"
+    validation = json.loads(run_cli("world", "validate", str(world_path), "--json").stdout)
+    assert validation["valid"] is True
+
+    started = run_cli(
+        "session",
+        "start",
+        "--scenario",
+        generated["benchmark_name"],
+        "--world",
+        generated["world_path"],
+        "--controller",
+        generated["controller_path"],
+        "--robot-name",
+        generated["target_robot_name"],
+        "--robot-def",
+        generated["target_robot_def"],
+        "--mode",
+        "fast",
+        "--render",
+        "off",
+        timeout=180,
+    )
+    manifest = json.loads(started.stdout)
+    assert manifest["status"] == "ready"
+    run_cli("session", "stop", "--session", manifest["session_id"], timeout=60)
+
+    report_path = project_root / "artifacts" / "generated-authoring-report.json"
+    benchmark = run_cli(
+        "benchmark",
+        "run",
+        generated["benchmark_name"],
+        "--controller",
+        generated["controller_path"],
+        "--world",
+        generated["world_path"],
+        "--robot-name",
+        generated["target_robot_name"],
+        "--robot-def",
+        generated["target_robot_def"],
+        "--output",
+        str(report_path),
+        "--duration-s",
+        "5",
+        timeout=240,
+    )
+    benchmark_payload = json.loads(benchmark.stdout)
+    assert benchmark_payload["benchmark"] == "waypoint-nav"
+    assert report_path.exists()
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
 def test_imported_project_smoke(tmp_path: Path) -> None:
     project_root = tmp_path / "imported-project"
     examples_root = bundled_example_root()
@@ -199,6 +283,75 @@ def test_imported_project_smoke(tmp_path: Path) -> None:
     stopped = run_cli("session", "stop", "--session", manifest["session_id"], timeout=60)
     stopped_manifest = json.loads(stopped.stdout)
     assert stopped_manifest["status"] in {"stopped", "failed"}
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_imported_world_edit_smoke(tmp_path: Path) -> None:
+    project_root = tmp_path / "imported-authoring-project"
+    examples_root = bundled_example_root()
+    source_world = examples_root / "line-follower" / "worlds" / "line_follower_benchmark.wbt"
+    editable_world = tmp_path / "line_follower_editable.wbt"
+    editable_world.write_text(source_world.read_text(encoding="utf-8"), encoding="utf-8")
+    controller = examples_root / "line-follower" / "controllers" / "line_follower_agent.py"
+
+    plan_path = tmp_path / "world-edit.json"
+    write_json(
+        plan_path,
+        {
+            "schema_version": 1,
+            "operations": [
+                {"type": "add_landmark", "name": "imported-landmark", "position": [0.0, 0.0], "radius": 0.04},
+            ],
+        },
+    )
+
+    imported = run_cli("project", "import", "--world", str(editable_world), "--controller", str(controller), "--project-root", str(project_root))
+    payload = json.loads(imported.stdout)
+    assert payload["world_inventory"]["status"] == "ready"
+    assert isinstance(payload["edit_target_summary"], list)
+
+    edited = json.loads(run_cli("world", "edit", str(editable_world), "--plan", str(plan_path)).stdout)
+    assert edited["status"] == "ready"
+    validation = json.loads(run_cli("world", "validate", str(editable_world), "--json").stdout)
+    assert validation["valid"] is True
+
+    started = run_cli(
+        "session",
+        "start",
+        "--scenario",
+        "line-follower",
+        "--world",
+        str(editable_world),
+        "--controller",
+        str(controller),
+        "--mode",
+        "fast",
+        "--render",
+        "off",
+        timeout=180,
+    )
+    manifest = json.loads(started.stdout)
+    assert manifest["status"] == "ready"
+    run_cli("session", "stop", "--session", manifest["session_id"], timeout=60)
+
+    report_path = tmp_path / "imported-authoring-report.json"
+    benchmark = run_cli(
+        "benchmark",
+        "run",
+        "line-follower",
+        "--controller",
+        str(controller),
+        "--world",
+        str(editable_world),
+        "--output",
+        str(report_path),
+        "--duration-s",
+        "3",
+        timeout=240,
+    )
+    benchmark_payload = json.loads(benchmark.stdout)
+    assert benchmark_payload["benchmark"] == "line-follower"
+    assert report_path.exists()
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")

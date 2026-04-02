@@ -15,8 +15,8 @@ class GateStep:
 def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
     root = workspace.resolve()
     reports_dir = root / "reports"
-    acceptance_workspace = root / "acceptance"
     generated_project = root / "generated-project"
+    plans_dir = root / "plans"
     generated_cases = [
         {
             "name": "generated_line",
@@ -54,6 +54,9 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
     import_controller = bundle_root / "line-follower" / "controllers" / "line_follower_agent.py"
     import_project_root = root / "imported-project"
     imported_export = root / "exports" / "imported-line"
+    imported_world_copy = root / "editable-imported-line.wbt"
+    generated_waypoint_plan = plans_dir / "generated-waypoint-world-edit.json"
+    imported_world_plan = plans_dir / "imported-world-edit.json"
 
     steps: list[GateStep] = [
         GateStep("doctor", ("doctor", "--json")),
@@ -70,9 +73,12 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
         GateStep("generated_project_init", ("project", "init", str(generated_project), "--force")),
         GateStep(
             "import_project",
-            ("project", "import", "--world", str(import_world), "--controller", str(import_controller), "--project-root", str(import_project_root)),
+            ("project", "import", "--world", str(imported_world_copy), "--controller", str(import_controller), "--project-root", str(import_project_root)),
         ),
-        GateStep("imported_session_start", ("session", "start", "--scenario", "line-follower", "--world", str(import_world), "--controller", str(import_controller), "--mode", "fast", "--render", "off")),
+        GateStep("imported_world_inspect", ("world", "inspect", str(imported_world_copy), "--json")),
+        GateStep("imported_world_validate", ("world", "validate", str(imported_world_copy), "--json")),
+        GateStep("imported_world_edit", ("world", "edit", str(imported_world_copy), "--plan", str(imported_world_plan))),
+        GateStep("imported_session_start", ("session", "start", "--scenario", "line-follower", "--world", str(imported_world_copy), "--controller", str(import_controller), "--mode", "fast", "--render", "off")),
         GateStep("imported_session_inspect", ("session", "inspect", "--session", "{imported_session_id}")),
         GateStep("imported_session_stop", ("session", "stop", "--session", "{imported_session_id}")),
         GateStep("imported_session_export", ("session", "export", "{imported_session_id}", "--output", str(imported_export))),
@@ -89,6 +95,15 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
                 GateStep(f"{case['name']}_scenario_init", ("scenario", "init", str(case["dir"]), "--template", str(case["template"]), "--force")),
                 GateStep(f"{case['name']}_scenario_validate", ("scenario", "validate", str(spec_path))),
                 GateStep(f"{case['name']}_scenario_build", ("scenario", "build", str(spec_path), "--force")),
+                *(
+                    [
+                        GateStep(f"{case['name']}_world_inspect", ("world", "inspect", str(case["world"]), "--json")),
+                        GateStep(f"{case['name']}_world_validate", ("world", "validate", str(case["world"]), "--json")),
+                        GateStep(f"{case['name']}_world_edit", ("world", "edit", str(case["world"]), "--plan", str(generated_waypoint_plan))),
+                    ]
+                    if case["name"] == "generated_waypoint"
+                    else []
+                ),
                 GateStep(
                     f"{case['name']}_session_start",
                     (

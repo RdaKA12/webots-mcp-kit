@@ -22,5 +22,7 @@ def test_v1_gate_includes_real_runtime_flow(tmp_path) -> None:
     assert "generated_line_benchmark_run" in names
     assert "generated_waypoint_benchmark_run" in names
     assert "generated_obstacle_benchmark_run" in names
+    assert "generated_waypoint_world_edit" in names
+    assert "imported_world_edit" in names
     assert "imported_session_export" in names
     assert "imported_session_replay_manifest" in names
