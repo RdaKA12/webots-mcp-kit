@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import ast
 import json
 import math
 import os
+import re
 import shutil
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -10,7 +12,7 @@ from typing import Any
 
 from . import __version__
 from .benchmark import benchmark_next_step
-from .benchmarks import get_scenario
+from .benchmarks import get_scenario, scenario_registry
 from .controller_scaffold import scaffold_controller
 from .diagnostics import collect_runtime_diagnostics
 from .errors import KitError
@@ -41,6 +43,13 @@ SUPPORTED_ENVIRONMENT_TEMPLATES = {
     "epuck-line-track": {"default_kind": "line-follow", "allowed_kinds": {"line-follow"}},
     "epuck-waypoint": {"default_kind": "waypoint-nav", "allowed_kinds": {"waypoint-nav"}},
     "epuck-obstacle-course": {"default_kind": "obstacle-avoidance", "allowed_kinds": {"obstacle-avoidance", "waypoint-nav"}},
+}
+
+SUPPORTED_ARENA_FLOORS: dict[str, dict[str, Any]] = {
+    "plain": {"base_color": (0.82, 0.82, 0.82), "grid": False},
+    "light": {"base_color": (0.9, 0.9, 0.88), "grid": False},
+    "dark": {"base_color": (0.28, 0.28, 0.3), "grid": False},
+    "grid": {"base_color": (0.86, 0.86, 0.84), "grid": True},
 }
 
 
@@ -153,7 +162,9 @@ def init_scenario(path: Path, *, template: str, force: bool = False) -> dict[str
 def load_scenario_spec(path: Path) -> ScenarioSpec:
     spec_path = scenario_spec_path(path)
     payload = json.loads(spec_path.read_text(encoding="utf-8"))
-    return ScenarioSpec.from_dict(payload)
+    spec = ScenarioSpec.from_dict(payload)
+    _apply_scenario_defaults(spec)
+    return spec
 
 
 def validate_scenario(path: Path) -> ScenarioValidationResult:
@@ -180,6 +191,7 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
     robot_template = _str_field(spec.robot, "template")
     environment_template = _str_field(spec.environment, "template")
     benchmark_name = SUPPORTED_TASKS.get(scenario_kind)
+    scenario_def = get_scenario(benchmark_name) if benchmark_name else None
 
     if spec.schema_version != 1:
         issues.append(ValidationIssue("unsupported-scenario-schema", f"Unsupported schema version '{spec.schema_version}'.", "schema_version"))
@@ -217,6 +229,23 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
                 "environment.arena.dimensions",
             )
         )
+    floor = _str_field(arena, "floor") or "plain"
+    if floor not in SUPPORTED_ARENA_FLOORS:
+        issues.append(
+            ValidationIssue(
+                "unsupported-arena-floor",
+                f"environment.arena.floor must be one of {sorted(SUPPORTED_ARENA_FLOORS)}.",
+                "environment.arena.floor",
+            )
+        )
+    elif scenario_kind == "line-follow" and floor == "dark":
+        issues.append(
+            ValidationIssue(
+                "unsupported-floor-task-combination",
+                "line-follow scenarios require a non-dark arena floor so the generated line stays visible.",
+                "environment.arena.floor",
+            )
+        )
 
     spawn = spec.layout.get("spawn") if isinstance(spec.layout.get("spawn"), dict) else {}
     if not _is_numeric_list(spawn.get("translation"), 3):
@@ -241,8 +270,56 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
         width = line_track.get("width")
         if not isinstance(width, (int, float)) or float(width) <= 0:
             issues.append(ValidationIssue("invalid-line-width", "layout.line_track.width must be a positive number.", "layout.line_track.width"))
+        else:
+            for index, (start, end) in enumerate(zip(line_track.get("points", []), line_track.get("points", [])[1:]), start=1):
+                if float(start[0]) == float(end[0]) and float(start[1]) == float(end[1]):
+                    issues.append(
+                        ValidationIssue(
+                            "degenerate-line-segment",
+                            f"layout.line_track.points contains a zero-length segment at index {index}.",
+                            "layout.line_track.points",
+                        )
+                    )
+            if _is_positive_pair(arena.get("dimensions")):
+                half_width = float(arena["dimensions"][0]) / 2
+                half_height = float(arena["dimensions"][1]) / 2
+                for index, point in enumerate(line_track.get("points", [])):
+                    if abs(float(point[0])) > half_width or abs(float(point[1])) > half_height:
+                        issues.append(
+                            ValidationIssue(
+                                "line-track-point-out-of-bounds",
+                                f"layout.line_track.points[{index}] must stay inside the declared arena dimensions.",
+                                "layout.line_track.points",
+                            )
+                        )
+                if float(width) >= min(float(arena["dimensions"][0]), float(arena["dimensions"][1])) / 2:
+                    issues.append(
+                        ValidationIssue(
+                            "line-track-width-too-large",
+                            "layout.line_track.width is too large relative to environment.arena.dimensions.",
+                            "layout.line_track.width",
+                        )
+                    )
     if scenario_kind == "waypoint-nav" and not _is_point_list(spec.layout.get("waypoints"), min_points=1):
         issues.append(ValidationIssue("missing-waypoints", "layout.waypoints must contain at least one waypoint.", "layout.waypoints"))
+    if scenario_kind == "waypoint-nav":
+        goal_region = spec.layout.get("goal_region") if isinstance(spec.layout.get("goal_region"), dict) else {}
+        goal_center = goal_region.get("center")
+        goal_radius = goal_region.get("radius")
+        if not _is_numeric_list(goal_center, 2):
+            issues.append(ValidationIssue("invalid-goal-region-center", "layout.goal_region.center must be a two-item numeric list.", "layout.goal_region.center"))
+        if not isinstance(goal_radius, (int, float)) or float(goal_radius) <= 0:
+            issues.append(ValidationIssue("invalid-goal-region-radius", "layout.goal_region.radius must be a positive number.", "layout.goal_region.radius"))
+        waypoints = spec.layout.get("waypoints", [])
+        if _is_numeric_list(goal_center, 2) and _is_point_list(waypoints, min_points=1):
+            if _distance_2d(goal_center, waypoints[-1]) > 0.05:
+                issues.append(
+                    ValidationIssue(
+                        "goal-region-waypoint-mismatch",
+                        "layout.goal_region.center must stay aligned with the final waypoint for waypoint-nav scenarios.",
+                        "layout.goal_region.center",
+                    )
+                )
     if scenario_kind == "obstacle-avoidance":
         obstacles = spec.layout.get("obstacles")
         if not isinstance(obstacles, list) or not obstacles:
@@ -257,11 +334,76 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
             issues.append(ValidationIssue("unsupported-obstacle-shape", "Obstacle shape must be 'box' or 'cylinder'.", f"layout.obstacles[{index}].shape"))
         if not _is_numeric_list(obstacle.get("position"), 2):
             issues.append(ValidationIssue("invalid-obstacle-position", "Obstacle position must be a two-item numeric list.", f"layout.obstacles[{index}].position"))
+        if shape == "box":
+            size = obstacle.get("size")
+            if not _is_numeric_list(size, 3) or any(float(item) <= 0 for item in size):
+                issues.append(ValidationIssue("invalid-obstacle-size", "Box obstacles must define a three-item positive size list.", f"layout.obstacles[{index}].size"))
+            if "radius" in obstacle or "height" in obstacle:
+                issues.append(
+                    ValidationIssue(
+                        "obstacle-shape-field-mismatch",
+                        "Box obstacles must not define cylinder-only radius or height fields.",
+                        f"layout.obstacles[{index}]",
+                    )
+                )
+        if shape == "cylinder":
+            radius = obstacle.get("radius")
+            height = obstacle.get("height")
+            if not isinstance(radius, (int, float)) or float(radius) <= 0:
+                issues.append(ValidationIssue("invalid-obstacle-radius", "Cylinder obstacles must define a positive radius.", f"layout.obstacles[{index}].radius"))
+            if not isinstance(height, (int, float)) or float(height) <= 0:
+                issues.append(ValidationIssue("invalid-obstacle-height", "Cylinder obstacles must define a positive height.", f"layout.obstacles[{index}].height"))
+            if "size" in obstacle:
+                issues.append(
+                    ValidationIssue(
+                        "obstacle-shape-field-mismatch",
+                        "Cylinder obstacles must not define box-only size fields.",
+                        f"layout.obstacles[{index}]",
+                    )
+                )
 
     if not _str_field(spec.controller, "path"):
         issues.append(ValidationIssue("missing-controller-path", "controller.path is required.", "controller.path"))
+    if scenario_def and scenario_def.default_camera and not _str_field(spec.controller, "default_camera"):
+        issues.append(
+            ValidationIssue(
+                "missing-default-camera",
+                f"controller.default_camera is required for benchmark profile '{scenario_def.name}'.",
+                "controller.default_camera",
+            )
+        )
+    benchmark_profile = _str_field(spec.benchmark, "profile")
+    if benchmark_name and benchmark_profile != benchmark_name:
+        issues.append(
+            ValidationIssue(
+                "benchmark-profile-mismatch",
+                f"benchmark.profile must be '{benchmark_name}' for scenario.kind '{scenario_kind}'.",
+                "benchmark.profile",
+            )
+        )
     if not isinstance(spec.benchmark.get("duration_s"), (int, float)) or float(spec.benchmark.get("duration_s", 0)) <= 0:
         issues.append(ValidationIssue("invalid-benchmark-duration", "benchmark.duration_s must be a positive number.", "benchmark.duration_s"))
+    if scenario_def:
+        sensors_required = spec.sensors.get("required") if isinstance(spec.sensors.get("required"), list) else []
+        actuators_required = spec.actuators.get("required") if isinstance(spec.actuators.get("required"), list) else []
+        missing_sensor_contract = sorted(set(scenario_def.required_sensor_keys) - {str(item) for item in sensors_required})
+        missing_actuator_contract = sorted(set(scenario_def.required_actuator_keys) - {str(item) for item in actuators_required})
+        if missing_sensor_contract:
+            issues.append(
+                ValidationIssue(
+                    "missing-required-sensor-contract",
+                    f"sensors.required is missing benchmark-required keys: {missing_sensor_contract}.",
+                    "sensors.required",
+                )
+            )
+        if missing_actuator_contract:
+            issues.append(
+                ValidationIssue(
+                    "missing-required-actuator-contract",
+                    f"actuators.required is missing benchmark-required keys: {missing_actuator_contract}.",
+                    "actuators.required",
+                )
+            )
 
     normalized.setdefault("scenario", {})
     normalized["scenario"]["benchmark_name"] = benchmark_name
@@ -318,6 +460,7 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         "default_camera": spec.controller.get("default_camera", benchmark_profile.default_camera),
         "duration_s": spec.benchmark["duration_s"],
         "threshold_overrides": spec.benchmark.get("threshold_overrides", {}),
+        "arena_floor": spec.environment.get("arena", {}).get("floor"),
         "next_step": suggested_benchmark_command,
     }
     atomic_write_text(benchmark_config_path, json.dumps(benchmark_payload, indent=2), encoding="utf-8")
@@ -353,6 +496,7 @@ def describe_scenario(path: Path) -> str:
         f"environment_template: {spec.environment.get('template')}",
         f"robot: {spec.robot.get('name')} ({spec.robot.get('template')})",
         f"arena_dimensions: {arena.get('dimensions')}",
+        f"arena_floor: {arena.get('floor')}",
         f"waypoints: {len(layout.get('waypoints', [])) if isinstance(layout.get('waypoints'), list) else 0}",
         f"obstacles: {len(layout.get('obstacles', [])) if isinstance(layout.get('obstacles'), list) else 0}",
         f"default_camera: {spec.controller.get('default_camera')}",
@@ -380,12 +524,54 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
             "controller_ready": False,
             "benchmark_ready": False,
             "mcp_ready": False,
+            "benchmark_readiness": {"ready": False, "benchmark_name": None, "profile": None, "issues": [issue.code for issue in report.issues]},
+            "unsupported_combinations": [issue.to_dict() for issue in report.issues if "unsupported" in issue.code],
+            "controller_contract_readiness": {"ready": False, "default_camera": None, "required_sensors": [], "required_actuators": [], "issues": [issue.code for issue in report.issues]},
+            "build_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
+            "runtime_smoke_readiness": {"ready": False, "requires_interactive_runner": True, "benchmark_name": None},
             "issues": [issue.to_dict() for issue in report.issues],
             "support_tier": "experimental-foundation",
             "next_step": "Create a spec with `webots-kit scenario init <path> --template <template>`.",
         }
     spec = load_scenario_spec(spec_path)
     benchmark_name = report.benchmark_name
+    benchmark_profile = spec.benchmark.get("profile") if isinstance(spec.benchmark, dict) else None
+    scenario_def = get_scenario(benchmark_name) if benchmark_name else None
+    unsupported_combinations = [
+        issue.to_dict()
+        for issue in report.issues
+        if issue.code.startswith("unsupported-") or issue.code.endswith("-mismatch")
+    ]
+    benchmark_readiness = {
+        "ready": report.valid and benchmark_name is not None,
+        "benchmark_name": benchmark_name,
+        "profile": benchmark_profile,
+        "duration_s": spec.benchmark.get("duration_s"),
+        "threshold_override_count": len(spec.benchmark.get("threshold_overrides", {})) if isinstance(spec.benchmark.get("threshold_overrides"), dict) else 0,
+        "issues": [issue.code for issue in report.issues if issue.field and issue.field.startswith("benchmark")],
+    }
+    controller_contract_readiness = {
+        "ready": bool(spec.controller.get("path")) and not any(issue.code.startswith("missing-required-") or issue.code == "missing-default-camera" for issue in report.issues),
+        "default_camera": spec.controller.get("default_camera"),
+        "required_sensors": list(spec.sensors.get("required", [])) if isinstance(spec.sensors.get("required"), list) else [],
+        "required_actuators": list(spec.actuators.get("required", [])) if isinstance(spec.actuators.get("required"), list) else [],
+        "expected_sensor_keys": list(scenario_def.required_sensor_keys) if scenario_def else [],
+        "expected_actuator_keys": list(scenario_def.required_actuator_keys) if scenario_def else [],
+        "issues": [issue.code for issue in report.issues if issue.field in {"controller.default_camera", "sensors.required", "actuators.required"}],
+    }
+    build_readiness = {
+        "ready": report.valid,
+        "world_output_path": str(spec_path.parent / "worlds" / f"{spec.scenario.get('name')}.wbt"),
+        "controller_output_path": str(spec_path.parent / "controllers" / Path(str(spec.controller.get("path"))).name),
+        "issues": [issue.code for issue in report.issues],
+    }
+    runtime_smoke_readiness = {
+        "ready": report.valid and benchmark_name is not None,
+        "requires_interactive_runner": True,
+        "benchmark_name": benchmark_name,
+        "recommended_mode": "fast",
+        "recommended_render": "off",
+    }
     next_step = f"Run `webots-kit scenario build \"{spec_path}\"` once the validation issues are fixed."
     if report.valid and benchmark_name:
         next_step = (
@@ -402,6 +588,11 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "controller_ready": bool(spec.controller.get("path")),
         "benchmark_ready": report.valid and benchmark_name is not None,
         "mcp_ready": report.valid,
+        "benchmark_readiness": benchmark_readiness,
+        "unsupported_combinations": unsupported_combinations,
+        "controller_contract_readiness": controller_contract_readiness,
+        "build_readiness": build_readiness,
+        "runtime_smoke_readiness": runtime_smoke_readiness,
         "issues": [issue.to_dict() for issue in report.issues],
         "support_tier": "experimental-foundation",
         "next_step": next_step,
@@ -578,6 +769,8 @@ def format_scenario_validation_report(result: ScenarioValidationResult) -> str:
         f"scenario_kind: {result.scenario_kind}",
         f"environment_template: {result.environment_template}",
         f"benchmark_name: {result.benchmark_name}",
+        f"benchmark_profile: {result.normalized.get('benchmark', {}).get('profile')}",
+        f"arena_floor: {result.normalized.get('environment', {}).get('arena', {}).get('floor')}",
         f"summary: {len(result.issues)} issues",
         "support_tier: experimental-foundation",
     ]
@@ -608,6 +801,11 @@ def format_scenario_doctor_report(payload: dict[str, Any]) -> str:
         f"controller_ready: {payload['controller_ready']}",
         f"benchmark_ready: {payload['benchmark_ready']}",
         f"mcp_ready: {payload['mcp_ready']}",
+        f"benchmark_readiness: {payload.get('benchmark_readiness', {}).get('ready')}",
+        f"controller_contract_readiness: {payload.get('controller_contract_readiness', {}).get('ready')}",
+        f"build_readiness: {payload.get('build_readiness', {}).get('ready')}",
+        f"runtime_smoke_readiness: {payload.get('runtime_smoke_readiness', {}).get('ready')}",
+        f"unsupported_combinations: {len(payload.get('unsupported_combinations', []))}",
         f"summary: {len(payload.get('issues', []))} issues",
         "support_tier: experimental-foundation",
     ]
@@ -650,6 +848,7 @@ def format_session_replay(payload: dict[str, Any]) -> str:
 
 def _build_line_follow_world(spec: ScenarioSpec) -> str:
     arena_dimensions = spec.environment["arena"]["dimensions"]
+    floor_style = str(spec.environment.get("arena", {}).get("floor", "plain"))
     spawn = spec.layout["spawn"]
     segments = _line_track_segments(spec.layout["line_track"]["points"])
     segment_nodes: list[str] = []
@@ -678,6 +877,7 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
         title=f"{spec.project['name']} {spec.scenario['name']}",
         info_lines=["Generated by webots-kit scenario build.", "Template-driven line-follow scenario."],
         arena_size=arena_dimensions,
+        floor_style=floor_style,
         body="\n".join(segment_nodes),
         robot_block=_robot_block(robot_name=str(spec.robot["name"]), spawn=spawn, camera_mode=True),
     )
@@ -685,6 +885,7 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
 
 def _build_arena_world(spec: ScenarioSpec) -> str:
     arena_dimensions = spec.environment["arena"]["dimensions"]
+    floor_style = str(spec.environment.get("arena", {}).get("floor", "plain"))
     spawn = spec.layout["spawn"]
     body_nodes: list[str] = []
     for index, obstacle in enumerate(spec.layout.get("obstacles", []), start=1):
@@ -696,15 +897,17 @@ def _build_arena_world(spec: ScenarioSpec) -> str:
         title=f"{spec.project['name']} {spec.scenario['name']}",
         info_lines=["Generated by webots-kit scenario build.", f"Template-driven {spec.scenario['kind']} scenario."],
         arena_size=arena_dimensions,
+        floor_style=floor_style,
         body="\n".join(body_nodes),
         robot_block=_robot_block(robot_name=str(spec.robot["name"]), spawn=spawn, camera_mode=False),
     )
 
 
-def _world_shell(*, title: str, info_lines: list[str], arena_size: list[float], body: str, robot_block: str) -> str:
+def _world_shell(*, title: str, info_lines: list[str], arena_size: list[float], floor_style: str, body: str, robot_block: str) -> str:
     info = "\n".join(f'    "{line}"' for line in info_lines)
     supervisor_y = -max(float(arena_size[1]) / 2 - 0.05, 0.95)
     robot_name = robot_block.split('name "')[1].split('"', 1)[0]
+    floor_overlay = _floor_overlay_block(floor_style, arena_size)
     return f"""#VRML_SIM R2025a utf8
 
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
@@ -730,6 +933,7 @@ TexturedBackgroundLight {{
 RectangleArena {{
   floorSize {_fmt(arena_size[0])} {_fmt(arena_size[1])}
 }}
+{floor_overlay}
 {body}
 {robot_block}
 Robot {{
@@ -739,6 +943,83 @@ Robot {{
   supervisor TRUE
 }}
 """
+
+
+def _floor_overlay_block(floor_style: str, arena_size: list[float]) -> str:
+    floor = SUPPORTED_ARENA_FLOORS.get(floor_style, SUPPORTED_ARENA_FLOORS["plain"])
+    base = floor["base_color"]
+    base_block = f"""Solid {{
+  translation 0 0 0.0004
+  children [
+    DEF FLOOR_STYLE Shape {{
+      appearance PBRAppearance {{
+        baseColor {_fmt(base[0])} {_fmt(base[1])} {_fmt(base[2])}
+        roughness 1
+        metalness 0
+      }}
+      geometry Box {{
+        size {_fmt(arena_size[0])} {_fmt(arena_size[1])} 0.0008
+      }}
+    }}
+  ]
+  name "floor-style-{floor_style}"
+  locked TRUE
+}}"""
+    if not floor["grid"]:
+        return base_block
+    stripe_nodes: list[str] = [base_block]
+    spacing = 0.25
+    half_width = float(arena_size[0]) / 2
+    half_height = float(arena_size[1]) / 2
+    grid_color = "0.72 0.72 0.72"
+    grid_index = 1
+    y = -half_height + spacing
+    while y < half_height:
+        stripe_nodes.append(
+            f"""Solid {{
+  translation 0 {_fmt(y)} 0.0012
+  children [
+    Shape {{
+      appearance PBRAppearance {{
+        baseColor {grid_color}
+        roughness 1
+        metalness 0
+      }}
+      geometry Box {{
+        size {_fmt(arena_size[0])} 0.01 0.0004
+      }}
+    }}
+  ]
+  name "floor-grid-horizontal-{grid_index}"
+  locked TRUE
+}}"""
+        )
+        grid_index += 1
+        y += spacing
+    x = -half_width + spacing
+    while x < half_width:
+        stripe_nodes.append(
+            f"""Solid {{
+  translation {_fmt(x)} 0 0.0012
+  children [
+    Shape {{
+      appearance PBRAppearance {{
+        baseColor {grid_color}
+        roughness 1
+        metalness 0
+      }}
+      geometry Box {{
+        size 0.01 {_fmt(arena_size[1])} 0.0004
+      }}
+    }}
+  ]
+  name "floor-grid-vertical-{grid_index}"
+  locked TRUE
+}}"""
+        )
+        grid_index += 1
+        x += spacing
+    return "\n".join(stripe_nodes)
 
 
 def _robot_block(*, robot_name: str, spawn: dict[str, Any], camera_mode: bool) -> str:
@@ -836,9 +1117,27 @@ def _default_spec(template: str, scenario_name: str, project_name: str) -> Scena
     default_kind = SUPPORTED_ENVIRONMENT_TEMPLATES[template]["default_kind"]
     benchmark_name = SUPPORTED_TASKS[default_kind]
     scenario = get_scenario(benchmark_name)
-    defaults = {
+    defaults = _template_defaults(template)
+    return ScenarioSpec(
+        schema_version=1,
+        project={"name": project_name},
+        scenario={"name": scenario_name, "kind": default_kind},
+        robot={"template": "e-puck", "name": _default_robot_name(default_kind, scenario_name), "def": "EPUCK"},
+        environment={"template": template, "arena": defaults["arena"]},
+        layout=defaults["layout"],
+        task={"kind": default_kind, "description": f"Generated {default_kind} task."},
+        controller={"path": f"controllers/{scenario_name}_agent.py", "default_camera": scenario.default_camera},
+        benchmark={"profile": benchmark_name, "duration_s": 20.0, "threshold_overrides": {}},
+        sensors={"required": list(scenario.required_sensor_keys)},
+        actuators={"required": list(scenario.required_actuator_keys)},
+    )
+
+
+def _template_defaults(template: str) -> dict[str, Any]:
+    return _clone_json_like(
+        {
         "epuck-line-track": {
-            "arena": {"dimensions": [1.8, 1.2], "floor": "plain"},
+            "arena": {"dimensions": [1.8, 1.2], "floor": "light"},
             "layout": {
                 "spawn": {"translation": [-0.7, 0.03, 0.0], "rotation_z": 0.0},
                 "line_track": {"width": 0.06, "points": [[-0.75, 0.03], [-0.2, 0.03], [-0.2, 0.42], [0.55, 0.42], [0.55, -0.2]]},
@@ -856,7 +1155,7 @@ def _default_spec(template: str, scenario_name: str, project_name: str) -> Scena
             },
         },
         "epuck-arena": {
-            "arena": {"dimensions": [2.0, 2.0], "floor": "plain"},
+            "arena": {"dimensions": [2.0, 2.0], "floor": "grid"},
             "layout": {
                 "spawn": {"translation": [-0.55, 0.0, 0.0], "rotation_z": 0.0},
                 "obstacles": [],
@@ -865,7 +1164,7 @@ def _default_spec(template: str, scenario_name: str, project_name: str) -> Scena
             },
         },
         "epuck-obstacle-course": {
-            "arena": {"dimensions": [2.0, 2.0], "floor": "plain"},
+            "arena": {"dimensions": [2.0, 2.0], "floor": "grid"},
             "layout": {
                 "spawn": {"translation": [0.0, 0.0, 0.0], "rotation_z": 1.57},
                 "obstacles": [
@@ -877,19 +1176,59 @@ def _default_spec(template: str, scenario_name: str, project_name: str) -> Scena
             },
         },
     }[template]
-    return ScenarioSpec(
-        schema_version=1,
-        project={"name": project_name},
-        scenario={"name": scenario_name, "kind": default_kind},
-        robot={"template": "e-puck", "name": _default_robot_name(default_kind, scenario_name), "def": "EPUCK"},
-        environment={"template": template, "arena": defaults["arena"]},
-        layout=defaults["layout"],
-        task={"kind": default_kind, "description": f"Generated {default_kind} task."},
-        controller={"path": f"controllers/{scenario_name}_agent.py", "default_camera": scenario.default_camera},
-        benchmark={"profile": benchmark_name, "duration_s": 20.0, "threshold_overrides": {}},
-        sensors={"required": list(scenario.required_sensor_keys)},
-        actuators={"required": list(scenario.required_actuator_keys)},
     )
+
+
+def _apply_scenario_defaults(spec: ScenarioSpec) -> None:
+    scenario_kind = _str_field(spec.scenario, "kind")
+    environment_template = _str_field(spec.environment, "template")
+    if not scenario_kind and environment_template in SUPPORTED_ENVIRONMENT_TEMPLATES:
+        scenario_kind = SUPPORTED_ENVIRONMENT_TEMPLATES[environment_template]["default_kind"]
+        spec.scenario["kind"] = scenario_kind
+    benchmark_name = SUPPORTED_TASKS.get(scenario_kind or "")
+    scenario_def = get_scenario(benchmark_name) if benchmark_name else None
+    template = environment_template or (_default_template_for_kind(scenario_kind) if scenario_kind in SUPPORTED_TASKS else "epuck-waypoint")
+    defaults = _template_defaults(template)
+
+    arena = spec.environment.setdefault("arena", {})
+    arena.setdefault("dimensions", defaults["arena"]["dimensions"])
+    arena.setdefault("floor", defaults["arena"].get("floor", "plain"))
+
+    layout = spec.layout
+    spawn = layout.setdefault("spawn", {})
+    spawn.setdefault("translation", defaults["layout"]["spawn"]["translation"])
+    spawn.setdefault("rotation_z", defaults["layout"]["spawn"].get("rotation_z", 0.0))
+    layout.setdefault("obstacles", defaults["layout"].get("obstacles", []))
+    layout.setdefault("waypoints", defaults["layout"].get("waypoints", []))
+    if scenario_kind == "line-follow":
+        line_track = layout.setdefault("line_track", {})
+        line_track.setdefault("width", defaults["layout"].get("line_track", {}).get("width", 0.06))
+        line_track.setdefault("points", defaults["layout"].get("line_track", {}).get("points", []))
+    if scenario_kind == "waypoint-nav" and not isinstance(layout.get("goal_region"), dict) and _is_point_list(layout.get("waypoints"), min_points=1):
+        layout["goal_region"] = {"center": list(layout["waypoints"][-1]), "radius": 0.16}
+
+    task_kind = _str_field(spec.task, "kind")
+    if scenario_kind and not task_kind:
+        spec.task["kind"] = scenario_kind
+        spec.task.setdefault("description", f"Generated {scenario_kind} task.")
+
+    if scenario_def:
+        spec.controller.setdefault("default_camera", scenario_def.default_camera)
+        spec.benchmark.setdefault("profile", scenario_def.name)
+        spec.benchmark.setdefault("duration_s", 20.0)
+        spec.benchmark.setdefault("threshold_overrides", {})
+        spec.sensors.setdefault("required", list(scenario_def.required_sensor_keys))
+        spec.actuators.setdefault("required", list(scenario_def.required_actuator_keys))
+
+
+def _clone_json_like(value: Any) -> Any:
+    return json.loads(json.dumps(value))
+
+
+def _distance_2d(left: list[float] | tuple[float, ...], right: list[float] | tuple[float, ...]) -> float:
+    dx = float(left[0]) - float(right[0])
+    dy = float(left[1]) - float(right[1])
+    return math.hypot(dx, dy)
 
 
 def _default_robot_name(kind: str, scenario_name: str) -> str:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -34,8 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     reports_dir = workspace / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     summary: list[dict[str, str]] = []
-    generated_session_id: str | None = None
-    imported_session_id: str | None = None
+    session_ids: dict[str, str] = {}
 
     steps = build_v1_gate_steps(workspace)
     for step in steps:
@@ -54,28 +54,22 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         raw_args = list(step.args)
-        replacements = {
-            "{generated_session_id}": generated_session_id,
-            "{imported_session_id}": imported_session_id,
-        }
-        for token, value in replacements.items():
-            if token in raw_args:
-                if value is None and args.print_only:
-                    value = f"<{token.strip('{}')}>"
-                if value is None:
-                    raise RuntimeError(f"No session id available for step {step.name}.")
-                raw_args = [value if item == token else item for item in raw_args]
+        tokens = sorted({item for item in raw_args if re.fullmatch(r"\{[a-z0-9_]+\}", item)})
+        for token in tokens:
+            value = session_ids.get(token.strip("{}"))
+            if value is None and args.print_only:
+                value = f"<{token.strip('{}')}>"
+            if value is None:
+                raise RuntimeError(f"No session id available for step {step.name}.")
+            raw_args = [value if item == token else item for item in raw_args]
         rendered = " ".join(raw_args)
         print(f"[v1-gate] {step.name}: webots-kit {rendered}")
         if args.print_only:
             continue
         stdout = run_cli(tuple(raw_args), timeout=1200 if "benchmark" in step.name else 600)
-        if step.name in {"generated_session_start", "imported_session_start"}:
+        if step.name.endswith("_session_start"):
             payload = json.loads(stdout)
-            if step.name == "generated_session_start":
-                generated_session_id = payload["session_id"]
-            else:
-                imported_session_id = payload["session_id"]
+            session_ids[f"{step.name.replace('_session_start', '')}_session_id"] = payload["session_id"]
         summary.append({"step": step.name, "status": "ok"})
 
     summary_path = workspace / "v1-gate-summary.json"

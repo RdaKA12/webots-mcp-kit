@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Release
 
-`v1.0.0`
+`v1.1.0`
 
 Stable baseline:
 
@@ -31,6 +31,7 @@ Stable baseline:
 - standardized runtime artifact and replay bundles for exported sessions
 - centralized clean-user acceptance flow for package and publish smoke
 - explicit no-mock `v1.0.0` gate validation for real runtime workflows
+- richer zero-to-sim validation, doctoring, and generated runtime smoke across all three bundled task families
 
 Operational runtime model:
 
@@ -49,8 +50,9 @@ Supported:
 
 Foundation schema note:
 
-- CLI command names are stable in `v1.0.0`
-- deeper `ScenarioSpec`, import metadata, and replay/export JSON schema refinement remains additive and `experimental-foundation` until `v1.1.0`
+- CLI command names are stable in `v1.1.0`
+- the documented core `ScenarioSpec` subset is stable in `v1.1.0`
+- the wider JSON schema remains additive and `experimental-foundation` until `v1.2.0`
 
 Unsupported at `v1.0.0`:
 

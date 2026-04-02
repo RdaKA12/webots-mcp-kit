@@ -18,6 +18,11 @@ from webots_mcp_kit.models import bundled_example_root
 RUN_SMOKE = os.environ.get("WEBOTS_KIT_RUN_SMOKE") == "1"
 RUN_RUNTIME_SMOKE = os.environ.get("WEBOTS_KIT_RUN_RUNTIME_SMOKE") == "1"
 REPO_ROOT = Path(__file__).resolve().parents[1]
+GENERATED_SCENARIO_CASES = [
+    ("epuck-line-track", "demo-line", "line-follower", 3),
+    ("epuck-waypoint", "demo-waypoint", "waypoint-nav", 5),
+    ("epuck-obstacle-course", "demo-obstacle", "obstacle-avoidance", 5),
+]
 
 
 def run_cli(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
@@ -91,17 +96,19 @@ def test_benchmark_smoke() -> None:
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
-def test_generated_scenario_smoke(tmp_path: Path) -> None:
+@pytest.mark.parametrize(("template", "scenario_name", "expected_benchmark", "duration_s"), GENERATED_SCENARIO_CASES)
+def test_generated_scenario_smoke(tmp_path: Path, template: str, scenario_name: str, expected_benchmark: str, duration_s: int) -> None:
     project_root = tmp_path / "generated-project"
     run_cli("project", "init", str(project_root))
-    scenario_dir = project_root / "scenarios" / "demo-waypoint"
-    run_cli("scenario", "init", str(scenario_dir), "--template", "epuck-waypoint")
+    scenario_dir = project_root / "scenarios" / scenario_name
+    run_cli("scenario", "init", str(scenario_dir), "--template", template)
     validation = run_cli("scenario", "validate", str(scenario_dir / "webots-kit.scenario.json"), "--json")
     validation_payload = json.loads(validation.stdout)
     assert validation_payload["valid"] is True
 
     built = run_cli("scenario", "build", str(scenario_dir / "webots-kit.scenario.json"))
     generated = json.loads(built.stdout)
+    assert generated["benchmark_name"] == expected_benchmark
     started = run_cli(
         "session",
         "start",
@@ -141,7 +148,7 @@ def test_generated_scenario_smoke(tmp_path: Path) -> None:
         "--output",
         str(report_path),
         "--duration-s",
-        "5",
+        str(duration_s),
         timeout=240,
     )
     payload = json.loads(benchmark.stdout)

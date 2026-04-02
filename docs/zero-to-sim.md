@@ -4,9 +4,9 @@
 
 Status:
 
-- the CLI command names are stable in `v1.0.0`
-- the generated JSON spec shape remains `experimental-foundation`
-- additive schema refinement is still allowed until the dedicated `v1.1.0` zero-to-sim deepening milestone
+- the CLI command names are stable in `v1.1.0`
+- the documented core `ScenarioSpec` subset is stable in `v1.1.0`
+- the generated JSON spec shape remains `experimental-foundation` and additive until `v1.2.0`
 
 ## Supported templates
 
@@ -54,6 +54,96 @@ The generated spec is JSON-first and agent-friendly:
 - `actuators`
 
 The toolkit validates the spec before build. Unsupported template/task combinations fail fast with structured error codes.
+
+## Stable core subset in `v1.1.0`
+
+The documented core subset is:
+
+- `project.name`
+- `scenario.name`, `scenario.kind`
+- `robot.template`, `robot.name`, `robot.def`
+- `environment.template`, `environment.arena.dimensions`, `environment.arena.floor`
+- `layout.spawn.translation`, `layout.spawn.rotation_z`
+- `layout.line_track.width`, `layout.line_track.points`
+- `layout.waypoints`
+- `layout.goal_region.center`, `layout.goal_region.radius`
+- `layout.obstacles[].shape`, `position`, `rotation_z`, `size`, `radius`, `height`
+- `controller.path`, `controller.default_camera`
+- `benchmark.profile`, `benchmark.duration_s`, `benchmark.threshold_overrides`
+- `sensors.required`, `actuators.required`
+
+## Example specs
+
+### Line-follow
+
+```json
+{
+  "schema_version": 1,
+  "project": { "name": "factory-demo" },
+  "scenario": { "name": "demo-line", "kind": "line-follow" },
+  "robot": { "template": "e-puck", "name": "epuck-demo-line-line-follow", "def": "EPUCK" },
+  "environment": { "template": "epuck-line-track", "arena": { "dimensions": [1.8, 1.2], "floor": "light" } },
+  "layout": {
+    "spawn": { "translation": [-0.7, 0.03, 0.0], "rotation_z": 0.0 },
+    "line_track": { "width": 0.06, "points": [[-0.75, 0.03], [-0.2, 0.03], [-0.2, 0.42], [0.55, 0.42], [0.55, -0.2]] },
+    "obstacles": [],
+    "waypoints": []
+  },
+  "task": { "kind": "line-follow", "description": "Generated line-follow task." },
+  "controller": { "path": "controllers/demo-line_agent.py", "default_camera": "camera" },
+  "benchmark": { "profile": "line-follower", "duration_s": 20.0, "threshold_overrides": {} },
+  "sensors": { "required": ["camera_left_band", "camera_center_band", "camera_right_band"] },
+  "actuators": { "required": ["left_velocity", "right_velocity"] }
+}
+```
+
+### Waypoint-nav
+
+```json
+{
+  "schema_version": 1,
+  "project": { "name": "warehouse-demo" },
+  "scenario": { "name": "demo-waypoint", "kind": "waypoint-nav" },
+  "robot": { "template": "e-puck", "name": "epuck-demo-waypoint-waypoint-nav", "def": "EPUCK" },
+  "environment": { "template": "epuck-waypoint", "arena": { "dimensions": [2.0, 2.0], "floor": "plain" } },
+  "layout": {
+    "spawn": { "translation": [-0.65, 0.0, 0.0], "rotation_z": 0.0 },
+    "obstacles": [],
+    "waypoints": [[0.55, 0.0]],
+    "goal_region": { "center": [0.55, 0.0], "radius": 0.16 }
+  },
+  "task": { "kind": "waypoint-nav", "description": "Generated waypoint task." },
+  "controller": { "path": "controllers/demo-waypoint_agent.py", "default_camera": "camera" },
+  "benchmark": { "profile": "waypoint-nav", "duration_s": 20.0, "threshold_overrides": {} },
+  "sensors": { "required": ["ps0", "ps1", "ps2", "ps3", "ps4", "ps5", "ps6", "ps7"] },
+  "actuators": { "required": ["left_velocity", "right_velocity"] }
+}
+```
+
+### Obstacle-avoidance
+
+```json
+{
+  "schema_version": 1,
+  "project": { "name": "maze-demo" },
+  "scenario": { "name": "demo-obstacle", "kind": "obstacle-avoidance" },
+  "robot": { "template": "e-puck", "name": "epuck-demo-obstacle-obstacle-avoidance", "def": "EPUCK" },
+  "environment": { "template": "epuck-obstacle-course", "arena": { "dimensions": [2.0, 2.0], "floor": "grid" } },
+  "layout": {
+    "spawn": { "translation": [0.0, 0.0, 0.0], "rotation_z": 1.57 },
+    "obstacles": [
+      { "shape": "box", "position": [-0.68, 0.2], "size": [0.1, 0.1, 0.1], "rotation_z": 0.5 },
+      { "shape": "box", "position": [0.35, 0.75], "size": [0.1, 0.1, 0.1], "rotation_z": 4.96782 }
+    ],
+    "waypoints": []
+  },
+  "task": { "kind": "obstacle-avoidance", "description": "Generated obstacle-avoidance task." },
+  "controller": { "path": "controllers/demo-obstacle_agent.py", "default_camera": "camera" },
+  "benchmark": { "profile": "obstacle-avoidance", "duration_s": 20.0, "threshold_overrides": {} },
+  "sensors": { "required": ["ps0", "ps1", "ps2", "ps3", "ps4", "ps5", "ps6", "ps7"] },
+  "actuators": { "required": ["left_velocity", "right_velocity"] }
+}
+```
 
 ## Runtime flow after build
 

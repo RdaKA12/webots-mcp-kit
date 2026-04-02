@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.0
+
+- Expanded the template-driven zero-to-sim path with richer `ScenarioSpec` defaults, semantic validation, and a documented stable core subset for `v1.1.0`.
+- Added floor-aware world generation, richer `scenario doctor` readiness fields, and broader generated-scenario runtime smoke across line-follow, waypoint-nav, and obstacle-avoidance.
+- Extended the no-mock gate so generated scenarios for all three bundled task families are validated through real runtime `session start` and `benchmark run`.
+
 ## v1.0.0
 
 - Declared the Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots` runtime model as the stable supported baseline.

@@ -17,18 +17,45 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
     reports_dir = root / "reports"
     acceptance_workspace = root / "acceptance"
     generated_project = root / "generated-project"
-    generated_scenario_dir = generated_project / "scenarios" / "demo-waypoint"
-    generated_spec_path = generated_scenario_dir / "webots-kit.scenario.json"
-    generated_world = generated_scenario_dir / "worlds" / "demo-waypoint.wbt"
-    generated_controller = generated_scenario_dir / "controllers" / "demo-waypoint_agent.py"
-    generated_report = reports_dir / "generated-waypoint-report.json"
+    generated_cases = [
+        {
+            "name": "generated_line",
+            "dir": generated_project / "scenarios" / "demo-line",
+            "template": "epuck-line-track",
+            "benchmark": "line-follower",
+            "world": generated_project / "scenarios" / "demo-line" / "worlds" / "demo-line.wbt",
+            "controller": generated_project / "scenarios" / "demo-line" / "controllers" / "demo-line_agent.py",
+            "robot_name": "epuck-demo-line-line-follow",
+            "duration_s": "3",
+        },
+        {
+            "name": "generated_waypoint",
+            "dir": generated_project / "scenarios" / "demo-waypoint",
+            "template": "epuck-waypoint",
+            "benchmark": "waypoint-nav",
+            "world": generated_project / "scenarios" / "demo-waypoint" / "worlds" / "demo-waypoint.wbt",
+            "controller": generated_project / "scenarios" / "demo-waypoint" / "controllers" / "demo-waypoint_agent.py",
+            "robot_name": "epuck-demo-waypoint-waypoint-nav",
+            "duration_s": "5",
+        },
+        {
+            "name": "generated_obstacle",
+            "dir": generated_project / "scenarios" / "demo-obstacle",
+            "template": "epuck-obstacle-course",
+            "benchmark": "obstacle-avoidance",
+            "world": generated_project / "scenarios" / "demo-obstacle" / "worlds" / "demo-obstacle.wbt",
+            "controller": generated_project / "scenarios" / "demo-obstacle" / "controllers" / "demo-obstacle_agent.py",
+            "robot_name": "epuck-demo-obstacle-obstacle-avoidance",
+            "duration_s": "5",
+        },
+    ]
     bundle_root = bundled_example_root()
     import_world = bundle_root / "line-follower" / "worlds" / "line_follower_benchmark.wbt"
     import_controller = bundle_root / "line-follower" / "controllers" / "line_follower_agent.py"
     import_project_root = root / "imported-project"
     imported_export = root / "exports" / "imported-line"
 
-    return [
+    steps: list[GateStep] = [
         GateStep("doctor", ("doctor", "--json")),
         GateStep("clean_user_acceptance", ("..\\scripts\\clean_user_acceptance.py",)),  # marker step for the runner
         GateStep("bundled_benchmark_line", ("benchmark", "run", "line-follower", "--controller", "example", "--output", str(reports_dir / "line-follower.json"), "--duration-s", "3")),
@@ -41,52 +68,6 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
             ("benchmark", "run", "waypoint-nav", "--controller", "example", "--output", str(reports_dir / "waypoint-nav.json"), "--duration-s", "20"),
         ),
         GateStep("generated_project_init", ("project", "init", str(generated_project), "--force")),
-        GateStep("generated_scenario_init", ("scenario", "init", str(generated_scenario_dir), "--template", "epuck-waypoint", "--force")),
-        GateStep("generated_scenario_validate", ("scenario", "validate", str(generated_spec_path))),
-        GateStep("generated_scenario_build", ("scenario", "build", str(generated_spec_path), "--force")),
-        GateStep(
-            "generated_session_start",
-            (
-                "session",
-                "start",
-                "--scenario",
-                "waypoint-nav",
-                "--world",
-                str(generated_world),
-                "--controller",
-                str(generated_controller),
-                "--robot-name",
-                "epuck-demo-waypoint-waypoint-nav",
-                "--robot-def",
-                "EPUCK",
-                "--mode",
-                "fast",
-                "--render",
-                "off",
-            ),
-        ),
-        GateStep("generated_session_inspect", ("session", "inspect", "--session", "{generated_session_id}")),
-        GateStep("generated_session_stop", ("session", "stop", "--session", "{generated_session_id}")),
-        GateStep(
-            "generated_benchmark_run",
-            (
-                "benchmark",
-                "run",
-                "waypoint-nav",
-                "--controller",
-                str(generated_controller),
-                "--world",
-                str(generated_world),
-                "--robot-name",
-                "epuck-demo-waypoint-waypoint-nav",
-                "--robot-def",
-                "EPUCK",
-                "--output",
-                str(generated_report),
-                "--duration-s",
-                "5",
-            ),
-        ),
         GateStep(
             "import_project",
             ("project", "import", "--world", str(import_world), "--controller", str(import_controller), "--project-root", str(import_project_root)),
@@ -98,3 +79,59 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
         GateStep("imported_session_replay", ("session", "replay", str(imported_export))),
         GateStep("imported_session_replay_manifest", ("session", "replay", str(imported_export / "export.json"))),
     ]
+    generated_steps: list[GateStep] = []
+    for case in generated_cases:
+        spec_path = case["dir"] / "webots-kit.scenario.json"
+        report_path = reports_dir / f"{case['name']}-report.json"
+        session_token = "{" + f"{case['name']}_session_id" + "}"
+        generated_steps.extend(
+            [
+                GateStep(f"{case['name']}_scenario_init", ("scenario", "init", str(case["dir"]), "--template", str(case["template"]), "--force")),
+                GateStep(f"{case['name']}_scenario_validate", ("scenario", "validate", str(spec_path))),
+                GateStep(f"{case['name']}_scenario_build", ("scenario", "build", str(spec_path), "--force")),
+                GateStep(
+                    f"{case['name']}_session_start",
+                    (
+                        "session",
+                        "start",
+                        "--scenario",
+                        str(case["benchmark"]),
+                        "--world",
+                        str(case["world"]),
+                        "--controller",
+                        str(case["controller"]),
+                        "--robot-name",
+                        str(case["robot_name"]),
+                        "--robot-def",
+                        "EPUCK",
+                        "--mode",
+                        "fast",
+                        "--render",
+                        "off",
+                    ),
+                ),
+                GateStep(f"{case['name']}_session_stop", ("session", "stop", "--session", session_token)),
+                GateStep(
+                    f"{case['name']}_benchmark_run",
+                    (
+                        "benchmark",
+                        "run",
+                        str(case["benchmark"]),
+                        "--controller",
+                        str(case["controller"]),
+                        "--world",
+                        str(case["world"]),
+                        "--robot-name",
+                        str(case["robot_name"]),
+                        "--robot-def",
+                        "EPUCK",
+                        "--output",
+                        str(report_path),
+                        "--duration-s",
+                        str(case["duration_s"]),
+                    ),
+                ),
+            ]
+        )
+    insert_at = steps.index(next(step for step in steps if step.name == "import_project"))
+    return [*steps[:insert_at], *generated_steps, *steps[insert_at:]]

@@ -20,9 +20,9 @@ This script validates:
 - `doctor`
 - the clean-user acceptance flow
 - all 3 bundled scenario benchmarks
-- generated scenario init/validate/build
-- generated scenario `session start`
-- generated scenario `benchmark run`
+- generated line-follow scenario init/validate/build plus `session start` and `benchmark run`
+- generated waypoint scenario init/validate/build plus `session start` and `benchmark run`
+- generated obstacle-avoidance scenario init/validate/build plus `session start` and `benchmark run`
 - imported-project metadata creation
 - imported-project `session export`
 - imported-project `session replay`

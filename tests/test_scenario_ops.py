@@ -39,6 +39,8 @@ def test_scenario_init_validate_build_creates_assets(tmp_path: Path) -> None:
     report = validate_scenario(scenario_dir / "webots-kit.scenario.json")
     assert report.valid is True
     assert report.benchmark_name == "waypoint-nav"
+    assert report.normalized["benchmark"]["profile"] == "waypoint-nav"
+    assert report.normalized["environment"]["arena"]["floor"] == "plain"
     assert "summary:" in format_scenario_validation_report(report)
 
     generated = build_scenario(scenario_dir / "webots-kit.scenario.json")
@@ -63,6 +65,7 @@ def test_line_track_build_writes_track_segments(tmp_path: Path) -> None:
     generated = build_scenario(scenario_dir / "webots-kit.scenario.json")
     world_text = Path(generated.world_path).read_text(encoding="utf-8")
     assert "line-segment-1" in world_text
+    assert "floor-style-light" in world_text
 
 
 def test_scenario_doctor_reports_ready_for_valid_spec(tmp_path: Path) -> None:
@@ -75,7 +78,91 @@ def test_scenario_doctor_reports_ready_for_valid_spec(tmp_path: Path) -> None:
     assert payload["support_tier"] == "experimental-foundation"
     assert payload["benchmark_ready"] is True
     assert payload["mcp_ready"] is True
+    assert payload["benchmark_readiness"]["ready"] is True
+    assert payload["controller_contract_readiness"]["ready"] is True
+    assert payload["build_readiness"]["ready"] is True
+    assert payload["runtime_smoke_readiness"]["ready"] is True
     assert "support_tier: experimental-foundation" in format_scenario_doctor_report(payload)
+    assert "benchmark_readiness: True" in format_scenario_doctor_report(payload)
+
+
+def test_all_builtin_templates_validate_and_build(tmp_path: Path) -> None:
+    project_root = tmp_path / "all-templates"
+    init_project(project_root)
+    templates = {
+        "epuck-line-track": "line-follow",
+        "epuck-waypoint": "waypoint-nav",
+        "epuck-obstacle-course": "obstacle-avoidance",
+    }
+    for template, expected_kind in templates.items():
+        scenario_dir = project_root / "scenarios" / template
+        init_scenario(scenario_dir, template=template)
+        report = validate_scenario(scenario_dir / "webots-kit.scenario.json")
+        assert report.valid is True
+        assert report.scenario_kind == expected_kind
+        generated = build_scenario(scenario_dir / "webots-kit.scenario.json")
+        assert Path(generated.world_path).exists()
+        assert Path(generated.controller_path).exists()
+
+
+def test_validate_line_follow_rejects_dark_floor(tmp_path: Path) -> None:
+    project_root = tmp_path / "dark-floor"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-line"
+    init_scenario(scenario_dir, template="epuck-line-track")
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["environment"]["arena"]["floor"] = "dark"
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = validate_scenario(spec_path)
+    assert report.valid is False
+    assert any(issue.code == "unsupported-floor-task-combination" for issue in report.issues)
+
+
+def test_validate_goal_region_mismatch_is_rejected(tmp_path: Path) -> None:
+    project_root = tmp_path / "goal-mismatch"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-waypoint"
+    init_scenario(scenario_dir, template="epuck-waypoint")
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["goal_region"] = {"center": [0.1, 0.1], "radius": 0.16}
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = validate_scenario(spec_path)
+    assert report.valid is False
+    assert any(issue.code == "goal-region-waypoint-mismatch" for issue in report.issues)
+
+
+def test_validate_obstacle_shape_field_mismatch_is_rejected(tmp_path: Path) -> None:
+    project_root = tmp_path / "obstacle-mismatch"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-obstacle"
+    init_scenario(scenario_dir, template="epuck-obstacle-course")
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["obstacles"][0]["radius"] = 0.2
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = validate_scenario(spec_path)
+    assert report.valid is False
+    assert any(issue.code == "obstacle-shape-field-mismatch" for issue in report.issues)
+
+
+def test_validate_line_track_out_of_bounds_is_rejected(tmp_path: Path) -> None:
+    project_root = tmp_path / "line-bounds"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-line"
+    init_scenario(scenario_dir, template="epuck-line-track")
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["line_track"]["points"] = [[-2.5, 0.0], [2.5, 0.0]]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = validate_scenario(spec_path)
+    assert report.valid is False
+    assert any(issue.code == "line-track-point-out-of-bounds" for issue in report.issues)
 
 
 def test_project_import_creates_metadata(tmp_path: Path) -> None:
