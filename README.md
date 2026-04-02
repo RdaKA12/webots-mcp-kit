@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Release
 
-`v1.2.0`
+`v1.3.0-alpha.1`
 
 Stable baseline:
 
@@ -33,6 +33,7 @@ Stable baseline:
 - explicit no-mock `v1.0.0` gate validation for real runtime workflows
 - richer zero-to-sim validation, doctoring, and generated runtime smoke across all three bundled task families
 - deterministic import discovery and replay triage summaries for existing project workflows
+- experimental agent-authoring foundations for controller inspect/edit and world inspect/validate/edit
 
 Operational runtime model:
 
@@ -48,6 +49,7 @@ Supported:
 - Python `3.11+`
 - interactive self-hosted runtime through the `interactive-webots` runner label as the only supported runtime execution model
 - foundation workflows for `project init`, `scenario init`, `scenario validate`, `scenario build`, `scenario describe`, `scenario doctor`, `project import`, `session export`, and `session replay`
+- experimental-foundation workflows for `controller inspect`, `controller edit`, `world inspect`, `world validate`, and `world edit`
 
 Foundation schema note:
 
@@ -116,8 +118,17 @@ webots-kit benchmark report .\report.json
 
 ```powershell
 webots-kit controller scaffold .\controllers\my_agent.py --scenario line-follower
+webots-kit controller inspect .\controllers\my_agent.py --scenario line-follower
 webots-kit controller validate .\controllers\my_agent.py --scenario line-follower --strict --json
 webots-kit benchmark run line-follower --controller .\controllers\my_agent.py --output .\report.json
+```
+
+### I want to inspect or edit a world
+
+```powershell
+webots-kit world inspect .\worlds\demo.wbt
+webots-kit world validate .\worlds\demo.wbt
+webots-kit world edit .\worlds\demo.wbt --plan .\plans\world-edit.json
 ```
 
 ### I want to generate a scenario from a spec
@@ -151,7 +162,9 @@ webots-kit session replay .\artifacts\exports\<session-id>
 - `webots-kit benchmark run <scenario> --controller <path-or-id> --output <report.json> [--duration-s <seconds>] [--world <path>] [--robot-name <name>] [--robot-def <def>]`
 - `webots-kit benchmark report <report.json>`
 - `webots-kit controller validate <path> [--scenario <name>] [--strict] [--json]`
-- `webots-kit controller scaffold <path> [--scenario <name>] [--force]`
+- `webots-kit controller scaffold <path> [--scenario <name>] [--language python|cpp] [--force]`
+- `webots-kit controller inspect <path> [--scenario <name>] [--json]`
+- `webots-kit controller edit <path> --plan <controller-edit.json>`
 - `webots-kit project init <path> [--name <name>] [--force]`
 - `webots-kit project import --world <path> --controller <path> [--project-root <path>]`
 - `webots-kit scenario init <path> --template <template> [--force]`
@@ -159,6 +172,9 @@ webots-kit session replay .\artifacts\exports\<session-id>
 - `webots-kit scenario build <spec-path> [--force]`
 - `webots-kit scenario describe <spec-path>`
 - `webots-kit scenario doctor <spec-path> [--json]`
+- `webots-kit world inspect <wbt-path> [--json]`
+- `webots-kit world validate <wbt-path> [--json]`
+- `webots-kit world edit <wbt-path> --plan <world-edit.json>`
 - `webots-kit mcp serve`
 
 Supported zero-to-sim templates:
@@ -179,7 +195,7 @@ Foundation status for the zero-to-sim surface:
 There are two supported usage paths:
 
 - bundled example controllers under `examples/`
-- user-supplied Python controllers that integrate with `ControllerAgent`
+- user-supplied Python or C++ controllers that integrate with `ControllerAgent`
 
 The public controller-side entrypoint is `ControllerAgent`.
 The stable public contract is:
@@ -210,6 +226,7 @@ while robot.step(int(robot.getBasicTimeStep())) != -1:
 
 Use `webots-kit controller validate <path>` to check whether a controller follows the expected integration pattern.
 Use `webots-kit controller scaffold` when you want a working starter file based on a bundled scenario.
+Use `webots-kit controller inspect` and `webots-kit controller edit` when an agent needs structured visibility and safe patch regions.
 
 ## MCP tools
 
@@ -225,6 +242,13 @@ Use `webots-kit controller scaffold` when you want a working starter file based 
 - `webots_pause_resume`
 - `webots_reset`
 - `webots_run_benchmark`
+- `webots_world_inspect`
+- `webots_world_validate`
+- `webots_world_edit`
+- `webots_controller_inspect`
+- `webots_controller_scaffold`
+- `webots_controller_validate`
+- `webots_controller_edit`
 
 Stable payload shapes:
 
@@ -240,13 +264,17 @@ Stable payload shapes:
 Reference docs:
 
 - [Onboarding flows](./docs/onboarding-flows.md)
+- [Controller authoring and editing](./docs/controller-authoring-and-editing.md)
+- [World authoring and editing](./docs/world-authoring-and-editing.md)
 - [v1.0.0 gate](./docs/v1-gate.md)
 - [First hour guide](./docs/first-hour-guide.md)
 - [MCP contracts](./docs/mcp-contracts.md)
 - [Self-hosted runtime smoke](./docs/self-hosted-windows-runner.md)
 - [Custom controller integration](./docs/custom-controller-integration.md)
+- [Controller authoring and editing](./docs/controller-authoring-and-editing.md)
 - [Add a new scenario](./docs/new-scenario-guide.md)
 - [Zero-to-sim guide](./docs/zero-to-sim.md)
+- [World authoring and editing](./docs/world-authoring-and-editing.md)
 - [Project import and session replay](./docs/project-import-and-replay.md)
 - [Failed runtime smoke triage](./docs/failed-runtime-smoke-triage.md)
 - [PyPI install and upgrade](./docs/pypi-install-and-upgrade.md)

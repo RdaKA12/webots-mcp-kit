@@ -25,6 +25,7 @@ For bundled scenarios, camera support is expected through `default_camera="camer
 
 ```powershell
 webots-kit controller scaffold .\controllers\my_agent.py --scenario line-follower
+webots-kit controller scaffold .\controllers\my_agent.cpp --scenario waypoint-nav --language cpp
 ```
 
 ### 2. Integrate your own logic without changing the agent contract
@@ -52,12 +53,19 @@ Quick validation:
 
 ```powershell
 webots-kit controller validate .\controllers\my_agent.py --scenario line-follower
+webots-kit controller inspect .\controllers\my_agent.py --scenario line-follower
 ```
 
 Release-grade validation:
 
 ```powershell
 webots-kit controller validate .\controllers\my_agent.py --scenario line-follower --strict --json
+```
+
+### 3b. Apply a structured edit plan
+
+```powershell
+webots-kit controller edit .\controllers\my_agent.py --plan .\plans\controller-edit.json
 ```
 
 ### 4. Benchmark
@@ -85,4 +93,5 @@ Recommended first tools:
 
 - This flow is supported from both a source checkout and a PyPI install.
 - `--strict` is meant for release-grade validation, not early sketches.
+- `controller inspect` and `controller edit` are `experimental-foundation` surfaces for agent-driven authoring.
 - If validation passes but runtime still fails, inspect `session inspect` and `session logs` before changing the controller contract.

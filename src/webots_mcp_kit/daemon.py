@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .benchmarks import get_scenario
+from .controller_authoring import build_controller_runtime_command
 from .errors import error_dict, error_from_exception
 from .environment import build_process_env, current_python, get_webots_environment, repo_root, software_opengl_requested
 from .models import RuntimeSnapshot, SessionManifest
@@ -255,8 +256,11 @@ class SessionDaemon:
         raw_name = next((part for part in reversed(url.split("/")) if part and ":" not in part), "")
         name = self.runtime_url_aliases.get(raw_name, raw_name)
         if name == self.manifest.target_robot_name:
-            command = [current_python(), str(self.robot_controller)]
-            cwd = str(self.robot_controller.parent)
+            runtime_dir = self.artifacts_dir / "controller-build" / self.robot_controller.stem
+            runtime_dir.mkdir(parents=True, exist_ok=True)
+            command, cwd, built_artifacts = build_controller_runtime_command(self.robot_controller, output_dir=runtime_dir)
+            for artifact in built_artifacts:
+                self.manifest.last_error_details.setdefault("controller_build_artifacts", []).append(artifact)
         elif name == "kit-supervisor":
             command = [current_python(), "-m", "webots_mcp_kit.runtime.supervisor_main"]
             cwd = str(repo_root())

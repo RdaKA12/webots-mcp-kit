@@ -7,8 +7,12 @@ from mcp.server.fastmcp import FastMCP
 
 from .benchmark import run_benchmark
 from .client import SessionClient
+from .controller_authoring import edit_controller, inspect_controller
+from .controller_scaffold import scaffold_controller
+from .controller_validation import validate_controller
 from .errors import KitError, error_dict
 from .launcher import start_session
+from .world_ops import edit_world, inspect_world, validate_world
 
 mcp = FastMCP("webots-mcp-kit", json_response=True)
 
@@ -93,6 +97,18 @@ def _normalize_benchmark_payload(payload: Any) -> dict[str, Any]:
     normalized["artifacts"] = payload.get("artifacts") if isinstance(payload.get("artifacts"), dict) else {}
     normalized["notes"] = payload.get("notes") if isinstance(payload.get("notes"), list) else []
     normalized["extra_metrics"] = payload.get("extra_metrics") if isinstance(payload.get("extra_metrics"), dict) else {}
+    return normalized
+
+
+def _normalize_validation_payload(payload: Any) -> dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+    normalized = dict(payload)
+    normalized["path"] = payload.get("path")
+    normalized["valid"] = bool(payload.get("valid", False))
+    normalized["integration_mode"] = payload.get("integration_mode")
+    normalized["errors"] = payload.get("errors") if isinstance(payload.get("errors"), list) else []
+    normalized["warnings"] = payload.get("warnings") if isinstance(payload.get("warnings"), list) else []
+    normalized["details"] = payload.get("details") if isinstance(payload.get("details"), dict) else {}
     return normalized
 
 
@@ -221,6 +237,80 @@ def webots_run_benchmark(
         output_path = Path(output or f"{scenario}-report.json")
         report = run_benchmark(scenario=scenario, controller=controller, output=output_path, duration_s=duration_s)
         return _normalize_benchmark_payload(report.to_dict())
+    except Exception as exc:
+        return _tool_error(exc)
+
+
+@mcp.tool()
+def webots_world_inspect(path: str) -> dict[str, Any]:
+    try:
+        return inspect_world(Path(path))
+    except Exception as exc:
+        return _tool_error(exc)
+
+
+@mcp.tool()
+def webots_world_validate(path: str) -> dict[str, Any]:
+    try:
+        return validate_world(Path(path))
+    except Exception as exc:
+        return _tool_error(exc)
+
+
+@mcp.tool()
+def webots_world_edit(path: str, plan: str) -> dict[str, Any]:
+    try:
+        return edit_world(Path(path), plan_path=Path(plan))
+    except Exception as exc:
+        return _tool_error(exc)
+
+
+@mcp.tool()
+def webots_controller_inspect(path: str, scenario: str | None = None, spec: str | None = None) -> dict[str, Any]:
+    try:
+        return inspect_controller(Path(path), scenario=scenario, spec_path=Path(spec) if spec else None).to_dict()
+    except Exception as exc:
+        return _tool_error(exc)
+
+
+@mcp.tool()
+def webots_controller_scaffold(
+    path: str,
+    scenario: str = "line-follower",
+    language: str = "python",
+    spec: str | None = None,
+    world: str | None = None,
+    robot_name: str | None = None,
+    robot_def: str | None = None,
+) -> dict[str, Any]:
+    try:
+        return scaffold_controller(
+            path=Path(path),
+            scenario=scenario,
+            language=language,
+            spec_path=Path(spec) if spec else None,
+            world=Path(world) if world else None,
+            robot_name=robot_name,
+            robot_def=robot_def,
+        )
+    except Exception as exc:
+        return _tool_error(exc)
+
+
+@mcp.tool()
+def webots_controller_validate(path: str, scenario: str | None = None, strict: bool = False, spec: str | None = None) -> dict[str, Any]:
+    try:
+        return _normalize_validation_payload(
+            validate_controller(Path(path), scenario=scenario, strict=strict, spec_path=Path(spec) if spec else None).to_dict()
+        )
+    except Exception as exc:
+        return _tool_error(exc)
+
+
+@mcp.tool()
+def webots_controller_edit(path: str, plan: str) -> dict[str, Any]:
+    try:
+        return edit_controller(Path(path), plan_path=Path(plan))
     except Exception as exc:
         return _tool_error(exc)
 

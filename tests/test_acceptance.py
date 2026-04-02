@@ -13,12 +13,17 @@ def test_clean_user_acceptance_steps_cover_expected_flow(tmp_path: Path) -> None
         "benchmark_list",
         "controller_scaffold",
         "controller_validate",
+        "controller_inspect",
+        "controller_edit",
         "project_init",
         "scenario_init",
         "scenario_validate",
         "scenario_build",
         "scenario_describe",
         "scenario_doctor",
+        "world_inspect",
+        "world_validate",
+        "world_edit",
         "project_import",
     ]
     project_import = steps[-1]

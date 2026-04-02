@@ -26,6 +26,7 @@ from .models import (
 )
 from .session_store import SessionStore
 from .utils import atomic_write_text, utc_now_iso
+from .world_ops import inspect_world
 
 PROJECT_MANIFEST_FILENAME = "webots-kit.project.json"
 SCENARIO_SPEC_FILENAME = "webots-kit.scenario.json"
@@ -362,6 +363,48 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
                     )
                 )
 
+    for index, wall in enumerate(spec.layout.get("walls", [])):
+        if not isinstance(wall, dict):
+            issues.append(ValidationIssue("invalid-wall", f"Wall #{index + 1} must be an object.", f"layout.walls[{index}]"))
+            continue
+        if not _is_numeric_list(wall.get("start"), 2) or not _is_numeric_list(wall.get("end"), 2):
+            issues.append(ValidationIssue("invalid-wall-segment", "Walls must define start and end XY points.", f"layout.walls[{index}]"))
+        thickness = wall.get("thickness", 0.02)
+        height = wall.get("height", 0.08)
+        if not isinstance(thickness, (int, float)) or float(thickness) <= 0:
+            issues.append(ValidationIssue("invalid-wall-thickness", "Walls must define a positive thickness.", f"layout.walls[{index}].thickness"))
+        if not isinstance(height, (int, float)) or float(height) <= 0:
+            issues.append(ValidationIssue("invalid-wall-height", "Walls must define a positive height.", f"layout.walls[{index}].height"))
+
+    for index, landmark in enumerate(spec.layout.get("landmarks", [])):
+        if not isinstance(landmark, dict):
+            issues.append(ValidationIssue("invalid-landmark", f"Landmark #{index + 1} must be an object.", f"layout.landmarks[{index}]"))
+            continue
+        if not _is_numeric_list(landmark.get("position"), 2):
+            issues.append(ValidationIssue("invalid-landmark-position", "Landmarks must define XY positions.", f"layout.landmarks[{index}].position"))
+        radius = landmark.get("radius", 0.04)
+        if not isinstance(radius, (int, float)) or float(radius) <= 0:
+            issues.append(ValidationIssue("invalid-landmark-radius", "Landmarks must define a positive radius.", f"layout.landmarks[{index}].radius"))
+
+    for index, zone in enumerate(spec.layout.get("zones", [])):
+        if not isinstance(zone, dict):
+            issues.append(ValidationIssue("invalid-zone", f"Zone #{index + 1} must be an object.", f"layout.zones[{index}]"))
+            continue
+        if not _is_numeric_list(zone.get("center"), 2):
+            issues.append(ValidationIssue("invalid-zone-center", "Zones must define XY centers.", f"layout.zones[{index}].center"))
+        if not _is_numeric_list(zone.get("size"), 2):
+            issues.append(ValidationIssue("invalid-zone-size", "Zones must define a two-item XY size.", f"layout.zones[{index}].size"))
+
+    for index, prop in enumerate(spec.layout.get("props", [])):
+        if not isinstance(prop, dict):
+            issues.append(ValidationIssue("invalid-prop", f"Prop #{index + 1} must be an object.", f"layout.props[{index}]"))
+            continue
+        if not _is_numeric_list(prop.get("position"), 2):
+            issues.append(ValidationIssue("invalid-prop-position", "Props must define XY positions.", f"layout.props[{index}].position"))
+        size = prop.get("size", [0.08, 0.08, 0.08])
+        if not _is_numeric_list(size, 3) or any(float(item) <= 0 for item in size):
+            issues.append(ValidationIssue("invalid-prop-size", "Props must define a positive three-item size list.", f"layout.props[{index}].size"))
+
     if not _str_field(spec.controller, "path"):
         issues.append(ValidationIssue("missing-controller-path", "controller.path is required.", "controller.path"))
     if scenario_def and scenario_def.default_camera and not _str_field(spec.controller, "default_camera"):
@@ -435,7 +478,9 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         raise FileExistsError(f"Refusing to overwrite existing world file: {world_path}")
 
     atomic_write_text(world_path, build_world_text(spec), encoding="utf-8")
-    scaffold_controller(path=controller_path, scenario=report.benchmark_name or "waypoint-nav", force=force)
+    controller_language = "cpp" if controller_path.suffix.lower() in {".cpp", ".cc", ".cxx"} else "python"
+    scaffold_controller(path=controller_path, scenario=report.benchmark_name or "waypoint-nav", force=force, language=controller_language)
+    world_inventory = inspect_world(world_path)
 
     benchmark_name = report.benchmark_name or "waypoint-nav"
     benchmark_profile = get_scenario(benchmark_name)
@@ -481,7 +526,8 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         suggested_session_command=suggested_session_command,
         suggested_benchmark_command=suggested_benchmark_command,
     )
-    atomic_write_text(metadata_path, json.dumps(generated.to_dict(), indent=2), encoding="utf-8")
+    metadata_payload = {**generated.to_dict(), "supported_edit_targets": world_inventory["supported_edit_targets"]}
+    atomic_write_text(metadata_path, json.dumps(metadata_payload, indent=2), encoding="utf-8")
     return generated
 
 
@@ -499,6 +545,10 @@ def describe_scenario(path: Path) -> str:
         f"arena_floor: {arena.get('floor')}",
         f"waypoints: {len(layout.get('waypoints', [])) if isinstance(layout.get('waypoints'), list) else 0}",
         f"obstacles: {len(layout.get('obstacles', [])) if isinstance(layout.get('obstacles'), list) else 0}",
+        f"walls: {len(layout.get('walls', [])) if isinstance(layout.get('walls'), list) else 0}",
+        f"landmarks: {len(layout.get('landmarks', [])) if isinstance(layout.get('landmarks'), list) else 0}",
+        f"zones: {len(layout.get('zones', [])) if isinstance(layout.get('zones'), list) else 0}",
+        f"props: {len(layout.get('props', [])) if isinstance(layout.get('props'), list) else 0}",
         f"default_camera: {spec.controller.get('default_camera')}",
         f"benchmark_profile: {report.benchmark_name}",
         f"status: {'valid' if report.valid else 'invalid'}",
@@ -572,6 +622,17 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "recommended_mode": "fast",
         "recommended_render": "off",
     }
+    world_authoring_readiness = {
+        "ready": report.valid,
+        "supported_edit_targets": ["spawn", "obstacles", "walls", "landmarks", "zones", "props"],
+        "counts": {
+            "obstacles": len(spec.layout.get("obstacles", [])) if isinstance(spec.layout.get("obstacles"), list) else 0,
+            "walls": len(spec.layout.get("walls", [])) if isinstance(spec.layout.get("walls"), list) else 0,
+            "landmarks": len(spec.layout.get("landmarks", [])) if isinstance(spec.layout.get("landmarks"), list) else 0,
+            "zones": len(spec.layout.get("zones", [])) if isinstance(spec.layout.get("zones"), list) else 0,
+            "props": len(spec.layout.get("props", [])) if isinstance(spec.layout.get("props"), list) else 0,
+        },
+    }
     next_step = f"Run `webots-kit scenario build \"{spec_path}\"` once the validation issues are fixed."
     if report.valid and benchmark_name:
         next_step = (
@@ -593,6 +654,7 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "controller_contract_readiness": controller_contract_readiness,
         "build_readiness": build_readiness,
         "runtime_smoke_readiness": runtime_smoke_readiness,
+        "world_authoring_readiness": world_authoring_readiness,
         "issues": [issue.to_dict() for issue in report.issues],
         "support_tier": "experimental-foundation",
         "next_step": next_step,
@@ -617,6 +679,7 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
     suggested_benchmark_name = SUPPORTED_TASKS[inferred_kind]
     discovered_robot_name, discovered_robot_def = _discover_world_robot_identity(world_path, suggested_benchmark_name)
     discovered_devices = _discover_controller_devices(controller_path)
+    world_inventory = inspect_world(world_path)
     scenario_name = f"imported-{world_path.stem}"
     scenario_dir = root / "scenarios" / scenario_name
     scenario_dir.mkdir(parents=True, exist_ok=True)
@@ -644,6 +707,7 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "discovered_devices": discovered_devices,
         "suggested_benchmark_name": suggested_benchmark_name,
         "minimal_scenario_metadata": minimal_scenario_metadata,
+        "world_inventory": world_inventory,
     }
     spec.environment["imported"] = True
     atomic_write_text(spec_path, json.dumps(spec.to_dict(), indent=2), encoding="utf-8")
@@ -660,6 +724,8 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "discovered_robot_def": discovered_robot_def,
         "discovered_devices": discovered_devices,
         "minimal_scenario_metadata": minimal_scenario_metadata,
+        "world_inventory": world_inventory,
+        "edit_target_summary": world_inventory["supported_edit_targets"],
         "support_tier": "experimental-foundation",
     }
 
@@ -850,6 +916,7 @@ def format_scenario_doctor_report(payload: dict[str, Any]) -> str:
         f"controller_contract_readiness: {payload.get('controller_contract_readiness', {}).get('ready')}",
         f"build_readiness: {payload.get('build_readiness', {}).get('ready')}",
         f"runtime_smoke_readiness: {payload.get('runtime_smoke_readiness', {}).get('ready')}",
+        f"world_authoring_readiness: {payload.get('world_authoring_readiness', {}).get('ready')}",
         f"unsupported_combinations: {len(payload.get('unsupported_combinations', []))}",
         f"summary: {len(payload.get('issues', []))} issues",
         "support_tier: experimental-foundation",
@@ -926,6 +993,14 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
   locked TRUE
 }}"""
         )
+    for index, wall in enumerate(spec.layout.get("walls", []), start=1):
+        segment_nodes.append(_wall_block(index, wall))
+    for index, landmark in enumerate(spec.layout.get("landmarks", []), start=1):
+        segment_nodes.append(_landmark_block(index, landmark))
+    for index, zone in enumerate(spec.layout.get("zones", []), start=1):
+        segment_nodes.append(_zone_block(index, zone))
+    for index, prop in enumerate(spec.layout.get("props", []), start=1):
+        segment_nodes.append(_prop_block(index, prop))
     return _world_shell(
         title=f"{spec.project['name']} {spec.scenario['name']}",
         info_lines=["Generated by webots-kit scenario build.", "Template-driven line-follow scenario."],
@@ -943,6 +1018,14 @@ def _build_arena_world(spec: ScenarioSpec) -> str:
     body_nodes: list[str] = []
     for index, obstacle in enumerate(spec.layout.get("obstacles", []), start=1):
         body_nodes.append(_obstacle_block(index, obstacle))
+    for index, wall in enumerate(spec.layout.get("walls", []), start=1):
+        body_nodes.append(_wall_block(index, wall))
+    for index, landmark in enumerate(spec.layout.get("landmarks", []), start=1):
+        body_nodes.append(_landmark_block(index, landmark))
+    for index, zone in enumerate(spec.layout.get("zones", []), start=1):
+        body_nodes.append(_zone_block(index, zone))
+    for index, prop in enumerate(spec.layout.get("props", []), start=1):
+        body_nodes.append(_prop_block(index, prop))
     if spec.scenario["kind"] == "waypoint-nav":
         goal = spec.layout.get("goal_region") or {"center": spec.layout["waypoints"][-1], "radius": 0.16}
         body_nodes.append(_goal_block(goal))
@@ -1123,6 +1206,105 @@ def _obstacle_block(index: int, obstacle: dict[str, Any]) -> str:
 }}"""
 
 
+def _wall_block(index: int, wall: dict[str, Any]) -> str:
+    start = wall.get("start", [-0.3, 0.0])
+    end = wall.get("end", [0.3, 0.0])
+    thickness = float(wall.get("thickness", 0.02))
+    height = float(wall.get("height", 0.08))
+    dx = float(end[0]) - float(start[0])
+    dy = float(end[1]) - float(start[1])
+    length = math.hypot(dx, dy)
+    center_x = (float(start[0]) + float(end[0])) / 2
+    center_y = (float(start[1]) + float(end[1])) / 2
+    rotation = math.atan2(dy, dx) if length > 0 else 0.0
+    return f"""Solid {{
+  translation {_fmt(center_x)} {_fmt(center_y)} {_fmt(height / 2)}
+  rotation 0 0 1 {_fmt(rotation)}
+  children [
+    DEF WALL_{index} Shape {{
+      appearance PBRAppearance {{
+        baseColor 0.4 0.4 0.4
+        roughness 1
+        metalness 0
+      }}
+      geometry Box {{
+        size {_fmt(length)} {_fmt(thickness)} {_fmt(height)}
+      }}
+    }}
+  ]
+  name "{wall.get('name', f'wall-{index}')}"
+  boundingObject USE WALL_{index}
+}}"""
+
+
+def _landmark_block(index: int, landmark: dict[str, Any]) -> str:
+    position = landmark.get("position", [0.0, 0.0])
+    radius = float(landmark.get("radius", 0.04))
+    return f"""Solid {{
+  translation {_fmt(position[0])} {_fmt(position[1])} 0.005
+  children [
+    Shape {{
+      appearance PBRAppearance {{
+        baseColor 0.15 0.3 0.9
+        roughness 1
+        metalness 0
+      }}
+      geometry Cylinder {{
+        height 0.01
+        radius {_fmt(radius)}
+      }}
+    }}
+  ]
+  name "{landmark.get('name', f'landmark-{index}')}"
+  locked TRUE
+}}"""
+
+
+def _zone_block(index: int, zone: dict[str, Any]) -> str:
+    center = zone.get("center", [0.0, 0.0])
+    size = zone.get("size", [0.2, 0.2])
+    return f"""Solid {{
+  translation {_fmt(center[0])} {_fmt(center[1])} 0.001
+  children [
+    Shape {{
+      appearance PBRAppearance {{
+        baseColor 0.08 0.7 0.38
+        transparency 0.35
+        roughness 1
+        metalness 0
+      }}
+      geometry Box {{
+        size {_fmt(size[0])} {_fmt(size[1])} 0.002
+      }}
+    }}
+  ]
+  name "{zone.get('name', f'zone-{index}')}"
+  locked TRUE
+}}"""
+
+
+def _prop_block(index: int, prop: dict[str, Any]) -> str:
+    position = prop.get("position", [0.0, 0.0])
+    size = prop.get("size", [0.08, 0.08, 0.08])
+    return f"""Solid {{
+  translation {_fmt(position[0])} {_fmt(position[1])} {_fmt(float(size[2]) / 2)}
+  children [
+    DEF PROP_{index} Shape {{
+      appearance PBRAppearance {{
+        baseColor 0.72 0.53 0.27
+        roughness 1
+        metalness 0
+      }}
+      geometry Box {{
+        size {_fmt(size[0])} {_fmt(size[1])} {_fmt(size[2])}
+      }}
+    }}
+  ]
+  name "{prop.get('name', f'prop-{index}')}"
+  boundingObject USE PROP_{index}
+}}"""
+
+
 def _goal_block(goal: dict[str, Any]) -> str:
     center = goal.get("center", [0.55, 0.0])
     radius = float(goal.get("radius", 0.16))
@@ -1195,6 +1377,10 @@ def _template_defaults(template: str) -> dict[str, Any]:
                 "spawn": {"translation": [-0.7, 0.03, 0.0], "rotation_z": 0.0},
                 "line_track": {"width": 0.06, "points": [[-0.75, 0.03], [-0.2, 0.03], [-0.2, 0.42], [0.55, 0.42], [0.55, -0.2]]},
                 "obstacles": [],
+                "walls": [],
+                "landmarks": [],
+                "zones": [],
+                "props": [],
                 "waypoints": [],
             },
         },
@@ -1203,6 +1389,10 @@ def _template_defaults(template: str) -> dict[str, Any]:
             "layout": {
                 "spawn": {"translation": [-0.65, 0.0, 0.0], "rotation_z": 0.0},
                 "obstacles": [],
+                "walls": [],
+                "landmarks": [],
+                "zones": [],
+                "props": [],
                 "waypoints": [[0.55, 0.0]],
                 "goal_region": {"center": [0.55, 0.0], "radius": 0.16},
             },
@@ -1212,6 +1402,10 @@ def _template_defaults(template: str) -> dict[str, Any]:
             "layout": {
                 "spawn": {"translation": [-0.55, 0.0, 0.0], "rotation_z": 0.0},
                 "obstacles": [],
+                "walls": [],
+                "landmarks": [],
+                "zones": [],
+                "props": [],
                 "waypoints": [[0.4, 0.0]],
                 "goal_region": {"center": [0.4, 0.0], "radius": 0.16},
             },
@@ -1225,6 +1419,10 @@ def _template_defaults(template: str) -> dict[str, Any]:
                     {"shape": "box", "position": [0.35, 0.75], "size": [0.1, 0.1, 0.1], "rotation_z": 4.96782},
                     {"shape": "box", "position": [-0.35, -0.5], "size": [0.1, 0.1, 0.1], "rotation_z": 5.36782},
                 ],
+                "walls": [],
+                "landmarks": [],
+                "zones": [],
+                "props": [],
                 "waypoints": [],
             },
         },
@@ -1252,6 +1450,10 @@ def _apply_scenario_defaults(spec: ScenarioSpec) -> None:
     spawn.setdefault("translation", defaults["layout"]["spawn"]["translation"])
     spawn.setdefault("rotation_z", defaults["layout"]["spawn"].get("rotation_z", 0.0))
     layout.setdefault("obstacles", defaults["layout"].get("obstacles", []))
+    layout.setdefault("walls", defaults["layout"].get("walls", []))
+    layout.setdefault("landmarks", defaults["layout"].get("landmarks", []))
+    layout.setdefault("zones", defaults["layout"].get("zones", []))
+    layout.setdefault("props", defaults["layout"].get("props", []))
     layout.setdefault("waypoints", defaults["layout"].get("waypoints", []))
     if scenario_kind == "line-follow":
         line_track = layout.setdefault("line_track", {})

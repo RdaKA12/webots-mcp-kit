@@ -1,0 +1,121 @@
+# World Authoring and Editing
+
+This page documents the preview world authoring/editing surface on the `feature/agent-authoring-platform` branch.
+
+## Supported scope
+
+The current world layer is `preserve-first`.
+
+That means:
+
+- supported target node families can be inspected and edited structurally
+- unrelated text and unsupported node blocks are left unchanged whenever possible
+- the toolkit is not yet a general-purpose full-scene Webots editor
+
+Current first-class edit surface is task-world oriented:
+
+- target robot spawn
+- target robot controller binding
+- obstacles
+- walls
+- landmarks
+- zones
+- props
+- rename/remove supported top-level nodes
+
+## Inspect
+
+```powershell
+webots-kit world inspect .\worlds\demo.wbt --json
+```
+
+`world inspect` returns:
+
+- header
+- `EXTERNPROTO` lines
+- robot inventory
+- target robot summary
+- controller bindings
+- DEF map
+- supported edit targets
+- spatial summary
+- inferred task cues
+
+## Validate
+
+```powershell
+webots-kit world validate .\worlds\demo.wbt --json
+```
+
+The preview validator currently checks:
+
+- duplicate `DEF`
+- missing target robot
+- missing target robot controller
+- malformed supported transforms
+
+## Edit
+
+```powershell
+webots-kit world edit .\worlds\demo.wbt --plan .\plans\world-edit.json
+```
+
+Example plan:
+
+```json
+{
+  "schema_version": 1,
+  "operations": [
+    {
+      "type": "set_spawn",
+      "translation": [-0.4, 0.1, 0.0],
+      "rotation_z": 0.5
+    },
+    {
+      "type": "add_obstacle",
+      "name": "obstacle-generated",
+      "position": [0.2, 0.3],
+      "size": [0.1, 0.1, 0.1]
+    }
+  ]
+}
+```
+
+Supported selector shapes:
+
+- `by_def`
+- `by_name`
+- `by_type`
+- `by_path`
+
+Preview operation families currently wired:
+
+- `set_spawn`
+- `set_transform`
+- `set_robot_controller`
+- `rename_def`
+- `remove_node`
+- `add_obstacle`
+- `update_obstacle`
+- `remove_obstacle`
+- `add_wall`
+- `update_wall`
+- `remove_wall`
+- `add_landmark`
+- `update_landmark`
+- `remove_landmark`
+- `add_zone`
+- `update_zone`
+- `remove_zone`
+- `add_prop`
+- `update_prop`
+- `remove_prop`
+
+## Recommended loop
+
+1. `world inspect`
+2. `world validate`
+3. `world edit`
+4. `world validate`
+5. `session start`
+6. `benchmark run` when the world maps to a benchmarked task

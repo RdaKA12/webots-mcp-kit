@@ -1,6 +1,6 @@
 # Onboarding Flows
 
-Use this page as the index for the four public onboarding paths supported at `v1.0.0`.
+Use this page as the index for the authoring and runtime onboarding paths supported in the current branch preview.
 
 ## 1. Connect An Agent
 
@@ -44,3 +44,23 @@ Use this when you already have a world/controller pair or a finished exported se
   - `webots-kit project import`
   - `webots-kit session export`
   - `webots-kit session replay`
+
+## 5. Inspect Or Edit A World
+
+Use this when an agent needs structured visibility into a `.wbt` file or a safe patch plan.
+
+- start here: [World authoring and editing](./world-authoring-and-editing.md)
+- key commands:
+  - `webots-kit world inspect`
+  - `webots-kit world validate`
+  - `webots-kit world edit`
+
+## 6. Inspect Or Edit A Controller
+
+Use this when an agent needs structured controller metadata or marker-safe edits.
+
+- start here: [Controller authoring and editing](./controller-authoring-and-editing.md)
+- key commands:
+  - `webots-kit controller inspect`
+  - `webots-kit controller edit`
+  - `webots-kit controller validate`

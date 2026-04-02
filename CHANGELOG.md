@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.0-alpha.1
+
+- Added an agent-authoring preview branch foundation for controller scaffold, inspect, edit, and validate across Python and C++ sources.
+- Added a preserve-first WBT inspect, validate, and edit foundation with selector-based world operations for supported task-world node families.
+- Extended clean-user acceptance with controller and world authoring flows while keeping the existing runtime/session/benchmark surfaces intact.
+
 ## v1.2.0
 
 - Expanded `project import` with deterministic discovery for robot name/DEF, controller device usage, suggested benchmark profile, and minimal imported scenario metadata.

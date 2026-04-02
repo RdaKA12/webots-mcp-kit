@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .benchmark import format_benchmark_report, list_benchmarks, run_benchmark
 from .benchmarks import scenario_names
+from .controller_authoring import edit_controller, format_controller_inspection_report, inspect_controller
 from .controller_scaffold import scaffold_controller
 from .controller_validation import format_validation_report, validate_controller
 from .doctor import format_doctor_report, run_doctor
@@ -26,6 +27,7 @@ from .scenario_ops import (
     scenario_doctor,
     validate_scenario,
 )
+from .world_ops import edit_world, format_world_inspection, format_world_validation, inspect_world, validate_world
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -84,7 +86,20 @@ def build_parser() -> argparse.ArgumentParser:
     scaffold = controller_sub.add_parser("scaffold")
     scaffold.add_argument("path")
     scaffold.add_argument("--scenario", choices=scenario_names(), default="line-follower")
+    scaffold.add_argument("--language", choices=["python", "cpp"], default="python")
+    scaffold.add_argument("--spec")
+    scaffold.add_argument("--world")
+    scaffold.add_argument("--robot-name")
+    scaffold.add_argument("--robot-def")
     scaffold.add_argument("--force", action="store_true")
+    inspect_controller_parser = controller_sub.add_parser("inspect")
+    inspect_controller_parser.add_argument("path")
+    inspect_controller_parser.add_argument("--scenario", choices=scenario_names())
+    inspect_controller_parser.add_argument("--spec")
+    inspect_controller_parser.add_argument("--json", action="store_true")
+    edit_controller_parser = controller_sub.add_parser("edit")
+    edit_controller_parser.add_argument("path")
+    edit_controller_parser.add_argument("--plan", required=True)
 
     project = subparsers.add_parser("project")
     project_sub = project.add_subparsers(dest="project_command", required=True)
@@ -118,6 +133,18 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_parser = subparsers.add_parser("mcp")
     mcp_sub = mcp_parser.add_subparsers(dest="mcp_command", required=True)
     mcp_sub.add_parser("serve")
+
+    world_parser = subparsers.add_parser("world")
+    world_sub = world_parser.add_subparsers(dest="world_command", required=True)
+    world_inspect = world_sub.add_parser("inspect")
+    world_inspect.add_argument("path")
+    world_inspect.add_argument("--json", action="store_true")
+    world_validate_parser = world_sub.add_parser("validate")
+    world_validate_parser.add_argument("path")
+    world_validate_parser.add_argument("--json", action="store_true")
+    world_edit_parser = world_sub.add_parser("edit")
+    world_edit_parser.add_argument("path")
+    world_edit_parser.add_argument("--plan", required=True)
     return parser
 
 
@@ -190,14 +217,47 @@ def main(argv: list[str] | None = None) -> None:
             return
 
     if args.command == "controller" and args.controller_command == "validate":
-        result = validate_controller(Path(args.path), scenario=args.scenario, strict=args.strict)
+        result = validate_controller(
+            Path(args.path),
+            scenario=args.scenario,
+            strict=args.strict,
+            spec_path=Path(args.spec) if getattr(args, "spec", None) else None,
+        )
         if args.json:
             print(json.dumps(result.to_dict(), indent=2))
         else:
             print(format_validation_report(result))
         return
     if args.command == "controller" and args.controller_command == "scaffold":
-        print(json.dumps(scaffold_controller(path=Path(args.path), scenario=args.scenario, force=args.force), indent=2))
+        print(
+            json.dumps(
+                scaffold_controller(
+                    path=Path(args.path),
+                    scenario=args.scenario,
+                    force=args.force,
+                    language=args.language,
+                    spec_path=Path(args.spec) if args.spec else None,
+                    world=Path(args.world) if args.world else None,
+                    robot_name=args.robot_name,
+                    robot_def=args.robot_def,
+                ),
+                indent=2,
+            )
+        )
+        return
+    if args.command == "controller" and args.controller_command == "inspect":
+        payload = inspect_controller(
+            Path(args.path),
+            scenario=args.scenario,
+            spec_path=Path(args.spec) if getattr(args, "spec", None) else None,
+        )
+        if args.json:
+            print(json.dumps(payload.to_dict(), indent=2))
+        else:
+            print(format_controller_inspection_report(payload))
+        return
+    if args.command == "controller" and args.controller_command == "edit":
+        print(json.dumps(edit_controller(Path(args.path), plan_path=Path(args.plan)), indent=2))
         return
 
     if args.command == "project" and args.project_command == "init":
@@ -242,6 +302,24 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "mcp" and args.mcp_command == "serve":
         run_mcp_server()
+        return
+
+    if args.command == "world" and args.world_command == "inspect":
+        payload = inspect_world(Path(args.path))
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(format_world_inspection(payload))
+        return
+    if args.command == "world" and args.world_command == "validate":
+        payload = validate_world(Path(args.path))
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(format_world_validation(payload))
+        return
+    if args.command == "world" and args.world_command == "edit":
+        print(json.dumps(edit_world(Path(args.path), plan_path=Path(args.plan)), indent=2))
 
 
 if __name__ == "__main__":
