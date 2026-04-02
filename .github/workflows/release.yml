@@ -111,7 +111,7 @@ jobs:
           python -m pip install --upgrade pip
           for ($i = 0; $i -lt 10; $i++) {
             try {
-              pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "webots-mcp-kit==$env:PACKAGE_VERSION"
+              python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "webots-mcp-kit==$env:PACKAGE_VERSION"
               exit 0
             } catch {
               if ($i -eq 9) { throw }
@@ -171,7 +171,7 @@ jobs:
           python -m pip install --upgrade pip
           for ($i = 0; $i -lt 10; $i++) {
             try {
-              pip install "webots-mcp-kit==$env:PACKAGE_VERSION"
+              python -m pip install "webots-mcp-kit==$env:PACKAGE_VERSION"
               exit 0
             } catch {
               if ($i -eq 9) { throw }

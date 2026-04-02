@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.1
+
+- Fixed self-hosted Windows workflow installation so `pytest` and `webots_mcp_kit` are installed into the exact Python selected by `actions/setup-python`.
+- Fixed release install smoke jobs to use `python -m pip`, preventing interpreter mismatch on Windows runners.
+- Added extra workflow-level install verification for self-hosted Windows runs.
+
 ## v0.9.0
 
 - Added path-filtered self-hosted runtime workflow triggers while keeping manual dispatch.
