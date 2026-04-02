@@ -190,6 +190,10 @@ class SessionExport:
     standard_artifacts: dict[str, str] = field(default_factory=dict)
     copied_logs: list[str] = field(default_factory=list)
     copied_artifacts: list[str] = field(default_factory=list)
+    scenario: str | None = None
+    status: str | None = None
+    last_error_code: str | None = None
+    result_reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

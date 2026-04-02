@@ -614,6 +614,9 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         init_project(root, name=root.name, force=False)
 
     inferred_kind = infer_project_kind(world_path)
+    suggested_benchmark_name = SUPPORTED_TASKS[inferred_kind]
+    discovered_robot_name, discovered_robot_def = _discover_world_robot_identity(world_path, suggested_benchmark_name)
+    discovered_devices = _discover_controller_devices(controller_path)
     scenario_name = f"imported-{world_path.stem}"
     scenario_dir = root / "scenarios" / scenario_name
     scenario_dir.mkdir(parents=True, exist_ok=True)
@@ -621,8 +624,27 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
 
     spec = _default_spec(_default_template_for_kind(inferred_kind), scenario_name, _load_project_manifest(root).project_name)
     spec.scenario["kind"] = inferred_kind
+    spec.robot["name"] = discovered_robot_name
+    spec.robot["def"] = discovered_robot_def
     spec.controller["path"] = str(controller_path)
-    spec.import_source = {"world_path": str(world_path), "controller_path": str(controller_path)}
+    minimal_scenario_metadata = {
+        "scenario_name": scenario_name,
+        "scenario_kind": inferred_kind,
+        "benchmark_name": suggested_benchmark_name,
+        "robot_name": discovered_robot_name,
+        "robot_def": discovered_robot_def,
+        "controller_path": str(controller_path),
+        "world_path": str(world_path),
+    }
+    spec.import_source = {
+        "world_path": str(world_path),
+        "controller_path": str(controller_path),
+        "discovered_robot_name": discovered_robot_name,
+        "discovered_robot_def": discovered_robot_def,
+        "discovered_devices": discovered_devices,
+        "suggested_benchmark_name": suggested_benchmark_name,
+        "minimal_scenario_metadata": minimal_scenario_metadata,
+    }
     spec.environment["imported"] = True
     atomic_write_text(spec_path, json.dumps(spec.to_dict(), indent=2), encoding="utf-8")
     return {
@@ -632,13 +654,19 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "world_path": str(world_path),
         "controller_path": str(controller_path),
         "inferred_kind": inferred_kind,
+        "inferred_scenario_kind": inferred_kind,
+        "suggested_benchmark_name": suggested_benchmark_name,
+        "discovered_robot_name": discovered_robot_name,
+        "discovered_robot_def": discovered_robot_def,
+        "discovered_devices": discovered_devices,
+        "minimal_scenario_metadata": minimal_scenario_metadata,
         "support_tier": "experimental-foundation",
     }
 
 
 def export_session(session_id: str, *, output: Path | None = None, store: SessionStore | None = None) -> SessionExport:
     session_store = store or SessionStore()
-    session_store.load_manifest(session_id)
+    manifest = session_store.load_manifest(session_id)
     export_root = output if output else (Path.cwd() / "artifacts" / "session-exports" / session_id)
     export_dir = export_root if export_root.is_absolute() else (Path.cwd() / export_root).resolve()
     export_dir.mkdir(parents=True, exist_ok=True)
@@ -682,6 +710,10 @@ def export_session(session_id: str, *, output: Path | None = None, store: Sessio
         standard_artifacts=standard_artifacts,
         copied_logs=copied_logs,
         copied_artifacts=copied_artifacts,
+        scenario=manifest.scenario,
+        status=manifest.status,
+        last_error_code=manifest.last_error_code,
+        result_reason=manifest.last_error_code or manifest.status or "completed",
     )
     atomic_write_text(export_dir / "export.json", json.dumps(payload.to_dict(), indent=2), encoding="utf-8")
     return payload
@@ -717,6 +749,15 @@ def replay_session(export_path: Path) -> dict[str, Any]:
     copied_logs = export_manifest.get("copied_logs") if isinstance(export_manifest.get("copied_logs"), list) else None
     copied_artifacts = export_manifest.get("copied_artifacts") if isinstance(export_manifest.get("copied_artifacts"), list) else None
     runtime_summary = session.get("runtime_summary") if isinstance(session.get("runtime_summary"), dict) else {}
+    runtime_failure_class = _classify_runtime_failure(last_error_code=session_state.get("last_error_code"), status=session.get("status"), result_reason=result_reason)
+    telemetry_summary = _build_telemetry_summary(runtime_summary)
+    benchmark_summary = _build_benchmark_summary(
+        benchmark_name=benchmark_name,
+        status=session.get("status"),
+        result_reason=result_reason,
+        last_error_code=session_state.get("last_error_code"),
+    )
+    triage_recipe = _build_triage_recipe(runtime_failure_class)
     return {
         "export_dir": str(export_root),
         "session_id": summary.get("session_id"),
@@ -732,6 +773,10 @@ def replay_session(export_path: Path) -> dict[str, Any]:
         "runtime_summary": runtime_summary,
         "runtime_environment": summary.get("runtime_environment") if isinstance(summary.get("runtime_environment"), dict) else runtime_environment,
         "log_summary": log_summary if isinstance(log_summary, dict) else {},
+        "benchmark_summary": benchmark_summary,
+        "telemetry_summary": telemetry_summary,
+        "runtime_failure_class": runtime_failure_class,
+        "triage_recipe": triage_recipe,
         "copied_logs": sorted(Path(path).name for path in copied_logs) if copied_logs is not None else sorted(path.name for path in (export_root / "logs").glob("*")),
         "copied_artifacts": (
             sorted(Path(path).name for path in copied_artifacts)
@@ -819,6 +864,9 @@ def format_scenario_doctor_report(payload: dict[str, Any]) -> str:
 
 def format_session_replay(payload: dict[str, Any]) -> str:
     runtime_environment = payload.get("runtime_environment") if isinstance(payload.get("runtime_environment"), dict) else {}
+    benchmark_summary = payload.get("benchmark_summary") if isinstance(payload.get("benchmark_summary"), dict) else {}
+    telemetry_summary = payload.get("telemetry_summary") if isinstance(payload.get("telemetry_summary"), dict) else {}
+    triage_recipe = payload.get("triage_recipe") if isinstance(payload.get("triage_recipe"), dict) else {}
     runner_mode = runtime_environment.get("runner_mode")
     if isinstance(runner_mode, dict):
         runner_mode_text = runner_mode.get("mode")
@@ -834,11 +882,16 @@ def format_session_replay(payload: dict[str, Any]) -> str:
         f"result_reason: {payload.get('result_reason')}",
         f"last_error_code: {payload['last_error_code']}",
         f"last_error: {payload['last_error']}",
+        f"runtime_failure_class: {payload.get('runtime_failure_class')}",
+        f"benchmark_summary: {benchmark_summary.get('benchmark_name')} ({benchmark_summary.get('result_reason')})",
+        f"telemetry_roles: {telemetry_summary.get('connected_roles')}",
         f"runtime_runner_mode: {runner_mode_text}",
         f"runtime_python: {runtime_environment.get('python_executable')}",
         f"copied_logs: {payload['copied_logs']}",
         f"copied_artifacts: {payload['copied_artifacts']}",
         f"standard_artifacts: {sorted(payload.get('standard_artifacts', {}))}",
+        f"triage_focus: {triage_recipe.get('focus')}",
+        f"triage_primary_artifacts: {triage_recipe.get('primary_artifacts')}",
         f"summary: {len(payload['copied_logs'])} logs, {len(payload['copied_artifacts'])} artifacts",
         "support_tier: experimental-foundation",
         f"next_step: {payload['next_step']}",
@@ -1229,6 +1282,143 @@ def _distance_2d(left: list[float] | tuple[float, ...], right: list[float] | tup
     dx = float(left[0]) - float(right[0])
     dy = float(left[1]) - float(right[1])
     return math.hypot(dx, dy)
+
+
+def _discover_world_robot_identity(world_path: Path, benchmark_name: str) -> tuple[str, str]:
+    content = world_path.read_text(encoding="utf-8", errors="replace")
+    def_match = re.search(r"DEF\s+([A-Za-z0-9_]+)\s+E-puck\s*{", content)
+    if def_match:
+        robot_def = def_match.group(1)
+        name_match = re.search(r'name\s+"([^"]+)"', content[def_match.end() : def_match.end() + 400])
+        if name_match:
+            return name_match.group(1), robot_def
+        return get_scenario(benchmark_name).target_robot_name, robot_def
+    scenario_def = get_scenario(benchmark_name)
+    return scenario_def.target_robot_name, scenario_def.target_robot_def
+
+
+def _discover_controller_devices(controller_path: Path) -> list[str]:
+    try:
+        source = controller_path.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    try:
+        tree = ast.parse(source, filename=str(controller_path))
+    except SyntaxError:
+        matches = re.findall(r'getDevice\(\s*["\']([^"\']+)["\']\s*\)', source)
+        return sorted(set(matches))
+    devices: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "getDevice":
+            continue
+        if not node.args:
+            continue
+        first_arg = node.args[0]
+        if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+            devices.add(first_arg.value)
+    return sorted(devices)
+
+
+def _classify_runtime_failure(*, last_error_code: str | None, status: Any, result_reason: str | None) -> str:
+    if not last_error_code and str(status) in {"stopped", "completed", "ready"}:
+        return "none"
+    if last_error_code == "render-init-failed":
+        return "rendering"
+    if last_error_code in {"controller-launch-failed", "agent-connect-timeout", "supervisor-connect-timeout", "session-start-timeout"}:
+        return "startup"
+    if last_error_code == "webots-unexpected-exit":
+        return "runtime-exit"
+    if result_reason in {"line-loss-threshold-reached", "collision-detected", "target-not-reached", "low-travel-distance", "insufficient-forward-speed"}:
+        return "benchmark"
+    if str(status) == "failed":
+        return "runtime-failure"
+    return "none"
+
+
+def _build_benchmark_summary(*, benchmark_name: str, status: Any, result_reason: str | None, last_error_code: str | None) -> dict[str, Any]:
+    return {
+        "benchmark_name": benchmark_name,
+        "result_reason": result_reason,
+        "status": status,
+        "last_error_code": last_error_code,
+        "rerun_supported": benchmark_name in scenario_registry(),
+        "next_step": benchmark_next_step(benchmark_name, result_reason or "completed"),
+    }
+
+
+def _build_telemetry_summary(runtime_summary: dict[str, Any]) -> dict[str, Any]:
+    roles: dict[str, dict[str, Any]] = {}
+    for role, payload in runtime_summary.items():
+        if not isinstance(payload, dict):
+            continue
+        roles[role] = {
+            "connected": bool(payload.get("connected", False)),
+            "device_count": int(payload.get("device_count", 0)),
+            "state_keys": list(payload.get("state_keys", [])) if isinstance(payload.get("state_keys"), list) else [],
+            "sensor_keys": list(payload.get("sensor_keys", [])) if isinstance(payload.get("sensor_keys"), list) else [],
+            "metric_keys": list(payload.get("metric_keys", [])) if isinstance(payload.get("metric_keys"), list) else [],
+            "actuator_keys": list(payload.get("actuator_keys", [])) if isinstance(payload.get("actuator_keys"), list) else [],
+        }
+    return {
+        "connected_roles": sorted(role for role, payload in roles.items() if payload["connected"]),
+        "roles": roles,
+    }
+
+
+def _build_triage_recipe(failure_class: str) -> dict[str, Any]:
+    recipes = {
+        "none": {
+            "focus": "observability",
+            "primary_artifacts": ["summary.json", "inspect.json", "log_summary.json"],
+            "steps": [
+                "Review the replay summary and copied artifacts.",
+                "Rerun the matching benchmark if you need fresh telemetry.",
+            ],
+        },
+        "rendering": {
+            "focus": "rendering",
+            "primary_artifacts": ["webots.stderr.log", "daemon.stderr.log", "runtime_environment.json"],
+            "steps": [
+                "Confirm the runtime is running in an interactive desktop session.",
+                "Inspect Webots stderr for OpenGL or rendering initialization failures.",
+            ],
+        },
+        "startup": {
+            "focus": "startup",
+            "primary_artifacts": ["daemon.stderr.log", "inspect.json", "session.json"],
+            "steps": [
+                "Check controller/world paths and the controller contract.",
+                "Inspect daemon and controller stderr logs for runtime connection failures.",
+            ],
+        },
+        "runtime-exit": {
+            "focus": "runtime-exit",
+            "primary_artifacts": ["webots.stdout.log", "webots.stderr.log", "summary.json"],
+            "steps": [
+                "Inspect Webots stdout/stderr around the exit point.",
+                "Rerun the same scenario with fresh logs if the exit reason stays unclear.",
+            ],
+        },
+        "benchmark": {
+            "focus": "benchmark",
+            "primary_artifacts": ["summary.json", "inspect.json", "log_summary.json"],
+            "steps": [
+                "Inspect benchmark-facing telemetry keys and copied log summaries.",
+                "Tune controller behavior and rerun the benchmark with the same scenario profile.",
+            ],
+        },
+        "runtime-failure": {
+            "focus": "runtime",
+            "primary_artifacts": ["summary.json", "daemon.stderr.log", "inspect.json"],
+            "steps": [
+                "Inspect the last structured runtime error and copied daemon logs.",
+                "Rerun the same session path after addressing the reported failure.",
+            ],
+        },
+    }
+    return recipes.get(failure_class, recipes["runtime-failure"])
 
 
 def _default_robot_name(kind: str, scenario_name: str) -> str:

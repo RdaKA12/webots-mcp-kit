@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.0
+
+- Expanded `project import` with deterministic discovery for robot name/DEF, controller device usage, suggested benchmark profile, and minimal imported scenario metadata.
+- Expanded `session replay` with additive `benchmark_summary`, `telemetry_summary`, `runtime_failure_class`, and `triage_recipe` fields plus a more triage-oriented text summary.
+- Kept `export.json` and the standard artifact bundle backward-compatible while extending the export manifest with additive scenario and result metadata.
+
 ## v1.1.0
 
 - Expanded the template-driven zero-to-sim path with richer `ScenarioSpec` defaults, semantic validation, and a documented stable core subset for `v1.1.0`.

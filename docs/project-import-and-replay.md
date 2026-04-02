@@ -4,9 +4,9 @@
 
 Status:
 
-- `project import`, `session export`, and `session replay` are supported foundation workflows in `v1.0.0`
+- `project import`, `session export`, and `session replay` are supported foundation workflows in `v1.2.0`
 - the CLI command names are stable
-- replay/export metadata and deeper file schemas remain `experimental-foundation` and additive until the `v1.1.0` replay/import expansion milestone
+- replay/export metadata and deeper file schemas remain `experimental-foundation` and additive
 
 ## Import an existing project
 
@@ -20,6 +20,9 @@ The import command:
 - writes `webots-kit.project.json` if needed
 - creates `scenarios/imported-<world-name>/webots-kit.scenario.json`
 - records the original world/controller paths in `import_source`
+- discovers `discovered_robot_name`, `discovered_robot_def`, and `discovered_devices`
+- suggests a benchmark profile through `suggested_benchmark_name`
+- returns `minimal_scenario_metadata` so the imported scenario can be validated or evolved deterministically
 
 This does not rewrite the imported world. It creates kit metadata so the project can be inspected and evolved with later zero-to-sim commands.
 
@@ -48,6 +51,7 @@ The export bundle includes:
 - the replay mode
 - the paths of the standard JSON artifacts
 - copied log and artifact locations
+- additive scenario/result metadata such as `scenario`, `status`, `last_error_code`, and `result_reason`
 
 ## Replay an exported session
 
@@ -63,6 +67,9 @@ Replay is observability-focused. It does not rerun physics. Instead, it gives yo
 - the replay mode and artifact standard version
 - the last structured runtime error
 - the runtime summary and runtime environment used for that session
+- a `benchmark_summary` for the last known benchmark-facing outcome
+- a `telemetry_summary` derived from the exported runtime summary
+- a `runtime_failure_class` plus `triage_recipe`
 - the copied log summary captured at export time
 - copied logs and artifacts
 - the suggested next step for triage or rerun

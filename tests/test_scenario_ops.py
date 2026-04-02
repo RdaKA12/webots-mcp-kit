@@ -168,14 +168,30 @@ def test_validate_line_track_out_of_bounds_is_rejected(tmp_path: Path) -> None:
 def test_project_import_creates_metadata(tmp_path: Path) -> None:
     world = tmp_path / "sample.wbt"
     controller = tmp_path / "agent.py"
-    world.write_text("#VRML_SIM R2025a utf8\nWorldInfo { title \"waypoint\" }\n", encoding="utf-8")
-    controller.write_text("print('controller')\n", encoding="utf-8")
+    world.write_text(
+        '#VRML_SIM R2025a utf8\nDEF IMPORTED_BOT E-puck {\n  name "imported-bot"\n  controller "<extern>"\n}\nWorldInfo { title "waypoint" }\n',
+        encoding="utf-8",
+    )
+    controller.write_text(
+        'from controller import Robot\nrobot = Robot()\ncamera = robot.getDevice("camera")\nleft = robot.getDevice("left wheel motor")\n',
+        encoding="utf-8",
+    )
 
     payload = import_project(world=world, controller=controller, project_root=tmp_path / "imported-project")
     metadata_path = Path(payload["scenario_metadata_path"])
     assert metadata_path.exists()
     imported = json.loads(metadata_path.read_text(encoding="utf-8"))
     assert imported["import_source"]["world_path"] == str(world)
+    assert imported["import_source"]["discovered_robot_name"] == "imported-bot"
+    assert imported["import_source"]["discovered_robot_def"] == "IMPORTED_BOT"
+    assert imported["import_source"]["discovered_devices"] == ["camera", "left wheel motor"]
+    assert imported["robot"]["name"] == "imported-bot"
+    assert payload["inferred_scenario_kind"] == "waypoint-nav"
+    assert payload["suggested_benchmark_name"] == "waypoint-nav"
+    assert payload["discovered_robot_name"] == "imported-bot"
+    assert payload["discovered_robot_def"] == "IMPORTED_BOT"
+    assert payload["discovered_devices"] == ["camera", "left wheel motor"]
+    assert payload["minimal_scenario_metadata"]["benchmark_name"] == "waypoint-nav"
     assert payload["support_tier"] == "experimental-foundation"
 
 
@@ -208,6 +224,10 @@ def test_replay_session_reads_canonical_export_manifest(tmp_path: Path) -> None:
         last_error="Render init failed.",
         last_error_code="render-init-failed",
         environment={"python_executable": "python.exe", "webots_executable": "webots.exe"},
+        runtime_summary={
+            "agent": {"connected": True, "device_count": 3, "state_keys": ["robot_time"], "sensor_keys": ["camera_left_band"], "metric_keys": ["center_error"], "actuator_keys": ["left_velocity"]},
+            "supervisor": {"connected": True, "device_count": 0, "state_keys": ["robot_position"], "sensor_keys": [], "metric_keys": [], "actuator_keys": []},
+        },
     )
     standard_artifacts = {name: str(export_dir / filename) for name, filename in SESSION_EXPORT_STANDARD_ARTIFACTS}
     (export_dir / "doctor.json").write_text(json.dumps({"status": "ready"}), encoding="utf-8")
@@ -243,6 +263,10 @@ def test_replay_session_reads_canonical_export_manifest(tmp_path: Path) -> None:
         standard_artifacts=standard_artifacts,
         copied_logs=[str(copied_log)],
         copied_artifacts=[str(copied_artifact)],
+        scenario="waypoint-nav",
+        status="failed",
+        last_error_code="render-init-failed",
+        result_reason="render-init-failed",
     )
     (export_dir / "export.json").write_text(json.dumps(exported.to_dict(), indent=2), encoding="utf-8")
 
@@ -256,7 +280,13 @@ def test_replay_session_reads_canonical_export_manifest(tmp_path: Path) -> None:
     assert replay["last_error_code"] == "render-init-failed"
     assert replay["session_state"]["status"] == "failed"
     assert replay["support_tier"] == "experimental-foundation"
+    assert replay["benchmark_summary"]["benchmark_name"] == "waypoint-nav"
+    assert replay["telemetry_summary"]["connected_roles"] == ["agent", "supervisor"]
+    assert replay["runtime_failure_class"] == "rendering"
+    assert replay["triage_recipe"]["focus"] == "rendering"
     assert "session_state_status: failed" in format_session_replay(replay)
     assert "replay_mode: observability" in format_session_replay(replay)
+    assert "runtime_failure_class: rendering" in format_session_replay(replay)
+    assert "triage_focus: rendering" in format_session_replay(replay)
     assert "summary:" in format_session_replay(replay)
     assert replay_from_dir["session_id"] == "session123"

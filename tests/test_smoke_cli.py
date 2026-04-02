@@ -167,6 +167,10 @@ def test_imported_project_smoke(tmp_path: Path) -> None:
     payload = json.loads(imported.stdout)
     spec_path = Path(payload["scenario_metadata_path"])
     assert spec_path.exists()
+    assert payload["suggested_benchmark_name"] == "line-follower"
+    assert payload["discovered_robot_name"]
+    assert payload["discovered_robot_def"]
+    assert isinstance(payload["discovered_devices"], list)
 
     validation = run_cli("scenario", "validate", str(spec_path), "--json")
     validation_payload = json.loads(validation.stdout)
@@ -262,6 +266,10 @@ def test_session_export_replay_diagnostics_smoke(tmp_path: Path) -> None:
     assert replay_payload["session_id"] == session_id
     assert replay_payload["artifact_standard_version"] == 1
     assert replay_payload["replay_mode"] == "observability"
+    assert replay_payload["benchmark_summary"]["benchmark_name"] == "line-follower"
+    assert "roles" in replay_payload["telemetry_summary"]
+    assert replay_payload["runtime_failure_class"] == "none"
+    assert replay_payload["triage_recipe"]["focus"] == "observability"
 
 
 @pytest.mark.skipif(not RUN_SMOKE, reason="Smoke tests are disabled unless WEBOTS_KIT_RUN_SMOKE=1.")
