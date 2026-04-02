@@ -212,6 +212,35 @@ Known error codes currently used by runtime/session flows:
 
 The code values above are frozen starting with `v1.0.0`. Future codes may be added, but existing codes should not be renamed or repurposed.
 
+## Feature-branch authoring preview
+
+On `feature/agent-authoring-platform`, the MCP server also exposes additive `experimental-foundation` authoring tools:
+
+- `webots_world_inspect`
+- `webots_world_validate`
+- `webots_world_edit`
+- `webots_controller_inspect`
+- `webots_controller_scaffold`
+- `webots_controller_validate`
+- `webots_controller_edit`
+
+These tool names are stable within the branch preview. Their payloads remain additive while the feature branch hardens toward merge.
+
+### World authoring payloads
+
+- `webots_world_inspect -> { status, world_path, robots, target_robot, supported_edit_targets, spatial_summary, ... }`
+- `webots_world_validate -> { world_path, valid, status, issues, supported_edit_targets, spatial_summary, ... }`
+- `webots_world_edit -> { world_path, applied_operations, status, issues, validation, support_tier, next_step }`
+
+### Controller authoring payloads
+
+- `webots_controller_scaffold -> { path, scenario, language, default_camera, editable_regions, source_controller, ... }`
+- `webots_controller_inspect -> { path, language, scenario, integration_mode, editable_regions, default_camera, device_bindings, benchmark_ready, ... }`
+- `webots_controller_validate -> { path, valid, integration_mode, errors, warnings, details }`
+- `webots_controller_edit -> { path, language, applied_operations, editable_regions, next_step }`
+
+The preview authoring tools use the same structured failure shape documented above.
+
 ## Contract notes
 
 - Tool names stay fixed.
@@ -219,3 +248,133 @@ The code values above are frozen starting with `v1.0.0`. Future codes may be add
 - The six success shapes above are the stable contract surface for `v1.0.0` and later additive releases.
 - `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
 - Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.
+
+## Feature-branch authoring preview
+
+On `feature/agent-authoring-platform`, the authoring tools below are additive preview tools. They are not part of the `v1.0.0` stable baseline, but their documented top-level success shapes are intentionally frozen for the preview branch so tests and agents can depend on them.
+
+### `webots_world_inspect`
+
+Stable preview top-level keys:
+
+```json
+{
+  "status": "ready",
+  "world_path": "C:\\Users\\...\\demo.wbt",
+  "externproto": [],
+  "robots": [],
+  "target_robot": null,
+  "def_map": [],
+  "controller_bindings": [],
+  "supported_edit_targets": [],
+  "spatial_summary": {},
+  "summary": {},
+  "inferred_task_cues": {},
+  "support_tier": "experimental-foundation",
+  "next_step": "Run `webots-kit world validate ...`."
+}
+```
+
+### `webots_world_validate`
+
+Stable preview top-level keys:
+
+```json
+{
+  "world_path": "C:\\Users\\...\\demo.wbt",
+  "valid": true,
+  "status": "ready",
+  "issues": [],
+  "supported_edit_targets": [],
+  "spatial_summary": {},
+  "summary": {},
+  "support_tier": "experimental-foundation",
+  "next_step": "Apply `webots-kit world edit ...`."
+}
+```
+
+### `webots_world_edit`
+
+Stable preview top-level keys:
+
+```json
+{
+  "world_path": "C:\\Users\\...\\demo.wbt",
+  "applied_operations": [],
+  "status": "ready",
+  "issues": [],
+  "validation": {},
+  "support_tier": "experimental-foundation",
+  "next_step": "Apply `webots-kit world edit ...`."
+}
+```
+
+### `webots_controller_inspect`
+
+Stable preview top-level keys:
+
+```json
+{
+  "path": "C:\\Users\\...\\demo_agent.py",
+  "language": "python",
+  "scenario": "line-follower",
+  "integration_mode": "controller-agent",
+  "valid_source": true,
+  "editable_regions": [],
+  "markers_present": true,
+  "default_camera": "camera",
+  "device_bindings": [],
+  "telemetry_sections": {},
+  "benchmark_readiness": {},
+  "issues": []
+}
+```
+
+### `webots_controller_scaffold`
+
+Stable preview top-level keys:
+
+```json
+{
+  "path": "C:\\Users\\...\\demo_agent.py",
+  "scenario": "line-follower",
+  "language": "python",
+  "default_camera": "camera",
+  "copied_files": [],
+  "editable_regions": [],
+  "source_controller": "C:\\Users\\...\\line_follower_agent.py",
+  "spec_path": null,
+  "world": null,
+  "target_robot_name": "epuck-line-follower",
+  "target_robot_def": "EPUCK"
+}
+```
+
+### `webots_controller_validate`
+
+This tool uses the same normalized validation top-level shape as the stable controller-validation CLI JSON:
+
+```json
+{
+  "path": "C:\\Users\\...\\demo_agent.py",
+  "valid": true,
+  "integration_mode": "controller-agent",
+  "errors": [],
+  "warnings": [],
+  "details": {}
+}
+```
+
+### `webots_controller_edit`
+
+Stable preview top-level keys:
+
+```json
+{
+  "path": "C:\\Users\\...\\demo_agent.py",
+  "language": "python",
+  "applied_operations": [],
+  "editable_regions": [],
+  "next_step": "Run `webots-kit controller validate ...`."
+}
+```

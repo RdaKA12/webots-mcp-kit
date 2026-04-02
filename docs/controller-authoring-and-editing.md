@@ -32,6 +32,13 @@ C++ scaffold:
 webots-kit controller scaffold .\controllers\demo_agent.cpp --scenario waypoint-nav --language cpp
 ```
 
+The same preview surface is available through MCP:
+
+- `webots_controller_scaffold`
+- `webots_controller_inspect`
+- `webots_controller_validate`
+- `webots_controller_edit`
+
 The generated scaffold exposes these editable regions:
 
 - `DEVICE_INIT`

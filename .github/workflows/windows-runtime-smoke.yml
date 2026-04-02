@@ -172,9 +172,17 @@ jobs:
         run: |
           & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k imported_world_edit_smoke
 
+      - name: MCP authoring contract smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k mcp_authoring_contract_smoke
+
       - name: MCP contract runtime smoke
         run: |
           & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k mcp_contract_smoke
+
+      - name: MCP authoring contract smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k mcp_authoring_contract_smoke
 
       - name: Export replay diagnostics runtime smoke
         run: |

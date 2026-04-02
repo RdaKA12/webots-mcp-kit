@@ -110,6 +110,19 @@ def main(argv: list[str] | None = None) -> int:
             )
             summary.append({"step": step.name, "status": "ok"})
             continue
+        if step.name == "mcp_authoring_smoke":
+            rendered = f"python scripts/mcp_authoring_smoke.py --workspace {step.args[0]}"
+            print(f"[v1-gate] {step.name}: {rendered}")
+            if args.print_only:
+                continue
+            subprocess.run(
+                [sys.executable, "scripts/mcp_authoring_smoke.py", "--workspace", step.args[0]],
+                check=True,
+                text=True,
+                timeout=600,
+            )
+            summary.append({"step": step.name, "status": "ok"})
+            continue
         if step.name.endswith("_scenario_enrich"):
             rendered = f"enrich scenario spec {step.args[0]}"
             print(f"[v1-gate] {step.name}: {rendered}")

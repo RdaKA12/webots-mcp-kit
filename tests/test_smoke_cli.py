@@ -382,6 +382,36 @@ def test_imported_world_edit_smoke(tmp_path: Path) -> None:
     assert report_path.exists()
 
 
+def test_mcp_authoring_contract_unit_smoke(tmp_path: Path) -> None:
+    examples_root = bundled_example_root()
+    editable_world = tmp_path / "editable_line_follower.wbt"
+    editable_world.write_text(
+        (examples_root / "line-follower" / "worlds" / "line_follower_benchmark.wbt").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    controller_path = tmp_path / "mcp_demo_agent.py"
+    controller_plan = tmp_path / "controller-edit.json"
+    world_plan = tmp_path / "world-edit.json"
+    write_json(controller_plan, {"schema_version": 1, "operations": [{"type": "inject_helper_function", "code": "def preview_helper() -> float:\n    return 1.0"}]})
+    write_json(world_plan, {"schema_version": 1, "operations": [{"type": "add_landmark", "name": "mcp-landmark", "position": [0.0, 0.0], "radius": 0.04}]})
+
+    scaffold_payload = mcp_server.webots_controller_scaffold(path=str(controller_path), scenario="line-follower", language="python")
+    inspect_payload = mcp_server.webots_controller_inspect(path=str(controller_path), scenario="line-follower")
+    validate_payload = mcp_server.webots_controller_validate(path=str(controller_path), scenario="line-follower", strict=False)
+    edit_payload = mcp_server.webots_controller_edit(path=str(controller_path), plan=str(controller_plan))
+    world_inspect_payload = mcp_server.webots_world_inspect(path=str(editable_world))
+    world_validate_payload = mcp_server.webots_world_validate(path=str(editable_world))
+    world_edit_payload = mcp_server.webots_world_edit(path=str(editable_world), plan=str(world_plan))
+
+    assert scaffold_payload["language"] == "python"
+    assert inspect_payload["language"] == "python"
+    assert validate_payload["valid"] is True
+    assert "inject_helper_function" in edit_payload["applied_operations"]
+    assert world_inspect_payload["status"] == "ready"
+    assert world_validate_payload["valid"] is True
+    assert world_edit_payload["status"] == "ready"
+
+
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
 def test_mcp_contract_smoke(tmp_path: Path) -> None:
     report_path = tmp_path / "mcp-benchmark-report.json"
@@ -417,6 +447,69 @@ def test_mcp_contract_smoke(tmp_path: Path) -> None:
     assert isinstance(benchmark_payload["notes"], list)
     assert isinstance(benchmark_payload["extra_metrics"], dict)
     assert report_path.exists()
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_mcp_authoring_contract_smoke(tmp_path: Path) -> None:
+    project_root = tmp_path / "mcp-authoring-project"
+    run_cli("project", "init", str(project_root))
+    scenario_dir = project_root / "scenarios" / "mcp-waypoint"
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    run_cli("scenario", "init", str(scenario_dir), "--template", "epuck-waypoint")
+    enrich_generated_spec(spec_path, "epuck-waypoint")
+    generated = json.loads(run_cli("scenario", "build", str(spec_path)).stdout)
+
+    controller_path = project_root / "controllers" / "mcp_agent.py"
+    (project_root / "plans").mkdir(parents=True, exist_ok=True)
+    controller_edit_plan = project_root / "plans" / "controller-edit.json"
+    controller_edit_plan.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [{"type": "inject_helper_function", "code": "def preview_helper() -> float:\n    return 1.0"}],
+                "scenario_context": {"scenario": "waypoint-nav"},
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    world_edit_plan = project_root / "plans" / "world-edit.json"
+    write_json(
+        world_edit_plan,
+        {
+            "schema_version": 1,
+            "operations": [{"type": "add_landmark", "name": "mcp-landmark", "position": [0.1, 0.1], "radius": 0.04}],
+        },
+    )
+
+    scaffold_payload = mcp_server.webots_controller_scaffold(
+        path=str(controller_path),
+        scenario="waypoint-nav",
+        language="python",
+        spec=str(spec_path),
+        world=generated["world_path"],
+        robot_name=generated["target_robot_name"],
+        robot_def=generated["target_robot_def"],
+    )
+    inspect_payload = mcp_server.webots_controller_inspect(str(controller_path), scenario="waypoint-nav", spec=str(spec_path))
+    validate_payload = mcp_server.webots_controller_validate(str(controller_path), scenario="waypoint-nav", strict=True, spec=str(spec_path))
+    edit_payload = mcp_server.webots_controller_edit(str(controller_path), str(controller_edit_plan))
+    world_inspect_payload = mcp_server.webots_world_inspect(generated["world_path"])
+    world_validate_payload = mcp_server.webots_world_validate(generated["world_path"])
+    world_edit_payload = mcp_server.webots_world_edit(generated["world_path"], str(world_edit_plan))
+
+    assert scaffold_payload["language"] == "python"
+    assert scaffold_payload["spec_path"] == str(spec_path)
+    assert isinstance(scaffold_payload["editable_regions"], list)
+    assert inspect_payload["valid_source"] is True
+    assert isinstance(inspect_payload["benchmark_readiness"], dict)
+    assert isinstance(validate_payload["errors"], list)
+    assert "inject_helper_function" in edit_payload["applied_operations"]
+    assert world_inspect_payload["status"] == "ready"
+    assert isinstance(world_inspect_payload["supported_edit_targets"], list)
+    assert world_validate_payload["valid"] is True
+    assert world_edit_payload["status"] == "ready"
+    assert isinstance(world_edit_payload["validation"], dict)
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")

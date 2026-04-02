@@ -58,6 +58,17 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             enrich_waypoint_spec(Path(step.args[0]))
             continue
+        if step.name == "mcp_authoring_smoke":
+            rendered = f"python scripts/mcp_authoring_smoke.py --workspace {step.args[0]}"
+            print(f"[acceptance] {step.name}: {rendered}")
+            if args.print_only:
+                continue
+            subprocess.run(
+                [sys.executable, "scripts/mcp_authoring_smoke.py", "--workspace", step.args[0]],
+                check=True,
+                text=True,
+            )
+            continue
 
         print(f"[acceptance] {step.name}: webots-kit {rendered}")
         if args.print_only:

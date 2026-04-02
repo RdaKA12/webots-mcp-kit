@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Release
 
-`v1.5.0-alpha.1`
+`v1.6.0-alpha.1`
 
 Stable baseline:
 
@@ -36,6 +36,7 @@ Stable baseline:
 - experimental agent-authoring foundations for controller inspect/edit and world inspect/validate/edit
 - generated and imported world authoring runtime smoke on the feature branch preview
 - richer from-scratch world authoring preview for `walls`, `landmarks`, `zones`, and `props` across generated scenarios
+- MCP authoring parity smoke and split onboarding flows for world/controller authoring on the feature branch preview
 
 Operational runtime model:
 
@@ -51,7 +52,7 @@ Supported:
 - Python `3.11+`
 - interactive self-hosted runtime through the `interactive-webots` runner label as the only supported runtime execution model
 - foundation workflows for `project init`, `scenario init`, `scenario validate`, `scenario build`, `scenario describe`, `scenario doctor`, `project import`, `session export`, and `session replay`
-- experimental-foundation workflows for `controller inspect`, `controller edit`, `world inspect`, `world validate`, and `world edit`
+- experimental-foundation authoring workflows for `controller scaffold`, `controller inspect`, `controller edit`, `controller validate`, `world inspect`, `world validate`, `world edit`, and the matching `webots_controller_*` / `webots_world_*` MCP tools on the feature branch preview
 
 Foundation schema note:
 
@@ -164,7 +165,7 @@ webots-kit session replay .\artifacts\exports\<session-id>
 - `webots-kit benchmark run <scenario> --controller <path-or-id> --output <report.json> [--duration-s <seconds>] [--world <path>] [--robot-name <name>] [--robot-def <def>]`
 - `webots-kit benchmark report <report.json>`
 - `webots-kit controller validate <path> [--scenario <name>] [--strict] [--json]`
-- `webots-kit controller scaffold <path> [--scenario <name>] [--language python|cpp] [--force]`
+- `webots-kit controller scaffold <path> [--scenario <name>] [--language python|cpp] [--spec <spec.json>] [--world <path>] [--robot-name <name>] [--robot-def <def>] [--force]`
 - `webots-kit controller inspect <path> [--scenario <name>] [--json]`
 - `webots-kit controller edit <path> --plan <controller-edit.json>`
 - `webots-kit project init <path> [--name <name>] [--force]`
@@ -260,6 +261,7 @@ Stable payload shapes:
 - `webots_get_sensors -> { robot, scenario, state, sensors, metrics, actuators, meta }`
 - `webots_capture_camera -> { path, width, height }`
 - `webots_run_benchmark ->` stable benchmark report top-level keys with additive `extra_metrics`
+- feature-branch preview: `webots_world_*` and `webots_controller_*` use explicit normalized top-level payloads documented in [MCP contracts](./docs/mcp-contracts.md)
 - failed MCP tool calls -> `{ ok: false, error: { code, message, details, retriable } }`
 - existing MCP/runtime failure codes are stable at `v1.0.0`; new codes may only be added
 
@@ -303,7 +305,7 @@ Full runtime smoke tests with real Webots execution:
 
 ```powershell
 $env:WEBOTS_KIT_RUN_RUNTIME_SMOKE='1'
-python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke or generated_scenario_smoke or imported_project_smoke or mcp_contract_smoke or session_export_replay_diagnostics_smoke"
+python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke or generated_scenario_smoke or generated_world_edit_smoke or imported_project_smoke or imported_world_edit_smoke or mcp_contract_smoke or mcp_authoring_contract_smoke or session_export_replay_diagnostics_smoke"
 ```
 
 The self-hosted GitHub workflow for runtime smoke expects a Windows runner labeled `interactive-webots`.

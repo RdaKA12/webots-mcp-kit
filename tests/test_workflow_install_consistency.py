@@ -84,6 +84,10 @@ def test_runtime_workflow_includes_imported_project_smoke() -> None:
     assert "-k imported_project_smoke" in content
     assert "Imported world authoring runtime smoke" in content
     assert "-k imported_world_edit_smoke" in content
+    assert "MCP authoring contract smoke" in content
+    assert "-k mcp_authoring_contract_smoke" in content
+    assert "MCP authoring contract smoke" in content
+    assert "-k mcp_authoring_contract_smoke" in content
 
 
 def test_release_and_package_workflows_smoke_project_and_scenario_commands() -> None:

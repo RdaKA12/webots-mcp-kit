@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.0-alpha.1
+
+- Hardened the feature-branch authoring surface with explicit MCP authoring smoke coverage for controller scaffold/inspect/validate/edit and world inspect/validate/edit.
+- Pulled MCP authoring parity into clean-user acceptance, the preview gate, and the self-hosted runtime workflow so authoring lanes are visible in the merge gate instead of relying on unit coverage alone.
+- Split and tightened onboarding/docs around world-from-scratch, existing-world edit, controller-from-scratch, and existing-controller edit flows while keeping the scope additive on `feature/agent-authoring-platform`.
+
 ## v1.5.0-alpha.1
 
 - Extended template-driven scenario authoring so `walls`, `landmarks`, `zones`, and `props` now participate in richer validation, doctoring, generated metadata, and world output.

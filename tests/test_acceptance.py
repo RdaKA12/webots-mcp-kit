@@ -25,6 +25,7 @@ def test_clean_user_acceptance_steps_cover_expected_flow(tmp_path: Path) -> None
         "world_inspect",
         "world_validate",
         "world_edit",
+        "mcp_authoring_smoke",
         "project_import",
     ]
     project_import = steps[-1]

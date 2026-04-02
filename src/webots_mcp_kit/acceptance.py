@@ -66,6 +66,7 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
         AcceptanceStep("world_inspect", ("world", "inspect", str(editable_world), "--json")),
         AcceptanceStep("world_validate", ("world", "validate", str(editable_world), "--json")),
         AcceptanceStep("world_edit", ("world", "edit", str(editable_world), "--plan", str(world_edit_plan))),
+        AcceptanceStep("mcp_authoring_smoke", (str(root / "mcp-authoring"),)),
         AcceptanceStep(
             "project_import",
             ("project", "import", "--world", str(import_world), "--controller", str(import_controller), "--project-root", str(import_project_root)),

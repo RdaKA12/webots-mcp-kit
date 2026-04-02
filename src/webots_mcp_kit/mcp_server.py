@@ -112,6 +112,100 @@ def _normalize_validation_payload(payload: Any) -> dict[str, Any]:
     return normalized
 
 
+def _normalize_world_inspect_payload(payload: Any) -> dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+    normalized = dict(payload)
+    normalized["status"] = payload.get("status")
+    normalized["world_path"] = payload.get("world_path")
+    normalized["header"] = payload.get("header")
+    normalized["externproto"] = payload.get("externproto") if isinstance(payload.get("externproto"), list) else []
+    normalized["robots"] = payload.get("robots") if isinstance(payload.get("robots"), list) else []
+    normalized["target_robot"] = payload.get("target_robot") if isinstance(payload.get("target_robot"), dict) else None
+    normalized["def_map"] = payload.get("def_map") if isinstance(payload.get("def_map"), list) else []
+    normalized["controller_bindings"] = payload.get("controller_bindings") if isinstance(payload.get("controller_bindings"), list) else []
+    normalized["supported_edit_targets"] = payload.get("supported_edit_targets") if isinstance(payload.get("supported_edit_targets"), list) else []
+    normalized["spatial_summary"] = payload.get("spatial_summary") if isinstance(payload.get("spatial_summary"), dict) else {}
+    normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    normalized["inferred_task_cues"] = payload.get("inferred_task_cues") if isinstance(payload.get("inferred_task_cues"), dict) else {}
+    normalized["support_tier"] = payload.get("support_tier")
+    normalized["next_step"] = payload.get("next_step")
+    return normalized
+
+
+def _normalize_world_validate_payload(payload: Any) -> dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+    normalized = dict(payload)
+    normalized["world_path"] = payload.get("world_path")
+    normalized["valid"] = bool(payload.get("valid", False))
+    normalized["status"] = payload.get("status")
+    normalized["issues"] = payload.get("issues") if isinstance(payload.get("issues"), list) else []
+    normalized["supported_edit_targets"] = payload.get("supported_edit_targets") if isinstance(payload.get("supported_edit_targets"), list) else []
+    normalized["spatial_summary"] = payload.get("spatial_summary") if isinstance(payload.get("spatial_summary"), dict) else {}
+    normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    normalized["support_tier"] = payload.get("support_tier")
+    normalized["next_step"] = payload.get("next_step")
+    return normalized
+
+
+def _normalize_world_edit_payload(payload: Any) -> dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+    normalized = dict(payload)
+    normalized["world_path"] = payload.get("world_path")
+    normalized["applied_operations"] = payload.get("applied_operations") if isinstance(payload.get("applied_operations"), list) else []
+    normalized["status"] = payload.get("status")
+    normalized["issues"] = payload.get("issues") if isinstance(payload.get("issues"), list) else []
+    normalized["validation"] = payload.get("validation") if isinstance(payload.get("validation"), dict) else {}
+    normalized["support_tier"] = payload.get("support_tier")
+    normalized["next_step"] = payload.get("next_step")
+    return normalized
+
+
+def _normalize_controller_inspect_payload(payload: Any) -> dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+    normalized = dict(payload)
+    normalized["path"] = payload.get("path")
+    normalized["language"] = payload.get("language")
+    normalized["scenario"] = payload.get("scenario")
+    normalized["integration_mode"] = payload.get("integration_mode")
+    normalized["valid_source"] = bool(payload.get("valid_source", False))
+    normalized["editable_regions"] = payload.get("editable_regions") if isinstance(payload.get("editable_regions"), list) else []
+    normalized["markers_present"] = bool(payload.get("markers_present", False))
+    normalized["default_camera"] = payload.get("default_camera")
+    normalized["device_bindings"] = payload.get("device_bindings") if isinstance(payload.get("device_bindings"), list) else []
+    normalized["telemetry_sections"] = payload.get("telemetry_sections") if isinstance(payload.get("telemetry_sections"), dict) else {}
+    normalized["benchmark_readiness"] = payload.get("benchmark_readiness") if isinstance(payload.get("benchmark_readiness"), dict) else {}
+    normalized["issues"] = payload.get("issues") if isinstance(payload.get("issues"), list) else []
+    return normalized
+
+
+def _normalize_controller_scaffold_payload(payload: Any) -> dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+    normalized = dict(payload)
+    normalized["path"] = payload.get("path")
+    normalized["scenario"] = payload.get("scenario")
+    normalized["language"] = payload.get("language")
+    normalized["default_camera"] = payload.get("default_camera")
+    normalized["copied_files"] = payload.get("copied_files") if isinstance(payload.get("copied_files"), list) else []
+    normalized["editable_regions"] = payload.get("editable_regions") if isinstance(payload.get("editable_regions"), list) else []
+    normalized["source_controller"] = payload.get("source_controller")
+    normalized["spec_path"] = payload.get("spec_path")
+    normalized["world"] = payload.get("world")
+    normalized["target_robot_name"] = payload.get("target_robot_name")
+    normalized["target_robot_def"] = payload.get("target_robot_def")
+    return normalized
+
+
+def _normalize_controller_edit_payload(payload: Any) -> dict[str, Any]:
+    payload = payload if isinstance(payload, dict) else {}
+    normalized = dict(payload)
+    normalized["path"] = payload.get("path")
+    normalized["language"] = payload.get("language")
+    normalized["applied_operations"] = payload.get("applied_operations") if isinstance(payload.get("applied_operations"), list) else []
+    normalized["editable_regions"] = payload.get("editable_regions") if isinstance(payload.get("editable_regions"), list) else []
+    normalized["next_step"] = payload.get("next_step")
+    return normalized
+
+
 def _tool_error(exc: Exception) -> dict[str, Any]:
     if isinstance(exc, KitError):
         return {"ok": False, "error": exc.to_dict()}
@@ -244,7 +338,7 @@ def webots_run_benchmark(
 @mcp.tool()
 def webots_world_inspect(path: str) -> dict[str, Any]:
     try:
-        return inspect_world(Path(path))
+        return _normalize_world_inspect_payload(inspect_world(Path(path)))
     except Exception as exc:
         return _tool_error(exc)
 
@@ -252,7 +346,7 @@ def webots_world_inspect(path: str) -> dict[str, Any]:
 @mcp.tool()
 def webots_world_validate(path: str) -> dict[str, Any]:
     try:
-        return validate_world(Path(path))
+        return _normalize_world_validate_payload(validate_world(Path(path)))
     except Exception as exc:
         return _tool_error(exc)
 
@@ -260,7 +354,7 @@ def webots_world_validate(path: str) -> dict[str, Any]:
 @mcp.tool()
 def webots_world_edit(path: str, plan: str) -> dict[str, Any]:
     try:
-        return edit_world(Path(path), plan_path=Path(plan))
+        return _normalize_world_edit_payload(edit_world(Path(path), plan_path=Path(plan)))
     except Exception as exc:
         return _tool_error(exc)
 
@@ -268,7 +362,9 @@ def webots_world_edit(path: str, plan: str) -> dict[str, Any]:
 @mcp.tool()
 def webots_controller_inspect(path: str, scenario: str | None = None, spec: str | None = None) -> dict[str, Any]:
     try:
-        return inspect_controller(Path(path), scenario=scenario, spec_path=Path(spec) if spec else None).to_dict()
+        return _normalize_controller_inspect_payload(
+            inspect_controller(Path(path), scenario=scenario, spec_path=Path(spec) if spec else None).to_dict()
+        )
     except Exception as exc:
         return _tool_error(exc)
 
@@ -284,14 +380,16 @@ def webots_controller_scaffold(
     robot_def: str | None = None,
 ) -> dict[str, Any]:
     try:
-        return scaffold_controller(
-            path=Path(path),
-            scenario=scenario,
-            language=language,
-            spec_path=Path(spec) if spec else None,
-            world=Path(world) if world else None,
-            robot_name=robot_name,
-            robot_def=robot_def,
+        return _normalize_controller_scaffold_payload(
+            scaffold_controller(
+                path=Path(path),
+                scenario=scenario,
+                language=language,
+                spec_path=Path(spec) if spec else None,
+                world=Path(world) if world else None,
+                robot_name=robot_name,
+                robot_def=robot_def,
+            )
         )
     except Exception as exc:
         return _tool_error(exc)
@@ -310,7 +408,7 @@ def webots_controller_validate(path: str, scenario: str | None = None, strict: b
 @mcp.tool()
 def webots_controller_edit(path: str, plan: str) -> dict[str, Any]:
     try:
-        return edit_controller(Path(path), plan_path=Path(plan))
+        return _normalize_controller_edit_payload(edit_controller(Path(path), plan_path=Path(plan)))
     except Exception as exc:
         return _tool_error(exc)
 

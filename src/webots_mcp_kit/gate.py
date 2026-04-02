@@ -61,6 +61,7 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
     steps: list[GateStep] = [
         GateStep("doctor", ("doctor", "--json")),
         GateStep("clean_user_acceptance", ("..\\scripts\\clean_user_acceptance.py",)),  # marker step for the runner
+        GateStep("mcp_authoring_smoke", (str(root / "mcp-authoring"),)),
         GateStep("bundled_benchmark_line", ("benchmark", "run", "line-follower", "--controller", "example", "--output", str(reports_dir / "line-follower.json"), "--duration-s", "3")),
         GateStep(
             "bundled_benchmark_obstacle",

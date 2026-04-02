@@ -23,6 +23,12 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
+The same preview surface is also exposed through MCP:
+
+- `webots_world_inspect`
+- `webots_world_validate`
+- `webots_world_edit`
+
 ## Inspect
 
 ```powershell
