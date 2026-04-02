@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.2
+
+- Removed `actions/setup-python` from the self-hosted Windows runtime workflow to avoid runner-local PowerShell execution policy failures.
+- Replaced it with direct validation of the runner's installed Python, keeping the runtime workflow aligned with the machine-local Webots setup.
+
 ## v0.9.1
 
 - Fixed self-hosted Windows workflow installation so `pytest` and `webots_mcp_kit` are installed into the exact Python selected by `actions/setup-python`.

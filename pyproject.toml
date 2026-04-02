@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webots-mcp-kit"
-version = "0.9.1"
+version = "0.9.2"
 description = "Windows-first Webots developer toolkit with CLI, MCP server, controller SDK, and bundled benchmarks."
 readme = "README.md"
 license = "MIT"
