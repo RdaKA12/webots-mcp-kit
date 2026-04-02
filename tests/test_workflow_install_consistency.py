@@ -73,6 +73,13 @@ def test_runtime_workflow_includes_generated_scenario_smoke() -> None:
     assert "-k generated_scenario_smoke" in content
 
 
+def test_runtime_workflow_includes_imported_project_smoke() -> None:
+    root = Path(__file__).resolve().parents[1]
+    content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
+    assert "Imported project runtime smoke" in content
+    assert "-k imported_project_smoke" in content
+
+
 def test_release_and_package_workflows_smoke_project_and_scenario_commands() -> None:
     root = Path(__file__).resolve().parents[1]
     package_content = (root / ".github/workflows/package-ci.yml").read_text(encoding="utf-8")

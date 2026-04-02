@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.10.2
+
+- Finalized the runtime export bundle around a canonical standard-artifact manifest, including explicit artifact-version and replay-mode metadata in `export.json`.
+- Expanded `session replay` into a more observability-focused report with artifact standard metadata, result reason, runtime environment summary, and log-summary context.
+- Added imported-project runtime smoke coverage so the real runtime path now validates `project import` plus basic `session start -> inspect -> stop` on an existing bundled world/controller pair.
+- Tightened runner and replay documentation so the `interactive-webots` machine standard and exported-session triage flow stay aligned with the runtime smoke workflow.
+
 ## v0.10.1
 
 - Tightened the pre-`v1.0.0` MCP contract freeze by normalizing stable success payloads for `webots_session_start`, `webots_get_state`, `webots_capture_camera`, and `webots_run_benchmark` while preserving additive extra fields.

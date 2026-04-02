@@ -14,7 +14,14 @@ from .benchmarks import get_scenario
 from .controller_scaffold import scaffold_controller
 from .diagnostics import collect_runtime_diagnostics
 from .errors import KitError
-from .models import GeneratedScenario, ProjectManifest, ScenarioSpec, SessionExport
+from .models import (
+    SESSION_EXPORT_ARTIFACT_STANDARD_VERSION,
+    SESSION_EXPORT_STANDARD_ARTIFACTS,
+    GeneratedScenario,
+    ProjectManifest,
+    ScenarioSpec,
+    SessionExport,
+)
 from .session_store import SessionStore
 from .utils import atomic_write_text, utc_now_iso
 
@@ -467,17 +474,21 @@ def export_session(session_id: str, *, output: Path | None = None, store: Sessio
             shutil.copy2(source, destination)
             copied_artifacts.append(str(destination))
 
+    standard_artifacts = {name: str(export_dir / filename) for name, filename in SESSION_EXPORT_STANDARD_ARTIFACTS}
     payload = SessionExport(
         export_dir=str(export_dir),
         session_id=session_id,
-        manifest_path=str(export_dir / "session.json"),
-        inspect_path=str(export_dir / "inspect.json"),
-        log_inventory_path=str(export_dir / "log_inventory.json"),
-        log_summary_path=str(export_dir / "log_summary.json"),
-        runtime_environment_path=str(export_dir / "runtime_environment.json"),
-        doctor_path=str(export_dir / "doctor.json"),
-        summary_path=str(export_dir / "summary.json"),
-        export_manifest_path=str(export_dir / "export.json"),
+        manifest_path=standard_artifacts["session"],
+        inspect_path=standard_artifacts["inspect"],
+        log_inventory_path=standard_artifacts["log_inventory"],
+        log_summary_path=standard_artifacts["log_summary"],
+        runtime_environment_path=standard_artifacts["runtime_environment"],
+        doctor_path=standard_artifacts["doctor"],
+        summary_path=standard_artifacts["summary"],
+        export_manifest_path=standard_artifacts["export_manifest"],
+        artifact_standard_version=SESSION_EXPORT_ARTIFACT_STANDARD_VERSION,
+        replay_mode="observability",
+        standard_artifacts=standard_artifacts,
         copied_logs=copied_logs,
         copied_artifacts=copied_artifacts,
     )
@@ -491,31 +502,45 @@ def replay_session(export_path: Path) -> dict[str, Any]:
     export_manifest_path = resolved_path if resolved_path.is_file() else (export_root / "export.json")
     export_manifest = json.loads(export_manifest_path.read_text(encoding="utf-8")) if export_manifest_path.exists() else {}
 
-    summary_path = Path(str(export_manifest.get("summary_path") or (export_root / "summary.json")))
-    session_path = Path(str(export_manifest.get("manifest_path") or (export_root / "session.json")))
-    inspect_path = Path(str(export_manifest.get("inspect_path") or (export_root / "inspect.json")))
-    runtime_environment_path = Path(str(export_manifest.get("runtime_environment_path") or (export_root / "runtime_environment.json")))
+    standard_artifacts = export_manifest.get("standard_artifacts") if isinstance(export_manifest.get("standard_artifacts"), dict) else {}
+    if not standard_artifacts:
+        standard_artifacts = {name: str(export_root / filename) for name, filename in SESSION_EXPORT_STANDARD_ARTIFACTS}
+    summary_path = Path(str(export_manifest.get("summary_path") or standard_artifacts["summary"]))
+    session_path = Path(str(export_manifest.get("manifest_path") or standard_artifacts["session"]))
+    inspect_path = Path(str(export_manifest.get("inspect_path") or standard_artifacts["inspect"]))
+    log_summary_path = Path(str(export_manifest.get("log_summary_path") or standard_artifacts["log_summary"]))
+    runtime_environment_path = Path(
+        str(export_manifest.get("runtime_environment_path") or standard_artifacts["runtime_environment"])
+    )
     if not session_path.exists() and not summary_path.exists():
         raise FileNotFoundError(f"Session export was not found under {export_root}")
 
     summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
     session = json.loads(session_path.read_text(encoding="utf-8")) if session_path.exists() else {}
     inspect = json.loads(inspect_path.read_text(encoding="utf-8")) if inspect_path.exists() else {}
+    log_summary = json.loads(log_summary_path.read_text(encoding="utf-8")) if log_summary_path.exists() else {}
     runtime_environment = json.loads(runtime_environment_path.read_text(encoding="utf-8")) if runtime_environment_path.exists() else {}
     session_state = inspect.get("session_state") if isinstance(inspect.get("session_state"), dict) else {}
     result_reason = session_state.get("last_error_code") or session_state.get("status") or "completed"
     benchmark_name = str(session.get("scenario") or "line-follower")
     copied_logs = export_manifest.get("copied_logs") if isinstance(export_manifest.get("copied_logs"), list) else None
     copied_artifacts = export_manifest.get("copied_artifacts") if isinstance(export_manifest.get("copied_artifacts"), list) else None
+    runtime_summary = session.get("runtime_summary") if isinstance(session.get("runtime_summary"), dict) else {}
     return {
         "export_dir": str(export_root),
         "session_id": summary.get("session_id"),
         "scenario": session.get("scenario"),
         "status": session.get("status"),
+        "artifact_standard_version": int(export_manifest.get("artifact_standard_version", SESSION_EXPORT_ARTIFACT_STANDARD_VERSION)),
+        "replay_mode": str(export_manifest.get("replay_mode") or "observability"),
+        "standard_artifacts": standard_artifacts,
         "session_state": session_state,
+        "result_reason": result_reason,
         "last_error_code": session_state.get("last_error_code"),
         "last_error": session_state.get("last_error"),
+        "runtime_summary": runtime_summary,
         "runtime_environment": summary.get("runtime_environment") if isinstance(summary.get("runtime_environment"), dict) else runtime_environment,
+        "log_summary": log_summary if isinstance(log_summary, dict) else {},
         "copied_logs": sorted(Path(path).name for path in copied_logs) if copied_logs is not None else sorted(path.name for path in (export_root / "logs").glob("*")),
         "copied_artifacts": (
             sorted(Path(path).name for path in copied_artifacts)
@@ -595,15 +620,27 @@ def format_scenario_doctor_report(payload: dict[str, Any]) -> str:
 
 
 def format_session_replay(payload: dict[str, Any]) -> str:
+    runtime_environment = payload.get("runtime_environment") if isinstance(payload.get("runtime_environment"), dict) else {}
+    runner_mode = runtime_environment.get("runner_mode")
+    if isinstance(runner_mode, dict):
+        runner_mode_text = runner_mode.get("mode")
+    else:
+        runner_mode_text = runner_mode
     lines = [
         f"session_replay: {payload['status']}",
         f"session_id: {payload['session_id']}",
         f"scenario: {payload['scenario']}",
+        f"replay_mode: {payload.get('replay_mode')}",
+        f"artifact_standard_version: {payload.get('artifact_standard_version')}",
         f"session_state_status: {payload.get('session_state', {}).get('status')}",
+        f"result_reason: {payload.get('result_reason')}",
         f"last_error_code: {payload['last_error_code']}",
         f"last_error: {payload['last_error']}",
+        f"runtime_runner_mode: {runner_mode_text}",
+        f"runtime_python: {runtime_environment.get('python_executable')}",
         f"copied_logs: {payload['copied_logs']}",
         f"copied_artifacts: {payload['copied_artifacts']}",
+        f"standard_artifacts: {sorted(payload.get('standard_artifacts', {}))}",
         f"summary: {len(payload['copied_logs'])} logs, {len(payload['copied_artifacts'])} artifacts",
         "support_tier: experimental-foundation",
         f"next_step: {payload['next_step']}",

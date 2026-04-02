@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from webots_mcp_kit.models import bundled_example_root
+
 
 RUN_SMOKE = os.environ.get("WEBOTS_KIT_RUN_SMOKE") == "1"
 RUN_RUNTIME_SMOKE = os.environ.get("WEBOTS_KIT_RUN_RUNTIME_SMOKE") == "1"
@@ -117,6 +119,47 @@ def test_generated_scenario_smoke(tmp_path: Path) -> None:
     payload = json.loads(benchmark.stdout)
     assert payload["benchmark"] == generated["benchmark_name"]
     assert report_path.exists()
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_imported_project_smoke(tmp_path: Path) -> None:
+    project_root = tmp_path / "imported-project"
+    examples_root = bundled_example_root()
+    world = examples_root / "line-follower" / "worlds" / "line_follower_benchmark.wbt"
+    controller = examples_root / "line-follower" / "controllers" / "line_follower_agent.py"
+
+    imported = run_cli("project", "import", "--world", str(world), "--controller", str(controller), "--project-root", str(project_root))
+    payload = json.loads(imported.stdout)
+    spec_path = Path(payload["scenario_metadata_path"])
+    assert spec_path.exists()
+
+    validation = run_cli("scenario", "validate", str(spec_path), "--json")
+    validation_payload = json.loads(validation.stdout)
+    assert validation_payload["valid"] is True
+
+    started = run_cli(
+        "session",
+        "start",
+        "--scenario",
+        "line-follower",
+        "--world",
+        str(world),
+        "--controller",
+        str(controller),
+        "--mode",
+        "fast",
+        "--render",
+        "off",
+        timeout=180,
+    )
+    manifest = json.loads(started.stdout)
+    assert manifest["status"] == "ready"
+    inspected = run_cli("session", "inspect", "--session", manifest["session_id"])
+    inspect_payload = json.loads(inspected.stdout)
+    assert inspect_payload["session_state"]["scenario"] == "line-follower"
+    stopped = run_cli("session", "stop", "--session", manifest["session_id"], timeout=60)
+    stopped_manifest = json.loads(stopped.stdout)
+    assert stopped_manifest["status"] in {"stopped", "failed"}
 
 
 @pytest.mark.skipif(not RUN_SMOKE, reason="Smoke tests are disabled unless WEBOTS_KIT_RUN_SMOKE=1.")

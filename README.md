@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.10.1`
+`v0.10.2`
 
 Current focus:
 
@@ -28,6 +28,7 @@ Current focus:
 - public-contract regression coverage and external-user onboarding
 - MCP reliability for LLM-driven Webots sessions
 - zero-to-sim foundations through template-driven project and scenario generation
+- standardized runtime artifact and replay bundles for exported sessions
 
 Operational runtime model:
 
@@ -251,7 +252,7 @@ Full runtime smoke tests with real Webots execution:
 
 ```powershell
 $env:WEBOTS_KIT_RUN_RUNTIME_SMOKE='1'
-python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke"
+python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke or generated_scenario_smoke or imported_project_smoke"
 ```
 
 The self-hosted GitHub workflow for runtime smoke expects a Windows runner labeled `interactive-webots`.

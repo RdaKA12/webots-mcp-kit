@@ -146,9 +146,14 @@ def test_export_and_replay_session(tmp_path: Path, monkeypatch) -> None:
     assert Path(exported.doctor_path).exists()
     assert Path(exported.summary_path).exists()
     assert Path(exported.export_manifest_path).exists()
+    assert exported.standard_artifacts["session"] == exported.manifest_path
     assert replay["session_id"] == "session123"
+    assert replay["artifact_standard_version"] == 1
+    assert replay["replay_mode"] == "observability"
+    assert replay["standard_artifacts"]["doctor"].endswith("doctor.json")
     assert replay["last_error_code"] == "render-init-failed"
     assert replay["session_state"]["status"] == "failed"
     assert replay["support_tier"] == "experimental-foundation"
     assert "session_state_status: failed" in format_session_replay(replay)
+    assert "replay_mode: observability" in format_session_replay(replay)
     assert "summary:" in format_session_replay(replay)

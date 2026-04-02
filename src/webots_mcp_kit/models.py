@@ -4,6 +4,18 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+SESSION_EXPORT_ARTIFACT_STANDARD_VERSION = 1
+SESSION_EXPORT_STANDARD_ARTIFACTS: tuple[tuple[str, str], ...] = (
+    ("doctor", "doctor.json"),
+    ("session", "session.json"),
+    ("inspect", "inspect.json"),
+    ("log_inventory", "log_inventory.json"),
+    ("log_summary", "log_summary.json"),
+    ("runtime_environment", "runtime_environment.json"),
+    ("summary", "summary.json"),
+    ("export_manifest", "export.json"),
+)
+
 
 @dataclass(slots=True)
 class SessionManifest:
@@ -173,6 +185,9 @@ class SessionExport:
     doctor_path: str = ""
     summary_path: str = ""
     export_manifest_path: str = ""
+    artifact_standard_version: int = SESSION_EXPORT_ARTIFACT_STANDARD_VERSION
+    replay_mode: str = "observability"
+    standard_artifacts: dict[str, str] = field(default_factory=dict)
     copied_logs: list[str] = field(default_factory=list)
     copied_artifacts: list[str] = field(default_factory=list)
 

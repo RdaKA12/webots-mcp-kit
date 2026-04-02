@@ -20,6 +20,7 @@
 - package build stays green
 - PyPI install smoke stays green
 - generated-scenario smoke stays green
+- imported-project basic runtime smoke stays green
 - the clean-user acceptance flow is still repeatable:
   - `pip install webots-mcp-kit`
   - `webots-kit doctor`

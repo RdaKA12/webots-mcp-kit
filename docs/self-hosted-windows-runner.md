@@ -34,7 +34,7 @@ Run these commands on the runner host before trusting the workflow:
 ```powershell
 webots-kit doctor --json
 $env:WEBOTS_KIT_RUN_RUNTIME_SMOKE='1'
-python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke"
+python -m pytest -q -k "session_start_inspect_stop_smoke or benchmark_smoke or generated_scenario_smoke or imported_project_smoke"
 ```
 
 The repository workflows treat `D:\actions-runner\python311-shared` as the machine-standard interpreter so the interactive runner and release smoke jobs do not depend on per-user PATH state.
@@ -46,6 +46,7 @@ When a runtime smoke job fails, inspect:
 - `session inspect --session <id>`
 - `session logs --session <id>`
 - uploaded diagnostics artifacts from the workflow
+- exported replay bundles when the failure path already produced `session export` artifacts
 
 Canonical log names:
 
