@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.8
+
+- Fixed the self-hosted Windows runtime workflow to skip inaccessible Python candidates instead of failing on `AccessDenied`.
+- Added a bootstrap fallback that installs Python 3.11 into the runner temp directory from a local `python-3.11.9-amd64.exe` installer when no valid standard-library install is accessible.
+- Hardened failure diagnostics so Python-resolution failures still upload a usable artifact bundle.
+
 ## v0.9.7
 
 - Fixed the self-hosted Windows runtime workflow to reject broken Python toolcache installs that do not include `Lib\encodings`.

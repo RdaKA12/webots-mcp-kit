@@ -39,6 +39,7 @@ jobs:
         id: python
         run: |
           $candidateRoots = [System.Collections.Generic.List[string]]::new()
+          $installerCandidates = [System.Collections.Generic.List[string]]::new()
           $registryKeys = @(
             'HKCU:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
             'HKLM:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
@@ -53,6 +54,10 @@ jobs:
             $installRoot = $registryItem.GetValue('')
             if (-not [string]::IsNullOrWhiteSpace($installRoot)) {
               [void]$candidateRoots.Add($installRoot)
+              $installerCandidate = Join-Path $installRoot 'python-3.11.9-amd64.exe'
+              if (Test-Path $installerCandidate) {
+                [void]$installerCandidates.Add($installerCandidate)
+              }
             }
           }
           foreach ($userDir in Get-ChildItem 'C:\Users' -Directory -ErrorAction SilentlyContinue) {
@@ -65,11 +70,53 @@ jobs:
           foreach ($installRoot in $candidateRoots) {
             $candidate = Join-Path $installRoot 'python.exe'
             $encodings = Join-Path $installRoot 'Lib\encodings\__init__.py'
-            if ((Test-Path $candidate) -and (Test-Path $encodings)) {
+            try {
+              $hasCandidate = Test-Path -LiteralPath $candidate -ErrorAction Stop
+              $hasEncodings = Test-Path -LiteralPath $encodings -ErrorAction Stop
+            } catch {
+              continue
+            }
+            if ($hasCandidate -and $hasEncodings) {
               $pythonExe = $candidate
               break
             }
           }
+
+          if (-not $pythonExe) {
+            $bootstrapRoot = Join-Path $env:RUNNER_TEMP 'python311-bootstrap'
+            $bootstrapPython = Join-Path $bootstrapRoot 'python.exe'
+            $bootstrapEncodings = Join-Path $bootstrapRoot 'Lib\encodings\__init__.py'
+            if (-not ((Test-Path -LiteralPath $bootstrapPython -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $bootstrapEncodings -ErrorAction SilentlyContinue))) {
+              $installer = $installerCandidates | Select-Object -First 1
+              if (-not $installer) {
+                throw 'Could not resolve a valid Python 3.11 installation and no local Python 3.11 installer candidate was found.'
+              }
+              if (Test-Path -LiteralPath $bootstrapRoot) {
+                Remove-Item -LiteralPath $bootstrapRoot -Recurse -Force
+              }
+              New-Item -ItemType Directory -Path $bootstrapRoot -Force | Out-Null
+              $arguments = @(
+                '/quiet',
+                "TargetDir=$bootstrapRoot",
+                'InstallAllUsers=0',
+                'PrependPath=0',
+                'Include_pip=1',
+                'Include_launcher=0',
+                'AssociateFiles=0',
+                'Shortcuts=0',
+                'CompileAll=0',
+                'SimpleInstall=1'
+              )
+              $process = Start-Process -FilePath $installer -ArgumentList $arguments -Wait -PassThru
+              if ($process.ExitCode -ne 0) {
+                throw "Python bootstrap installer failed with exit code $($process.ExitCode)."
+              }
+            }
+            if ((Test-Path -LiteralPath $bootstrapPython -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $bootstrapEncodings -ErrorAction SilentlyContinue)) {
+              $pythonExe = $bootstrapPython
+            }
+          }
+
           if (-not $pythonExe) {
             throw 'Could not resolve a valid Python 3.11 installation with a standard library.'
           }
@@ -103,7 +150,13 @@ jobs:
         if: failure()
         run: |
           $diag = Join-Path $env:GITHUB_WORKSPACE '.ci-diagnostics'
-          & "${{ steps.python.outputs.python_exe }}" -m webots_mcp_kit.diagnostics --output $diag
+          New-Item -ItemType Directory -Path $diag -Force | Out-Null
+          $pythonExe = "${{ steps.python.outputs.python_exe }}"
+          if ([string]::IsNullOrWhiteSpace($pythonExe)) {
+            Set-Content -LiteralPath (Join-Path $diag 'python-resolution.txt') -Value 'python_exe output was empty; Python resolution failed before diagnostics could run.'
+          } else {
+            & $pythonExe -m webots_mcp_kit.diagnostics --output $diag
+          }
           $sessionRoot = Join-Path $env:LOCALAPPDATA 'webots-mcp-kit\sessions'
           if (Test-Path $sessionRoot) {
             Copy-Item -LiteralPath $sessionRoot -Destination (Join-Path $diag 'sessions') -Recurse -Force

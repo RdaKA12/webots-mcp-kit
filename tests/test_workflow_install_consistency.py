@@ -32,6 +32,9 @@ def test_runtime_workflow_resolves_registry_python() -> None:
     assert "steps.python.outputs.python_exe" in content
     assert "Lib\\encodings\\__init__.py" in content
     assert "C:\\Users" in content
+    assert "Test-Path -LiteralPath $candidate -ErrorAction Stop" in content
+    assert "python311-bootstrap" in content
+    assert "python-3.11.9-amd64.exe" in content
 
 
 def test_runtime_workflow_does_not_depend_on_console_script_path() -> None:
@@ -45,3 +48,9 @@ def test_runtime_workflow_does_not_use_unquoted_ampersand_run_lines() -> None:
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "run: & " not in content
+
+
+def test_runtime_workflow_handles_missing_python_output_in_diagnostics() -> None:
+    root = Path(__file__).resolve().parents[1]
+    content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
+    assert "python_exe output was empty" in content
