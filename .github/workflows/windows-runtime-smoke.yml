@@ -25,6 +25,9 @@ on:
 jobs:
   runtime-smoke:
     runs-on: [self-hosted, windows, webots]
+    defaults:
+      run:
+        shell: powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {0}
     env:
       WEBOTS_KIT_SESSION_START_TIMEOUT: "180"
       WEBOTS_KIT_RUN_RUNTIME_SMOKE: "1"
@@ -33,13 +36,11 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Verify runner Python
-        shell: powershell
         run: |
           python --version
           python -c "import sys; assert sys.version_info >= (3, 11), sys.version"
 
       - name: Install toolkit
-        shell: powershell
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
@@ -47,20 +48,16 @@ jobs:
           python -c "import webots_mcp_kit, pytest; print(webots_mcp_kit.__version__)"
 
       - name: Doctor
-        shell: powershell
         run: webots-kit doctor --json
 
       - name: Session runtime smoke
-        shell: powershell
         run: python -m pytest -q -k session_start_inspect_stop_smoke
 
       - name: Benchmark runtime smoke
-        shell: powershell
         run: python -m pytest -q -k benchmark_smoke
 
       - name: Upload failure diagnostics
         if: failure()
-        shell: powershell
         run: |
           $diag = Join-Path $env:GITHUB_WORKSPACE '.ci-diagnostics'
           python -m webots_mcp_kit.diagnostics --output $diag

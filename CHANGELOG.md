@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.3
+
+- Fixed the self-hosted Windows runtime workflow to run PowerShell steps with `ExecutionPolicy Bypass`, avoiding local script-blocking on the runner service account.
+- Added regression coverage to ensure the runtime workflow keeps the execution-policy bypass template.
+
 ## v0.9.2
 
 - Removed `actions/setup-python` from the self-hosted Windows runtime workflow to avoid runner-local PowerShell execution policy failures.
