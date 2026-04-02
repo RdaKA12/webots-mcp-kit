@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.7
+
+- Fixed the self-hosted Windows runtime workflow to reject broken Python toolcache installs that do not include `Lib\encodings`.
+- Added filesystem fallback discovery for standard per-user Python 3.11 installs under `C:\Users\*\AppData\Local\Programs\Python\Python311`.
+- Extended workflow regression coverage for valid-standard-library Python resolution.
+
 ## v0.9.6
 
 - Fixed the self-hosted Windows runtime workflow YAML syntax by converting PowerShell invocations that started with `&` into block `run` sections.

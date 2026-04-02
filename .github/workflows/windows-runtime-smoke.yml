@@ -38,13 +38,13 @@ jobs:
       - name: Resolve runner Python
         id: python
         run: |
+          $candidateRoots = [System.Collections.Generic.List[string]]::new()
           $registryKeys = @(
-            'HKLM:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
             'HKCU:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
-            'HKLM:\SOFTWARE\WOW6432Node\Python\PythonCore\3.11\InstallPath',
-            'HKCU:\SOFTWARE\WOW6432Node\Python\PythonCore\3.11\InstallPath'
+            'HKLM:\SOFTWARE\Python\PythonCore\3.11\InstallPath',
+            'HKCU:\SOFTWARE\WOW6432Node\Python\PythonCore\3.11\InstallPath',
+            'HKLM:\SOFTWARE\WOW6432Node\Python\PythonCore\3.11\InstallPath'
           )
-          $pythonExe = $null
           foreach ($registryKey in $registryKeys) {
             if (-not (Test-Path $registryKey)) {
               continue
@@ -52,15 +52,26 @@ jobs:
             $registryItem = Get-Item -Path $registryKey
             $installRoot = $registryItem.GetValue('')
             if (-not [string]::IsNullOrWhiteSpace($installRoot)) {
-              $candidate = Join-Path $installRoot 'python.exe'
-              if (Test-Path $candidate) {
-                $pythonExe = $candidate
-                break
-              }
+              [void]$candidateRoots.Add($installRoot)
+            }
+          }
+          foreach ($userDir in Get-ChildItem 'C:\Users' -Directory -ErrorAction SilentlyContinue) {
+            [void]$candidateRoots.Add((Join-Path $userDir.FullName 'AppData\Local\Programs\Python\Python311'))
+          }
+          [void]$candidateRoots.Add('C:\Program Files\Python311')
+          [void]$candidateRoots.Add('C:\Python311')
+
+          $pythonExe = $null
+          foreach ($installRoot in $candidateRoots) {
+            $candidate = Join-Path $installRoot 'python.exe'
+            $encodings = Join-Path $installRoot 'Lib\encodings\__init__.py'
+            if ((Test-Path $candidate) -and (Test-Path $encodings)) {
+              $pythonExe = $candidate
+              break
             }
           }
           if (-not $pythonExe) {
-            throw 'Could not resolve a Python 3.11 installation from the Windows registry.'
+            throw 'Could not resolve a valid Python 3.11 installation with a standard library.'
           }
           "python_exe=$pythonExe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 

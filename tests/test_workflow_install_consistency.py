@@ -27,8 +27,11 @@ def test_runtime_workflow_resolves_registry_python() -> None:
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "Resolve runner Python" in content
+    assert "HKCU:\\SOFTWARE\\Python\\PythonCore\\3.11\\InstallPath" in content
     assert "HKLM:\\SOFTWARE\\Python\\PythonCore\\3.11\\InstallPath" in content
     assert "steps.python.outputs.python_exe" in content
+    assert "Lib\\encodings\\__init__.py" in content
+    assert "C:\\Users" in content
 
 
 def test_runtime_workflow_does_not_depend_on_console_script_path() -> None:
