@@ -63,6 +63,7 @@ class SessionDaemon:
         self.telemetry_event = asyncio.Event()
         self.stop_event = asyncio.Event()
         self.ready_roles = {"agent", "supervisor"}
+        self.telemetry_ready_roles: set[str] = set()
         self.control_paused = False
         self.webots_port = choose_free_port()
         self.artifacts_dir = Path(self.manifest.artifacts_dir)
@@ -350,10 +351,11 @@ class SessionDaemon:
         snapshot.connected = False
         self.runtime_snapshots[role] = snapshot
         self.runtime_connections.pop(role, None)
+        self.telemetry_ready_roles.discard(role)
         self.write_manifest()
 
     def maybe_mark_ready(self) -> None:
-        if self.ready_roles.issubset(self.runtime_connections):
+        if self.ready_roles.issubset(self.runtime_connections) and self.ready_roles.issubset(self.telemetry_ready_roles):
             self.write_manifest(status="ready")
 
     def apply_telemetry(self, role: str, message: dict[str, Any]) -> None:
@@ -372,8 +374,10 @@ class SessionDaemon:
         if "meta" in message:
             snapshot.meta = message["meta"]
         self.runtime_snapshots[role] = snapshot
+        self.telemetry_ready_roles.add(role)
         self.write_manifest()
         self.telemetry_event.set()
+        self.maybe_mark_ready()
 
     async def send_runtime_command(self, role: str, action: str, params: dict[str, Any] | None = None, timeout: float = 10.0) -> Any:
         writer = self.runtime_connections.get(role)
@@ -447,11 +451,20 @@ class SessionDaemon:
             elif action == "capture_camera":
                 default_camera = self.runtime_snapshots["agent"].meta.get("default_camera", "camera")
                 target = params.get("path") or str(self.artifacts_dir / f"capture-{request_id()}.ppm")
-                result = await self.send_runtime_command(
-                    "agent",
-                    "capture_camera",
-                    {"camera": params.get("camera") or default_camera, "path": target},
-                )
+                command = {"camera": params.get("camera") or default_camera, "path": target}
+                capture_error: Exception | None = None
+                agent_step = int(self.runtime_snapshots["agent"].state.get("step_index", 0))
+                if agent_step < 3:
+                    await self.wait_for_steps(3 - agent_step, timeout=10.0)
+                for _ in range(2):
+                    try:
+                        result = await self.send_runtime_command("agent", "capture_camera", command, timeout=20.0)
+                        break
+                    except TimeoutError as exc:
+                        capture_error = exc
+                        await self.wait_for_steps(2, timeout=10.0)
+                else:
+                    raise capture_error or TimeoutError("Timed out waiting for camera capture.")
             elif action == "set_motor_velocity":
                 self.control_paused = False
                 result = await self.send_runtime_command(

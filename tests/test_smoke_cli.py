@@ -54,7 +54,7 @@ def wait_for_camera_capture(session_id: str, path: Path, *, attempts: int = 3, d
             return payload
         last_payload = payload
         time.sleep(delay_s)
-    return last_payload or {}
+    raise AssertionError(f"Camera capture did not succeed for session {session_id}: {last_payload}")
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
@@ -218,14 +218,7 @@ def test_mcp_contract_smoke(tmp_path: Path) -> None:
     assert devices_payload["robot"]
     assert isinstance(sensors_payload["metrics"], dict)
     assert isinstance(sensors_payload["state"], dict)
-    if "path" in capture_payload:
-        assert capture_payload["path"] == str(tmp_path / "mcp-capture.ppm")
-    else:
-        assert capture_payload["ok"] is False
-        assert isinstance(capture_payload["error"]["message"], str)
-        assert isinstance(capture_payload["error"]["details"], dict)
-        assert capture_payload["error"]["retriable"] is False
-        assert capture_payload["error"]["code"] in {"admin-request-failed", "mcp-tool-failed"}
+    assert capture_payload["path"] == str(tmp_path / "mcp-capture.ppm")
     assert stop_payload["status"] in {"stopping", "stopped", "failed"}
     assert benchmark_payload["benchmark"] == "line-follower"
     assert isinstance(benchmark_payload["artifacts"], dict)

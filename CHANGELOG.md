@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.7
+
+- Stabilized real `capture_camera` success-path execution by hardening runtime socket I/O, delaying `ready` until both runtimes have published telemetry, and retrying capture only after fresh agent steps.
+- Tightened the live MCP contract smoke back to a real success assertion for `capture_camera` instead of tolerating structured failure payloads during warm-up races.
+
 ## v0.10.6
 
 - Moved more contract coverage off monkeypatched dummy clients and onto real normalization paths plus real runtime smoke checks, especially around MCP tool outputs and export/replay diagnostics.

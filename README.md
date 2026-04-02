@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.10.6`
+`v0.10.7`
 
 Current focus:
 

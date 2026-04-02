@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import select
 import socket
 import time
 from typing import Any
@@ -10,10 +11,8 @@ class RuntimeSocketClient:
     def __init__(self, host: str, port: int):
         self.host = host
         self.port = port
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock = socket.create_connection((host, port), timeout=5.0)
         self.sock.settimeout(5.0)
-        self.sock.connect((host, port))
-        self.sock.setblocking(False)
         self._buffer = bytearray()
 
     def send(self, payload: dict[str, Any]) -> None:
@@ -22,12 +21,15 @@ class RuntimeSocketClient:
     def drain(self) -> list[dict[str, Any]]:
         messages: list[dict[str, Any]] = []
         while True:
+            readable, _, _ = select.select([self.sock], [], [], 0.0)
+            if not readable:
+                break
             try:
                 chunk = self.sock.recv(4096)
                 if not chunk:
                     break
                 self._buffer.extend(chunk)
-            except BlockingIOError:
+            except (BlockingIOError, TimeoutError, socket.timeout, OSError):
                 break
         while b"\n" in self._buffer:
             raw, _, remainder = self._buffer.partition(b"\n")
