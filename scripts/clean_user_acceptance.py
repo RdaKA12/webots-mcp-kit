@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +26,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def enrich_waypoint_spec(spec_path: Path) -> None:
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    layout = payload.setdefault("layout", {})
+    layout["walls"] = [
+        {"name": "wall-north-divider", "start": [-0.2, -0.3], "end": [-0.2, 0.3], "thickness": 0.02, "height": 0.08}
+    ]
+    layout["landmarks"] = [
+        {"name": "landmark-pickup-marker", "position": [0.2, -0.2], "radius": 0.04}
+    ]
+    layout["zones"] = [
+        {"name": "zone-goal-buffer", "center": [0.45, 0.0], "size": [0.22, 0.22]}
+    ]
+    layout["props"] = [
+        {"name": "prop-crate-a", "position": [0.0, 0.45], "size": [0.08, 0.08, 0.08]}
+    ]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     workspace = Path(args.workspace)
@@ -33,6 +52,13 @@ def main(argv: list[str] | None = None) -> int:
 
     for step in steps:
         rendered = " ".join(step.args)
+        if step.name == "scenario_enrich":
+            print(f"[acceptance] {step.name}: enrich scenario spec {rendered}")
+            if args.print_only:
+                continue
+            enrich_waypoint_spec(Path(step.args[0]))
+            continue
+
         print(f"[acceptance] {step.name}: webots-kit {rendered}")
         if args.print_only:
             continue

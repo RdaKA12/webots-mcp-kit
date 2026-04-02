@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Release
 
-`v1.4.0-alpha.1`
+`v1.5.0-alpha.1`
 
 Stable baseline:
 
@@ -35,6 +35,7 @@ Stable baseline:
 - deterministic import discovery and replay triage summaries for existing project workflows
 - experimental agent-authoring foundations for controller inspect/edit and world inspect/validate/edit
 - generated and imported world authoring runtime smoke on the feature branch preview
+- richer from-scratch world authoring preview for `walls`, `landmarks`, `zones`, and `props` across generated scenarios
 
 Operational runtime model:
 

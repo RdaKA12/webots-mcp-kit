@@ -9,6 +9,7 @@
 - latest `interactive-webots` runner runtime smoke passed in a logged-in desktop session
 - generated-scenario runtime smoke passed on the interactive runner
 - generated-world authoring runtime smoke passed on the interactive runner when authoring code changed
+- richer generated-world authoring smoke for `walls`, `landmarks`, `zones`, and `props` passed on the interactive runner when `scenario_ops` changed
 - imported-world authoring runtime smoke passed on the interactive runner when authoring code changed
 - package build and `twine check` are green
 - PyPI/TestPyPI install smoke expectations are ready to pass

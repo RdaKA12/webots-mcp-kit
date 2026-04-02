@@ -168,6 +168,9 @@ class GeneratedScenario:
     default_camera: str | None
     suggested_session_command: str
     suggested_benchmark_command: str
+    world_inventory_summary: dict[str, Any] = field(default_factory=dict)
+    world_authoring_context: dict[str, Any] = field(default_factory=dict)
+    benchmark_mapping: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

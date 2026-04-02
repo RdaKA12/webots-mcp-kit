@@ -28,6 +28,33 @@ def run_cli(args: tuple[str, ...], *, timeout: int = 600) -> str:
     return completed.stdout
 
 
+def enrich_generated_spec(step_name: str, spec_path: Path) -> None:
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    layout = payload.setdefault("layout", {})
+    if "generated_line" in step_name:
+        layout["walls"] = [
+            {"name": "wall-line-divider", "start": [-0.05, -0.35], "end": [-0.05, 0.28], "thickness": 0.02, "height": 0.08}
+        ]
+        layout["landmarks"] = [{"name": "landmark-line-marker", "position": [0.35, 0.1], "radius": 0.04}]
+        layout["zones"] = [{"name": "zone-line-buffer", "center": [0.4, -0.05], "size": [0.18, 0.18]}]
+        layout["props"] = [{"name": "prop-line-prop", "position": [0.1, -0.25], "size": [0.06, 0.06, 0.06]}]
+    elif "generated_waypoint" in step_name:
+        layout["walls"] = [
+            {"name": "wall-waypoint-divider", "start": [-0.2, -0.3], "end": [-0.2, 0.3], "thickness": 0.02, "height": 0.08}
+        ]
+        layout["landmarks"] = [{"name": "landmark-waypoint-marker", "position": [0.15, -0.18], "radius": 0.04}]
+        layout["zones"] = [{"name": "zone-goal-buffer", "center": [0.4, 0.0], "size": [0.22, 0.22]}]
+        layout["props"] = [{"name": "prop-waypoint-prop", "position": [0.0, 0.45], "size": [0.08, 0.08, 0.08]}]
+    elif "generated_obstacle" in step_name:
+        layout["walls"] = [
+            {"name": "wall-obstacle-divider", "start": [-0.55, -0.15], "end": [-0.15, -0.15], "thickness": 0.02, "height": 0.08}
+        ]
+        layout["landmarks"] = [{"name": "landmark-obstacle-marker", "position": [0.55, -0.4], "radius": 0.04}]
+        layout["zones"] = [{"name": "zone-obstacle-safe", "center": [0.55, -0.55], "size": [0.18, 0.18]}]
+        layout["props"] = [{"name": "prop-obstacle-prop", "position": [-0.55, 0.55], "size": [0.08, 0.08, 0.08]}]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     workspace = Path(args.workspace).resolve()
@@ -81,6 +108,14 @@ def main(argv: list[str] | None = None) -> int:
                 text=True,
                 timeout=900,
             )
+            summary.append({"step": step.name, "status": "ok"})
+            continue
+        if step.name.endswith("_scenario_enrich"):
+            rendered = f"enrich scenario spec {step.args[0]}"
+            print(f"[v1-gate] {step.name}: {rendered}")
+            if args.print_only:
+                continue
+            enrich_generated_spec(step.name, Path(step.args[0]))
             summary.append({"step": step.name, "status": "ok"})
             continue
 

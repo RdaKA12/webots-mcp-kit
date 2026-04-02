@@ -53,6 +53,7 @@ The preview validator currently checks:
 - missing target robot
 - missing target robot controller
 - malformed supported transforms
+- preserve-first task-world inventory for supported node families
 
 ## Edit
 
@@ -110,6 +111,34 @@ Preview operation families currently wired:
 - `add_prop`
 - `update_prop`
 - `remove_prop`
+
+## From-scratch world authoring
+
+The main from-scratch path is still the `scenario` flow rather than a separate `world init` command:
+
+```powershell
+webots-kit project init .\demo-project
+webots-kit scenario init .\demo-project\scenarios\demo-waypoint --template epuck-waypoint
+webots-kit scenario validate .\demo-project\scenarios\demo-waypoint\webots-kit.scenario.json
+webots-kit scenario build .\demo-project\scenarios\demo-waypoint\webots-kit.scenario.json
+```
+
+On the feature branch preview, richer generated scenarios can now carry:
+
+- `layout.walls[]`
+- `layout.landmarks[]`
+- `layout.zones[]`
+- `layout.props[]`
+
+`scenario validate` and `scenario doctor` now surface authoring-specific checks such as:
+
+- wall overlap
+- blocked spawn states
+- zone bounds
+- landmark name collisions
+- obstacle/prop collisions
+
+`scenario build` writes these structures into the generated `.wbt` and stores additive authoring metadata such as `recommended_next_edit_ops`, `world_inventory_summary`, and `benchmark_mapping` in `webots-kit.generated.json`.
 
 ## Recommended loop
 

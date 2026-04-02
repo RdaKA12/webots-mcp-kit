@@ -68,6 +68,36 @@ def test_line_track_build_writes_track_segments(tmp_path: Path) -> None:
     assert "floor-style-light" in world_text
 
 
+def test_rich_authoring_fields_build_into_world_and_metadata(tmp_path: Path) -> None:
+    project_root = tmp_path / "rich-authoring-project"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-waypoint"
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    init_scenario(scenario_dir, template="epuck-waypoint")
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["walls"] = [{"name": "wall-divider", "start": [-0.2, -0.3], "end": [-0.2, 0.3], "thickness": 0.02, "height": 0.08}]
+    payload["layout"]["landmarks"] = [{"name": "landmark-pickup-marker", "position": [0.2, -0.2], "radius": 0.04}]
+    payload["layout"]["zones"] = [{"name": "zone-goal-buffer", "center": [0.35, 0.0], "size": [0.2, 0.2]}]
+    payload["layout"]["props"] = [{"name": "prop-crate-a", "position": [0.0, 0.45], "size": [0.08, 0.08, 0.08]}]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    generated = build_scenario(spec_path)
+    world_text = Path(generated.world_path).read_text(encoding="utf-8")
+    metadata = json.loads((scenario_dir / "webots-kit.generated.json").read_text(encoding="utf-8"))
+
+    assert "wall-divider" in world_text
+    assert "landmark-pickup-marker" in world_text
+    assert "zone-goal-buffer" in world_text
+    assert "prop-crate-a" in world_text
+    assert "supported_edit_targets" in metadata
+    assert "world_authoring_context" in metadata
+    assert "add_wall" in metadata["world_authoring_context"]["recommended_next_edit_ops"]
+    assert generated.world_authoring_context["layout_counts"]["walls"] == 1
+    assert metadata["benchmark_mapping"]["benchmark_name"] == "waypoint-nav"
+    assert metadata["world_inventory_summary"]["wall_count"] == 1
+    assert metadata["world_authoring_context"]["layout_counts"]["walls"] == 1
+
+
 def test_scenario_doctor_reports_ready_for_valid_spec(tmp_path: Path) -> None:
     project_root = tmp_path / "doctor-project"
     init_project(project_root)
@@ -80,10 +110,38 @@ def test_scenario_doctor_reports_ready_for_valid_spec(tmp_path: Path) -> None:
     assert payload["mcp_ready"] is True
     assert payload["benchmark_readiness"]["ready"] is True
     assert payload["controller_contract_readiness"]["ready"] is True
+    assert payload["controller_authoring_readiness"]["ready"] is True
     assert payload["build_readiness"]["ready"] is True
     assert payload["runtime_smoke_readiness"]["ready"] is True
+    assert payload["benchmark_mapping_readiness"]["ready"] is True
     assert "support_tier: experimental-foundation" in format_scenario_doctor_report(payload)
     assert "benchmark_readiness: True" in format_scenario_doctor_report(payload)
+    assert "controller_authoring_readiness: True" in format_scenario_doctor_report(payload)
+    assert "benchmark_mapping_readiness: True" in format_scenario_doctor_report(payload)
+
+
+def test_scenario_doctor_reports_authoring_and_mapping_readiness(tmp_path: Path) -> None:
+    project_root = tmp_path / "doctor-rich-project"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "doctor-waypoint"
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    init_scenario(scenario_dir, template="epuck-waypoint")
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["walls"] = [{"name": "wall-divider", "start": [-0.2, -0.3], "end": [-0.2, 0.3], "thickness": 0.02, "height": 0.08}]
+    payload["layout"]["landmarks"] = [{"name": "landmark-pickup-marker", "position": [0.2, -0.2], "radius": 0.04}]
+    payload["layout"]["zones"] = [{"name": "zone-goal-buffer", "center": [0.35, 0.0], "size": [0.2, 0.2]}]
+    payload["layout"]["props"] = [{"name": "prop-crate-a", "position": [0.0, 0.45], "size": [0.08, 0.08, 0.08]}]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    doctor = scenario_doctor(spec_path)
+
+    assert doctor["controller_authoring_readiness"]["ready"] is True
+    assert doctor["benchmark_mapping_readiness"]["ready"] is True
+    assert doctor["world_authoring_readiness"]["counts"]["walls"] == 1
+    assert "add_wall" in doctor["world_authoring_readiness"]["recommended_next_edit_ops"]
+    formatted = format_scenario_doctor_report(doctor)
+    assert "controller_authoring_readiness: True" in formatted
+    assert "benchmark_mapping_readiness: True" in formatted
 
 
 def test_all_builtin_templates_validate_and_build(tmp_path: Path) -> None:
@@ -163,6 +221,76 @@ def test_validate_line_track_out_of_bounds_is_rejected(tmp_path: Path) -> None:
     report = validate_scenario(spec_path)
     assert report.valid is False
     assert any(issue.code == "line-track-point-out-of-bounds" for issue in report.issues)
+
+
+def test_validate_spawn_out_of_bounds_is_rejected(tmp_path: Path) -> None:
+    project_root = tmp_path / "spawn-bounds"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-waypoint"
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    init_scenario(scenario_dir, template="epuck-waypoint")
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["spawn"]["translation"] = [0.98, 0.0, 0.0]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = validate_scenario(spec_path)
+    assert report.valid is False
+    assert any(issue.code == "spawn-out-of-bounds" for issue in report.issues)
+
+
+def test_validate_zone_out_of_bounds_is_rejected(tmp_path: Path) -> None:
+    project_root = tmp_path / "zone-bounds"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-waypoint"
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    init_scenario(scenario_dir, template="epuck-waypoint")
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["zones"] = [{"name": "oversized-zone", "center": [0.95, 0.0], "size": [0.4, 0.4]}]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = validate_scenario(spec_path)
+    assert report.valid is False
+    assert any(issue.code == "zone-out-of-bounds" for issue in report.issues)
+
+
+def test_validate_landmark_name_collision_is_rejected(tmp_path: Path) -> None:
+    project_root = tmp_path / "landmark-collision"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-waypoint"
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    init_scenario(scenario_dir, template="epuck-waypoint")
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["landmarks"] = [
+        {"name": "dup-marker", "position": [0.1, 0.1], "radius": 0.04},
+        {"name": "dup-marker", "position": [0.2, 0.1], "radius": 0.04},
+    ]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = validate_scenario(spec_path)
+    assert report.valid is False
+    assert any(issue.code == "landmark-name-collision" for issue in report.issues)
+
+
+def test_validate_spawn_blocked_and_obstacle_prop_collision_are_rejected(tmp_path: Path) -> None:
+    project_root = tmp_path / "spawn-blocked"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-obstacle"
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    init_scenario(scenario_dir, template="epuck-obstacle-course")
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["spawn"]["translation"] = [0.0, 0.0, 0.0]
+    payload["layout"]["obstacles"] = [
+        {"shape": "box", "position": [0.0, 0.0], "size": [0.1, 0.1, 0.1], "rotation_z": 0.0}
+    ]
+    payload["layout"]["props"] = [
+        {"name": "crate-a", "position": [0.0, 0.0], "size": [0.08, 0.08, 0.08]}
+    ]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    report = validate_scenario(spec_path)
+    assert report.valid is False
+    assert any(issue.code == "spawn-blocked" for issue in report.issues)
+    assert any(issue.code == "obstacle-prop-collision" for issue in report.issues)
 
 
 def test_project_import_creates_metadata(tmp_path: Path) -> None:

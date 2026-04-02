@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.5.0-alpha.1
+
+- Extended template-driven scenario authoring so `walls`, `landmarks`, `zones`, and `props` now participate in richer validation, doctoring, generated metadata, and world output.
+- Added geometric authoring checks for blocked spawn states, wall overlap, zone bounds, landmark name collisions, and obstacle/prop collisions.
+- Promoted richer generated-world authoring into the feature-branch acceptance flow, gate preview, and runtime smoke coverage across the bundled task families.
+
 ## v1.4.0-alpha.1
 
 - Added generated-world and imported-world authoring runtime smoke coverage so world edits are now exercised through real `world edit -> validate -> session start` flows.

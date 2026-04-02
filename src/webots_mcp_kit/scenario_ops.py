@@ -53,6 +53,8 @@ SUPPORTED_ARENA_FLOORS: dict[str, dict[str, Any]] = {
     "grid": {"base_color": (0.86, 0.86, 0.84), "grid": True},
 }
 
+ROBOT_CLEARANCE_RADIUS = 0.045
+
 
 @dataclass(slots=True)
 class ValidationIssue:
@@ -405,6 +407,8 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
         if not _is_numeric_list(size, 3) or any(float(item) <= 0 for item in size):
             issues.append(ValidationIssue("invalid-prop-size", "Props must define a positive three-item size list.", f"layout.props[{index}].size"))
 
+    issues.extend(_validate_layout_geometry(spec))
+
     if not _str_field(spec.controller, "path"):
         issues.append(ValidationIssue("missing-controller-path", "controller.path is required.", "controller.path"))
     if scenario_def and scenario_def.default_camera and not _str_field(spec.controller, "default_camera"):
@@ -525,8 +529,27 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         default_camera=str(spec.controller.get("default_camera", benchmark_profile.default_camera)),
         suggested_session_command=suggested_session_command,
         suggested_benchmark_command=suggested_benchmark_command,
+        world_inventory_summary=world_inventory.get("spatial_summary", {}),
+        world_authoring_context={
+            "supported_layout_fields": ["spawn", "line_track", "waypoints", "goal_region", "obstacles", "walls", "landmarks", "zones", "props"],
+            "recommended_next_edit_ops": _recommended_next_edit_ops(spec),
+            "supported_edit_targets": world_inventory.get("supported_edit_targets", []),
+            "layout_counts": {
+                "obstacles": len(spec.layout.get("obstacles", [])) if isinstance(spec.layout.get("obstacles"), list) else 0,
+                "walls": len(spec.layout.get("walls", [])) if isinstance(spec.layout.get("walls"), list) else 0,
+                "landmarks": len(spec.layout.get("landmarks", [])) if isinstance(spec.layout.get("landmarks"), list) else 0,
+                "zones": len(spec.layout.get("zones", [])) if isinstance(spec.layout.get("zones"), list) else 0,
+                "props": len(spec.layout.get("props", [])) if isinstance(spec.layout.get("props"), list) else 0,
+            },
+        },
+        benchmark_mapping=_benchmark_mapping(spec, benchmark_name, benchmark_profile),
     )
-    metadata_payload = {**generated.to_dict(), "supported_edit_targets": world_inventory["supported_edit_targets"]}
+    metadata_payload = {
+        **generated.to_dict(),
+        "supported_edit_targets": world_inventory["supported_edit_targets"],
+        "recommended_next_edit_ops": generated.world_authoring_context.get("recommended_next_edit_ops", []),
+        "support_tier": "experimental-foundation",
+    }
     atomic_write_text(metadata_path, json.dumps(metadata_payload, indent=2), encoding="utf-8")
     return generated
 
@@ -577,8 +600,11 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
             "benchmark_readiness": {"ready": False, "benchmark_name": None, "profile": None, "issues": [issue.code for issue in report.issues]},
             "unsupported_combinations": [issue.to_dict() for issue in report.issues if "unsupported" in issue.code],
             "controller_contract_readiness": {"ready": False, "default_camera": None, "required_sensors": [], "required_actuators": [], "issues": [issue.code for issue in report.issues]},
+            "controller_authoring_readiness": {"ready": False, "controller_path": None, "default_camera": None, "scaffold_source": None, "issues": [issue.code for issue in report.issues]},
             "build_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
             "runtime_smoke_readiness": {"ready": False, "requires_interactive_runner": True, "benchmark_name": None},
+            "benchmark_mapping_readiness": {"ready": False, "benchmark_name": None, "target_robot_name": None, "target_robot_def": None, "expected_sensor_keys": [], "expected_metric_keys": [], "expected_actuator_keys": [], "issues": [issue.code for issue in report.issues]},
+            "world_authoring_readiness": {"ready": False, "supported_edit_targets": ["spawn", "obstacles", "walls", "landmarks", "zones", "props"], "counts": {"obstacles": 0, "walls": 0, "landmarks": 0, "zones": 0, "props": 0}, "recommended_next_edit_ops": []},
             "issues": [issue.to_dict() for issue in report.issues],
             "support_tier": "experimental-foundation",
             "next_step": "Create a spec with `webots-kit scenario init <path> --template <template>`.",
@@ -622,6 +648,27 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "recommended_mode": "fast",
         "recommended_render": "off",
     }
+    controller_authoring_readiness = {
+        "ready": controller_contract_readiness["ready"],
+        "controller_path": spec.controller.get("path"),
+        "default_camera": spec.controller.get("default_camera"),
+        "scaffold_source": str(scenario_def.controller) if scenario_def else None,
+        "issues": list(controller_contract_readiness["issues"]),
+    }
+    benchmark_mapping_readiness = {
+        "ready": report.valid and benchmark_name is not None and controller_contract_readiness["ready"],
+        "benchmark_name": benchmark_name,
+        "target_robot_name": spec.robot.get("name"),
+        "target_robot_def": spec.robot.get("def"),
+        "expected_sensor_keys": list(scenario_def.required_sensor_keys) if scenario_def else [],
+        "expected_metric_keys": list(scenario_def.required_metric_keys) if scenario_def else [],
+        "expected_actuator_keys": list(scenario_def.required_actuator_keys) if scenario_def else [],
+        "issues": [
+            issue.code
+            for issue in report.issues
+            if issue.field in {"benchmark.profile", "benchmark.duration_s", "controller.default_camera", "sensors.required", "actuators.required"}
+        ],
+    }
     world_authoring_readiness = {
         "ready": report.valid,
         "supported_edit_targets": ["spawn", "obstacles", "walls", "landmarks", "zones", "props"],
@@ -632,6 +679,8 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
             "zones": len(spec.layout.get("zones", [])) if isinstance(spec.layout.get("zones"), list) else 0,
             "props": len(spec.layout.get("props", [])) if isinstance(spec.layout.get("props"), list) else 0,
         },
+        "recommended_next_edit_ops": _recommended_next_edit_ops(spec),
+        "issues": [issue.code for issue in report.issues if issue.field and issue.field.startswith("layout.")],
     }
     next_step = f"Run `webots-kit scenario build \"{spec_path}\"` once the validation issues are fixed."
     if report.valid and benchmark_name:
@@ -652,8 +701,10 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "benchmark_readiness": benchmark_readiness,
         "unsupported_combinations": unsupported_combinations,
         "controller_contract_readiness": controller_contract_readiness,
+        "controller_authoring_readiness": controller_authoring_readiness,
         "build_readiness": build_readiness,
         "runtime_smoke_readiness": runtime_smoke_readiness,
+        "benchmark_mapping_readiness": benchmark_mapping_readiness,
         "world_authoring_readiness": world_authoring_readiness,
         "issues": [issue.to_dict() for issue in report.issues],
         "support_tier": "experimental-foundation",
@@ -914,8 +965,10 @@ def format_scenario_doctor_report(payload: dict[str, Any]) -> str:
         f"mcp_ready: {payload['mcp_ready']}",
         f"benchmark_readiness: {payload.get('benchmark_readiness', {}).get('ready')}",
         f"controller_contract_readiness: {payload.get('controller_contract_readiness', {}).get('ready')}",
+        f"controller_authoring_readiness: {payload.get('controller_authoring_readiness', {}).get('ready')}",
         f"build_readiness: {payload.get('build_readiness', {}).get('ready')}",
         f"runtime_smoke_readiness: {payload.get('runtime_smoke_readiness', {}).get('ready')}",
+        f"benchmark_mapping_readiness: {payload.get('benchmark_mapping_readiness', {}).get('ready')}",
         f"world_authoring_readiness: {payload.get('world_authoring_readiness', {}).get('ready')}",
         f"unsupported_combinations: {len(payload.get('unsupported_combinations', []))}",
         f"summary: {len(payload.get('issues', []))} issues",
@@ -1484,6 +1537,353 @@ def _distance_2d(left: list[float] | tuple[float, ...], right: list[float] | tup
     dx = float(left[0]) - float(right[0])
     dy = float(left[1]) - float(right[1])
     return math.hypot(dx, dy)
+
+
+def _validate_layout_geometry(spec: ScenarioSpec) -> list[ValidationIssue]:
+    arena = spec.environment.get("arena") if isinstance(spec.environment.get("arena"), dict) else {}
+    if not _is_positive_pair(arena.get("dimensions")):
+        return []
+
+    issues: list[ValidationIssue] = []
+    half_width = float(arena["dimensions"][0]) / 2
+    half_height = float(arena["dimensions"][1]) / 2
+    layout = spec.layout if isinstance(spec.layout, dict) else {}
+    scenario_kind = _str_field(spec.scenario, "kind")
+    spawn = layout.get("spawn") if isinstance(layout.get("spawn"), dict) else {}
+    spawn_translation = spawn.get("translation")
+    spawn_xy = [float(spawn_translation[0]), float(spawn_translation[1])] if _is_numeric_list(spawn_translation, 3) else None
+
+    def point_in_bounds(point: list[float] | tuple[float, ...], *, padding: float = 0.0) -> bool:
+        return abs(float(point[0])) <= half_width - padding and abs(float(point[1])) <= half_height - padding
+
+    if spawn_xy and not point_in_bounds(spawn_xy, padding=ROBOT_CLEARANCE_RADIUS):
+        issues.append(
+            ValidationIssue(
+                "spawn-out-of-bounds",
+                "layout.spawn.translation must keep the robot inside environment.arena.dimensions.",
+                "layout.spawn.translation",
+            )
+        )
+
+    waypoints = layout.get("waypoints") if isinstance(layout.get("waypoints"), list) else []
+    for index, point in enumerate(waypoints):
+        if _is_numeric_list(point, 2) and not point_in_bounds(point):
+            issues.append(
+                ValidationIssue(
+                    "waypoint-out-of-bounds",
+                    f"layout.waypoints[{index}] must stay inside the declared arena dimensions.",
+                    "layout.waypoints",
+                )
+            )
+
+    goal_region = layout.get("goal_region") if isinstance(layout.get("goal_region"), dict) else {}
+    goal_center = goal_region.get("center")
+    goal_radius = goal_region.get("radius")
+    if _is_numeric_list(goal_center, 2) and isinstance(goal_radius, (int, float)) and float(goal_radius) > 0:
+        radius = float(goal_radius)
+        if not point_in_bounds(goal_center, padding=radius):
+            issues.append(
+                ValidationIssue(
+                    "goal-region-out-of-bounds",
+                    "layout.goal_region must stay inside the declared arena dimensions.",
+                    "layout.goal_region",
+                )
+            )
+        if spawn_xy and scenario_kind == "waypoint-nav" and _distance_2d(spawn_xy, goal_center) <= radius + ROBOT_CLEARANCE_RADIUS:
+            issues.append(
+                ValidationIssue(
+                    "spawn-goal-overlap",
+                    "layout.spawn.translation must start outside the goal region for waypoint-nav scenarios.",
+                    "layout.spawn.translation",
+                )
+            )
+
+    if scenario_kind == "line-follow":
+        line_track = layout.get("line_track") if isinstance(layout.get("line_track"), dict) else {}
+        points = line_track.get("points") if isinstance(line_track.get("points"), list) else []
+        if spawn_xy and _is_point_list(points, min_points=2) and _distance_2d(spawn_xy, points[0]) > 0.5:
+            issues.append(
+                ValidationIssue(
+                    "spawn-line-track-mismatch",
+                    "layout.spawn.translation should start near the first line_track point for line-follow scenarios.",
+                    "layout.spawn.translation",
+                    level="warning",
+                )
+            )
+
+    blocking_objects: list[dict[str, Any]] = []
+    obstacles = layout.get("obstacles") if isinstance(layout.get("obstacles"), list) else []
+    for index, obstacle in enumerate(obstacles):
+        if not isinstance(obstacle, dict) or not _is_numeric_list(obstacle.get("position"), 2):
+            continue
+        center = [float(obstacle["position"][0]), float(obstacle["position"][1])]
+        radius = _obstacle_footprint_radius(obstacle)
+        if not point_in_bounds(center, padding=radius):
+            issues.append(
+                ValidationIssue(
+                    "obstacle-out-of-bounds",
+                    f"layout.obstacles[{index}] must stay inside the declared arena dimensions.",
+                    f"layout.obstacles[{index}].position",
+                )
+            )
+        blocking_objects.append({"kind": "obstacle", "index": index, "center": center, "radius": radius})
+
+    props = layout.get("props") if isinstance(layout.get("props"), list) else []
+    prop_objects: list[dict[str, Any]] = []
+    for index, prop in enumerate(props):
+        if not isinstance(prop, dict) or not _is_numeric_list(prop.get("position"), 2):
+            continue
+        center = [float(prop["position"][0]), float(prop["position"][1])]
+        radius = _box_footprint_radius(prop.get("size", [0.08, 0.08, 0.08]))
+        if not point_in_bounds(center, padding=radius):
+            issues.append(
+                ValidationIssue(
+                    "prop-out-of-bounds",
+                    f"layout.props[{index}] must stay inside the declared arena dimensions.",
+                    f"layout.props[{index}].position",
+                )
+            )
+        prop_objects.append({"kind": "prop", "index": index, "center": center, "radius": radius})
+        blocking_objects.append(prop_objects[-1])
+
+    for obstacle in blocking_objects:
+        if obstacle["kind"] != "obstacle":
+            continue
+        for prop in prop_objects:
+            if _distance_2d(obstacle["center"], prop["center"]) < obstacle["radius"] + prop["radius"]:
+                issues.append(
+                    ValidationIssue(
+                        "obstacle-prop-collision",
+                        f"layout.obstacles[{obstacle['index']}] overlaps layout.props[{prop['index']}].",
+                        f"layout.obstacles[{obstacle['index']}]",
+                    )
+                )
+
+    wall_segments: list[dict[str, Any]] = []
+    walls = layout.get("walls") if isinstance(layout.get("walls"), list) else []
+    for index, wall in enumerate(walls):
+        if not isinstance(wall, dict):
+            continue
+        start = wall.get("start")
+        end = wall.get("end")
+        if not (_is_numeric_list(start, 2) and _is_numeric_list(end, 2)):
+            continue
+        start_point = [float(start[0]), float(start[1])]
+        end_point = [float(end[0]), float(end[1])]
+        thickness = float(wall.get("thickness", 0.02)) if isinstance(wall.get("thickness", 0.02), (int, float)) else 0.02
+        if _distance_2d(start_point, end_point) <= 1e-6:
+            issues.append(
+                ValidationIssue(
+                    "degenerate-wall",
+                    f"layout.walls[{index}] must not collapse to a zero-length segment.",
+                    f"layout.walls[{index}]",
+                )
+            )
+        if not point_in_bounds(start_point, padding=thickness / 2) or not point_in_bounds(end_point, padding=thickness / 2):
+            issues.append(
+                ValidationIssue(
+                    "wall-out-of-bounds",
+                    f"layout.walls[{index}] must stay inside the declared arena dimensions.",
+                    f"layout.walls[{index}]",
+                )
+            )
+        wall_segments.append({"index": index, "start": start_point, "end": end_point, "thickness": thickness})
+
+    for left_index, left in enumerate(wall_segments):
+        for right in wall_segments[left_index + 1 :]:
+            if _segments_intersect_or_overlap(left["start"], left["end"], right["start"], right["end"]):
+                issues.append(
+                    ValidationIssue(
+                        "wall-overlap",
+                        f"layout.walls[{left['index']}] overlaps or intersects layout.walls[{right['index']}].",
+                        f"layout.walls[{left['index']}]",
+                    )
+                )
+
+    landmark_names: dict[str, int] = {}
+    landmarks = layout.get("landmarks") if isinstance(layout.get("landmarks"), list) else []
+    for index, landmark in enumerate(landmarks):
+        if not isinstance(landmark, dict) or not _is_numeric_list(landmark.get("position"), 2):
+            continue
+        center = [float(landmark["position"][0]), float(landmark["position"][1])]
+        radius = float(landmark.get("radius", 0.04)) if isinstance(landmark.get("radius", 0.04), (int, float)) else 0.04
+        if not point_in_bounds(center, padding=radius):
+            issues.append(
+                ValidationIssue(
+                    "landmark-out-of-bounds",
+                    f"layout.landmarks[{index}] must stay inside the declared arena dimensions.",
+                    f"layout.landmarks[{index}].position",
+                )
+            )
+        name = str(landmark.get("name") or f"landmark-{index + 1}")
+        if name in landmark_names:
+            issues.append(
+                ValidationIssue(
+                    "landmark-name-collision",
+                    f"layout.landmarks[{index}] reuses landmark name '{name}'.",
+                    f"layout.landmarks[{index}].name",
+                )
+            )
+        landmark_names[name] = index
+
+    zones = layout.get("zones") if isinstance(layout.get("zones"), list) else []
+    for index, zone in enumerate(zones):
+        if not isinstance(zone, dict):
+            continue
+        center = zone.get("center")
+        size = zone.get("size")
+        if not (_is_numeric_list(center, 2) and _is_numeric_list(size, 2)):
+            continue
+        if any(float(item) <= 0 for item in size):
+            issues.append(
+                ValidationIssue(
+                    "invalid-zone-size",
+                    "Zones must define a two-item positive XY size.",
+                    f"layout.zones[{index}].size",
+                )
+            )
+            continue
+        half_size = [float(size[0]) / 2, float(size[1]) / 2]
+        center_point = [float(center[0]), float(center[1])]
+        if not point_in_bounds(center_point, padding=max(half_size)):
+            issues.append(
+                ValidationIssue(
+                    "zone-out-of-bounds",
+                    f"layout.zones[{index}] must stay inside the declared arena dimensions.",
+                    f"layout.zones[{index}]",
+                )
+            )
+
+    if spawn_xy:
+        for item in blocking_objects:
+            if _distance_2d(spawn_xy, item["center"]) < ROBOT_CLEARANCE_RADIUS + item["radius"]:
+                issues.append(
+                    ValidationIssue(
+                        "spawn-blocked",
+                        f"layout.spawn.translation overlaps {item['kind']} #{item['index'] + 1}.",
+                        "layout.spawn.translation",
+                    )
+                )
+                break
+        else:
+            for wall in wall_segments:
+                clearance = ROBOT_CLEARANCE_RADIUS + wall["thickness"] / 2
+                if _distance_point_to_segment(spawn_xy, wall["start"], wall["end"]) < clearance:
+                    issues.append(
+                        ValidationIssue(
+                            "spawn-blocked",
+                            f"layout.spawn.translation overlaps wall #{wall['index'] + 1}.",
+                            "layout.spawn.translation",
+                        )
+                    )
+                    break
+
+    return issues
+
+
+def _obstacle_footprint_radius(obstacle: dict[str, Any]) -> float:
+    shape = str(obstacle.get("shape", "box"))
+    if shape == "cylinder":
+        radius = obstacle.get("radius", 0.06)
+        return float(radius) if isinstance(radius, (int, float)) else 0.06
+    return _box_footprint_radius(obstacle.get("size", [0.1, 0.1, 0.1]))
+
+
+def _box_footprint_radius(size: Any) -> float:
+    if not _is_numeric_list(size, 3):
+        return 0.06
+    half_x = float(size[0]) / 2
+    half_y = float(size[1]) / 2
+    return math.hypot(half_x, half_y)
+
+
+def _distance_point_to_segment(point: list[float], start: list[float], end: list[float]) -> float:
+    px, py = float(point[0]), float(point[1])
+    sx, sy = float(start[0]), float(start[1])
+    ex, ey = float(end[0]), float(end[1])
+    dx = ex - sx
+    dy = ey - sy
+    if abs(dx) <= 1e-9 and abs(dy) <= 1e-9:
+        return math.hypot(px - sx, py - sy)
+    projection = ((px - sx) * dx + (py - sy) * dy) / (dx * dx + dy * dy)
+    projection = max(0.0, min(1.0, projection))
+    closest_x = sx + projection * dx
+    closest_y = sy + projection * dy
+    return math.hypot(px - closest_x, py - closest_y)
+
+
+def _segments_intersect_or_overlap(
+    left_start: list[float],
+    left_end: list[float],
+    right_start: list[float],
+    right_end: list[float],
+) -> bool:
+    shared_endpoints = {tuple(round(value, 6) for value in left_start), tuple(round(value, 6) for value in left_end)} & {
+        tuple(round(value, 6) for value in right_start),
+        tuple(round(value, 6) for value in right_end),
+    }
+    if shared_endpoints:
+        return False
+
+    def orientation(a: list[float], b: list[float], c: list[float]) -> float:
+        return (float(b[0]) - float(a[0])) * (float(c[1]) - float(a[1])) - (float(b[1]) - float(a[1])) * (float(c[0]) - float(a[0]))
+
+    def on_segment(a: list[float], b: list[float], c: list[float]) -> bool:
+        return (
+            min(float(a[0]), float(c[0])) - 1e-9 <= float(b[0]) <= max(float(a[0]), float(c[0])) + 1e-9
+            and min(float(a[1]), float(c[1])) - 1e-9 <= float(b[1]) <= max(float(a[1]), float(c[1])) + 1e-9
+        )
+
+    o1 = orientation(left_start, left_end, right_start)
+    o2 = orientation(left_start, left_end, right_end)
+    o3 = orientation(right_start, right_end, left_start)
+    o4 = orientation(right_start, right_end, left_end)
+
+    if (o1 > 0 and o2 < 0 or o1 < 0 and o2 > 0) and (o3 > 0 and o4 < 0 or o3 < 0 and o4 > 0):
+        return True
+    if abs(o1) <= 1e-9 and on_segment(left_start, right_start, left_end):
+        return True
+    if abs(o2) <= 1e-9 and on_segment(left_start, right_end, left_end):
+        return True
+    if abs(o3) <= 1e-9 and on_segment(right_start, left_start, right_end):
+        return True
+    if abs(o4) <= 1e-9 and on_segment(right_start, left_end, right_end):
+        return True
+    return False
+
+
+def _recommended_next_edit_ops(spec: ScenarioSpec) -> list[str]:
+    layout = spec.layout if isinstance(spec.layout, dict) else {}
+    recommendations = ["set_spawn"]
+    if spec.scenario.get("kind") == "line-follow":
+        recommendations.append("set_line_track")
+    if spec.scenario.get("kind") == "waypoint-nav":
+        recommendations.extend(["set_waypoints", "set_goal_region"])
+    if spec.scenario.get("kind") == "obstacle-avoidance" or layout.get("obstacles"):
+        recommendations.extend(["add_obstacle", "update_obstacle"])
+    if isinstance(layout.get("walls"), list):
+        recommendations.append("add_wall")
+    if isinstance(layout.get("landmarks"), list):
+        recommendations.append("add_landmark")
+    if isinstance(layout.get("zones"), list):
+        recommendations.append("add_zone")
+    if isinstance(layout.get("props"), list):
+        recommendations.append("add_prop")
+    return list(dict.fromkeys(recommendations))
+
+
+def _benchmark_mapping(spec: ScenarioSpec, benchmark_name: str, scenario_def: Any) -> dict[str, Any]:
+    return {
+        "benchmark_name": benchmark_name,
+        "profile": spec.benchmark.get("profile"),
+        "duration_s": spec.benchmark.get("duration_s"),
+        "target_robot_name": spec.robot.get("name"),
+        "target_robot_def": spec.robot.get("def"),
+        "default_camera": spec.controller.get("default_camera"),
+        "expected_sensor_keys": list(scenario_def.required_sensor_keys) if scenario_def else [],
+        "expected_metric_keys": list(scenario_def.required_metric_keys) if scenario_def else [],
+        "expected_actuator_keys": list(scenario_def.required_actuator_keys) if scenario_def else [],
+    }
 
 
 def _discover_world_robot_identity(world_path: Path, benchmark_name: str) -> tuple[str, str]:

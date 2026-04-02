@@ -17,6 +17,7 @@ def test_clean_user_acceptance_steps_cover_expected_flow(tmp_path: Path) -> None
         "controller_edit",
         "project_init",
         "scenario_init",
+        "scenario_enrich",
         "scenario_validate",
         "scenario_build",
         "scenario_describe",

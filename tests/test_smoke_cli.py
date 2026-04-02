@@ -30,6 +30,27 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def enrich_generated_spec(spec_path: Path, template: str) -> None:
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    layout = payload.setdefault("layout", {})
+    if template == "epuck-line-track":
+        layout["walls"] = [{"name": "wall-line-divider", "start": [-0.05, -0.35], "end": [-0.05, 0.28], "thickness": 0.02, "height": 0.08}]
+        layout["landmarks"] = [{"name": "landmark-line-marker", "position": [0.35, 0.1], "radius": 0.04}]
+        layout["zones"] = [{"name": "zone-line-buffer", "center": [0.4, -0.05], "size": [0.18, 0.18]}]
+        layout["props"] = [{"name": "prop-line-prop", "position": [0.1, -0.25], "size": [0.06, 0.06, 0.06]}]
+    elif template == "epuck-waypoint":
+        layout["walls"] = [{"name": "wall-waypoint-divider", "start": [-0.2, -0.3], "end": [-0.2, 0.3], "thickness": 0.02, "height": 0.08}]
+        layout["landmarks"] = [{"name": "landmark-waypoint-marker", "position": [0.15, -0.18], "radius": 0.04}]
+        layout["zones"] = [{"name": "zone-goal-buffer", "center": [0.4, 0.0], "size": [0.22, 0.22]}]
+        layout["props"] = [{"name": "prop-waypoint-prop", "position": [0.0, 0.45], "size": [0.08, 0.08, 0.08]}]
+    elif template == "epuck-obstacle-course":
+        layout["walls"] = [{"name": "wall-obstacle-divider", "start": [-0.55, -0.15], "end": [-0.15, -0.15], "thickness": 0.02, "height": 0.08}]
+        layout["landmarks"] = [{"name": "landmark-obstacle-marker", "position": [0.55, -0.4], "radius": 0.04}]
+        layout["zones"] = [{"name": "zone-obstacle-safe", "center": [0.55, -0.55], "size": [0.18, 0.18]}]
+        layout["props"] = [{"name": "prop-obstacle-prop", "position": [-0.55, 0.55], "size": [0.08, 0.08, 0.08]}]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def run_cli(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603
         [sys.executable, "-m", "webots_mcp_kit.cli", *args],
@@ -106,12 +127,14 @@ def test_generated_scenario_smoke(tmp_path: Path, template: str, scenario_name: 
     project_root = tmp_path / "generated-project"
     run_cli("project", "init", str(project_root))
     scenario_dir = project_root / "scenarios" / scenario_name
+    spec_path = scenario_dir / "webots-kit.scenario.json"
     run_cli("scenario", "init", str(scenario_dir), "--template", template)
-    validation = run_cli("scenario", "validate", str(scenario_dir / "webots-kit.scenario.json"), "--json")
+    enrich_generated_spec(spec_path, template)
+    validation = run_cli("scenario", "validate", str(spec_path), "--json")
     validation_payload = json.loads(validation.stdout)
     assert validation_payload["valid"] is True
 
-    built = run_cli("scenario", "build", str(scenario_dir / "webots-kit.scenario.json"))
+    built = run_cli("scenario", "build", str(spec_path))
     generated = json.loads(built.stdout)
     assert generated["benchmark_name"] == expected_benchmark
     started = run_cli(
@@ -168,6 +191,7 @@ def test_generated_world_edit_smoke(tmp_path: Path) -> None:
     scenario_dir = project_root / "scenarios" / "authoring-waypoint"
     spec_path = scenario_dir / "webots-kit.scenario.json"
     run_cli("scenario", "init", str(scenario_dir), "--template", "epuck-waypoint")
+    enrich_generated_spec(spec_path, "epuck-waypoint")
     built = run_cli("scenario", "build", str(spec_path))
     generated = json.loads(built.stdout)
 
@@ -187,6 +211,10 @@ def test_generated_world_edit_smoke(tmp_path: Path) -> None:
     inspect_payload = json.loads(run_cli("world", "inspect", str(world_path), "--json").stdout)
     assert inspect_payload["status"] == "ready"
     assert inspect_payload["target_robot"]["def_name"] == generated["target_robot_def"]
+    assert inspect_payload["spatial_summary"]["wall_count"] == 1
+    assert inspect_payload["spatial_summary"]["landmark_count"] == 1
+    assert inspect_payload["spatial_summary"]["zone_count"] == 2
+    assert inspect_payload["spatial_summary"]["prop_count"] == 1
 
     edited = json.loads(run_cli("world", "edit", str(world_path), "--plan", str(plan_path)).stdout)
     assert edited["status"] == "ready"

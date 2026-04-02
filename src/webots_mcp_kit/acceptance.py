@@ -58,6 +58,7 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
         AcceptanceStep("controller_edit", ("controller", "edit", str(controller_path), "--plan", str(controller_edit_plan))),
         AcceptanceStep("project_init", ("project", "init", str(project_root), "--force")),
         AcceptanceStep("scenario_init", ("scenario", "init", str(project_root / "scenarios" / "demo-waypoint"), "--template", "epuck-waypoint", "--force")),
+        AcceptanceStep("scenario_enrich", (str(spec_path),)),
         AcceptanceStep("scenario_validate", ("scenario", "validate", str(spec_path))),
         AcceptanceStep("scenario_build", ("scenario", "build", str(spec_path), "--force")),
         AcceptanceStep("scenario_describe", ("scenario", "describe", str(spec_path))),

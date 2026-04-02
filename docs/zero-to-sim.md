@@ -72,6 +72,15 @@ The documented core subset is:
 - `benchmark.profile`, `benchmark.duration_s`, `benchmark.threshold_overrides`
 - `sensors.required`, `actuators.required`
 
+Preview authoring fields on `feature/agent-authoring-platform`:
+
+- `layout.walls[]`
+- `layout.landmarks[]`
+- `layout.zones[]`
+- `layout.props[]`
+
+These remain additive and `experimental-foundation`, but they already participate in `scenario validate`, `scenario doctor`, `scenario build`, `world inspect`, and runtime smoke on the feature branch.
+
 ## Example specs
 
 ### Line-follow
@@ -109,6 +118,10 @@ The documented core subset is:
   "layout": {
     "spawn": { "translation": [-0.65, 0.0, 0.0], "rotation_z": 0.0 },
     "obstacles": [],
+    "walls": [{ "name": "wall-waypoint-divider", "start": [-0.2, -0.3], "end": [-0.2, 0.3], "thickness": 0.02, "height": 0.08 }],
+    "landmarks": [{ "name": "landmark-waypoint-marker", "position": [0.15, -0.18], "radius": 0.04 }],
+    "zones": [{ "name": "zone-goal-buffer", "center": [0.4, 0.0], "size": [0.22, 0.22] }],
+    "props": [{ "name": "prop-waypoint-prop", "position": [0.0, 0.45], "size": [0.08, 0.08, 0.08] }],
     "waypoints": [[0.55, 0.0]],
     "goal_region": { "center": [0.55, 0.0], "radius": 0.16 }
   },
@@ -159,4 +172,5 @@ webots-kit benchmark run waypoint-nav --controller .\scenarios\warehouse-demo\co
 - This is template-driven, not free-form natural language to `.wbt`.
 - The first robot family is `e-puck`.
 - Arena generation is currently rectangle-based.
+- Richer generated task-world authoring currently targets supported task primitives like walls, landmarks, zones, props, obstacles, lines, and goal regions rather than arbitrary full-scene composition.
 - Runtime smoke still requires an interactive self-hosted runner labeled `interactive-webots`.

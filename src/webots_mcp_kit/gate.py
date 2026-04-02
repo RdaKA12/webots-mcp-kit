@@ -93,6 +93,7 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
         generated_steps.extend(
             [
                 GateStep(f"{case['name']}_scenario_init", ("scenario", "init", str(case["dir"]), "--template", str(case["template"]), "--force")),
+                GateStep(f"{case['name']}_scenario_enrich", (str(spec_path),)),
                 GateStep(f"{case['name']}_scenario_validate", ("scenario", "validate", str(spec_path))),
                 GateStep(f"{case['name']}_scenario_build", ("scenario", "build", str(spec_path), "--force")),
                 *(
