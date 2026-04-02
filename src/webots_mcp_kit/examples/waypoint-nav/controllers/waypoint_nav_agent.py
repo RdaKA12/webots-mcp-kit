@@ -38,10 +38,6 @@ while robot.step(time_step) != -1:
     right_speed = CRUISE_SPEED
 
     front_pressure = max(sensor_values[0], sensor_values[7], sensor_values[1], sensor_values[6])
-    if front_pressure > 0.12:
-        left_speed = -2.0
-        right_speed = 2.5
-
     override = agent.begin_step()
     if override is not None:
         left_speed, right_speed = override

@@ -31,6 +31,8 @@
   - `webots-kit scenario build`
 - the centralized acceptance script still matches the clean-user flow:
   - `python scripts/clean_user_acceptance.py --workspace <path>`
+- the explicit no-mock v1 gate still passes on the real runtime:
+  - `python scripts/v1_gate_check.py --workspace <path>`
 
 ## Trusted Publishing setup
 

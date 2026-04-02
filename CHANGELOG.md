@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.5
+
+- Added an explicit no-mock `v1.0.0` gate script that exercises the real CLI/runtime flows for bundled benchmarks, generated scenarios, and import/export/replay.
+- Fixed the bundled `waypoint-nav` reference controller so the bundled benchmark can actually reach the target and pass on the real runtime.
+
 ## v0.10.4
 
 - Fixed the centralized acceptance workflow for hosted Linux package smoke by adding an explicit `hosted-safe` profile that skips `doctor` when Webots is intentionally unavailable.

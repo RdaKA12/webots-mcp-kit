@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Current release
 
-`v0.10.4`
+`v0.10.5`
 
 Current focus:
 
@@ -30,6 +30,7 @@ Current focus:
 - zero-to-sim foundations through template-driven project and scenario generation
 - standardized runtime artifact and replay bundles for exported sessions
 - centralized clean-user acceptance flow for package and publish smoke
+- explicit no-mock `v1.0.0` gate validation for real runtime workflows
 
 Operational runtime model:
 
@@ -230,6 +231,7 @@ Stable payload shapes:
 Reference docs:
 
 - [Onboarding flows](./docs/onboarding-flows.md)
+- [v1.0.0 gate](./docs/v1-gate.md)
 - [First hour guide](./docs/first-hour-guide.md)
 - [MCP contracts](./docs/mcp-contracts.md)
 - [Self-hosted runtime smoke](./docs/self-hosted-windows-runner.md)
