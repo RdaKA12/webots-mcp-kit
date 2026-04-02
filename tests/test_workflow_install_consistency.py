@@ -21,3 +21,9 @@ def test_runtime_workflow_bypasses_powershell_execution_policy() -> None:
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "-ExecutionPolicy Bypass" in content
+
+
+def test_runtime_workflow_uses_py_launcher() -> None:
+    root = Path(__file__).resolve().parents[1]
+    content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
+    assert "py -3.11" in content

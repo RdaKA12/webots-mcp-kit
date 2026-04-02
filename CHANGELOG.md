@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.4
+
+- Fixed the self-hosted Windows runtime workflow to use the system `py` launcher with Python 3.11, avoiding PATH issues for the runner service account.
+- Extended workflow regression coverage so the runtime workflow keeps both the PowerShell execution-policy bypass and the `py -3.11` launcher usage.
+
 ## v0.9.3
 
 - Fixed the self-hosted Windows runtime workflow to run PowerShell steps with `ExecutionPolicy Bypass`, avoiding local script-blocking on the runner service account.

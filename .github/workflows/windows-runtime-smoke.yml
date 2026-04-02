@@ -37,30 +37,30 @@ jobs:
 
       - name: Verify runner Python
         run: |
-          python --version
-          python -c "import sys; assert sys.version_info >= (3, 11), sys.version"
+          py -3.11 --version
+          py -3.11 -c "import sys; assert sys.version_info >= (3, 11), sys.version"
 
       - name: Install toolkit
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
-          python -m pip show pytest
-          python -c "import webots_mcp_kit, pytest; print(webots_mcp_kit.__version__)"
+          py -3.11 -m pip install --upgrade pip
+          py -3.11 -m pip install -e .[dev]
+          py -3.11 -m pip show pytest
+          py -3.11 -c "import webots_mcp_kit, pytest; print(webots_mcp_kit.__version__)"
 
       - name: Doctor
         run: webots-kit doctor --json
 
       - name: Session runtime smoke
-        run: python -m pytest -q -k session_start_inspect_stop_smoke
+        run: py -3.11 -m pytest -q -k session_start_inspect_stop_smoke
 
       - name: Benchmark runtime smoke
-        run: python -m pytest -q -k benchmark_smoke
+        run: py -3.11 -m pytest -q -k benchmark_smoke
 
       - name: Upload failure diagnostics
         if: failure()
         run: |
           $diag = Join-Path $env:GITHUB_WORKSPACE '.ci-diagnostics'
-          python -m webots_mcp_kit.diagnostics --output $diag
+          py -3.11 -m webots_mcp_kit.diagnostics --output $diag
           $sessionRoot = Join-Path $env:LOCALAPPDATA 'webots-mcp-kit\sessions'
           if (Test-Path $sessionRoot) {
             Copy-Item -LiteralPath $sessionRoot -Destination (Join-Path $diag 'sessions') -Recurse -Force
