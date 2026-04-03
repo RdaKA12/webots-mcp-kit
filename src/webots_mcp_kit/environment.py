@@ -28,6 +28,11 @@ class WebotsEnvironment:
     controller_python_path: Path
     controller_library_path: Path
     version: str | None
+    mingw_bin: Path | None = None
+    mingw_runtime_bin: Path | None = None
+    cpp_controller_include_path: Path | None = None
+    cpp_controller_library_path: Path | None = None
+    cpp_compiler: Path | None = None
 
 
 def detect_webots_home() -> Path:
@@ -45,8 +50,13 @@ def detect_webots_home() -> Path:
 def get_webots_environment() -> WebotsEnvironment:
     home = detect_webots_home()
     executable = home / "msys64" / "mingw64" / "bin" / "webots.exe"
+    mingw_bin = home / "msys64" / "mingw64" / "bin"
+    mingw_runtime_bin = mingw_bin / "cpp"
     controller_python_path = home / "lib" / "controller" / "python"
     controller_library_path = home / "lib" / "controller"
+    cpp_controller_include_path = home / "include" / "controller" / "cpp"
+    cpp_controller_library_path = home / "lib" / "controller"
+    cpp_compiler = mingw_bin / "g++.exe"
     version_file = home / "resources" / "version.txt"
     version = version_file.read_text(encoding="utf-8").strip() if version_file.exists() else None
     return WebotsEnvironment(
@@ -55,6 +65,11 @@ def get_webots_environment() -> WebotsEnvironment:
         controller_python_path=controller_python_path,
         controller_library_path=controller_library_path,
         version=version,
+        mingw_bin=mingw_bin,
+        mingw_runtime_bin=mingw_runtime_bin,
+        cpp_controller_include_path=cpp_controller_include_path,
+        cpp_controller_library_path=cpp_controller_library_path,
+        cpp_compiler=cpp_compiler,
     )
 
 
@@ -114,6 +129,10 @@ def build_process_env(*, include_src: bool = True, prefer_software_opengl: bool 
     env = os.environ.copy()
     webots = get_webots_environment()
     path_entries = [str(webots.controller_library_path)]
+    if webots.mingw_bin is not None:
+        path_entries.insert(0, str(webots.mingw_bin))
+    if getattr(webots, "mingw_runtime_bin", None) is not None:
+        path_entries.insert(1, str(webots.mingw_runtime_bin))
     if prefer_software_opengl:
         software_gl_dir = detect_software_opengl_dir()
         if software_gl_dir is not None:

@@ -16,11 +16,17 @@ def test_v1_gate_includes_real_runtime_flow(tmp_path) -> None:
     assert "bundled_benchmark_line" in names
     assert "bundled_benchmark_obstacle" in names
     assert "bundled_benchmark_waypoint" in names
+    assert "mcp_authoring_smoke" in names
     assert "generated_line_session_start" in names
     assert "generated_waypoint_session_start" in names
     assert "generated_obstacle_session_start" in names
+    assert "generated_line_scenario_enrich" in names
+    assert "generated_waypoint_scenario_enrich" in names
+    assert "generated_obstacle_scenario_enrich" in names
     assert "generated_line_benchmark_run" in names
     assert "generated_waypoint_benchmark_run" in names
     assert "generated_obstacle_benchmark_run" in names
+    assert "generated_waypoint_world_edit" in names
+    assert "imported_world_edit" in names
     assert "imported_session_export" in names
     assert "imported_session_replay_manifest" in names

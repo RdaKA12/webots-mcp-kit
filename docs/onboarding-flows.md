@@ -1,6 +1,6 @@
 # Onboarding Flows
 
-Use this page as the index for the four public onboarding paths supported at `v1.0.0`.
+Use this page as the index for the authoring and runtime onboarding paths supported in the current branch preview.
 
 ## 1. Connect An Agent
 
@@ -44,3 +44,46 @@ Use this when you already have a world/controller pair or a finished exported se
   - `webots-kit project import`
   - `webots-kit session export`
   - `webots-kit session replay`
+
+## 5. Author A World From Scratch
+
+Use this when an agent is shaping a new task-world through `ScenarioSpec` rather than patching an existing `.wbt`.
+
+- start here: [Zero-to-sim guide](./zero-to-sim.md)
+- reference details: [World authoring and editing](./world-authoring-and-editing.md)
+- key commands:
+  - `webots-kit scenario init`
+  - `webots-kit scenario validate`
+  - `webots-kit scenario build`
+  - `webots-kit scenario doctor`
+
+## 6. Edit An Existing World
+
+Use this when an agent needs structured visibility into an existing `.wbt` file and a safe patch plan.
+
+- start here: [World authoring and editing](./world-authoring-and-editing.md)
+- key commands:
+  - `webots-kit world inspect`
+  - `webots-kit world validate`
+  - `webots-kit world edit`
+
+## 7. Author A Controller From Scratch
+
+Use this when an agent should scaffold a fresh controller and validate it against a scenario contract.
+
+- start here: [Controller authoring and editing](./controller-authoring-and-editing.md)
+- reference details: [Custom controller integration](./custom-controller-integration.md)
+- key commands:
+  - `webots-kit controller scaffold`
+  - `webots-kit controller inspect`
+  - `webots-kit controller validate`
+
+## 8. Edit An Existing Controller
+
+Use this when an agent needs structured controller metadata and marker-safe edits on an existing source file.
+
+- start here: [Controller authoring and editing](./controller-authoring-and-editing.md)
+- key commands:
+  - `webots-kit controller inspect`
+  - `webots-kit controller edit`
+  - `webots-kit controller validate`

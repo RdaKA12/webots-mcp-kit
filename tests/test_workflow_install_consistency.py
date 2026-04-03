@@ -64,6 +64,8 @@ def test_runtime_workflow_uses_interactive_runner_label() -> None:
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "runs-on: [self-hosted, windows, interactive-webots]" in content
     assert '"src/webots_mcp_kit/scenario_ops.py"' in content
+    assert '"src/webots_mcp_kit/world_ops.py"' in content
+    assert '"src/webots_mcp_kit/controller_authoring.py"' in content
 
 
 def test_runtime_workflow_includes_generated_scenario_smoke() -> None:
@@ -71,6 +73,8 @@ def test_runtime_workflow_includes_generated_scenario_smoke() -> None:
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "Generated scenario runtime smoke" in content
     assert "-k generated_scenario_smoke" in content
+    assert "Generated world authoring runtime smoke" in content
+    assert "-k generated_world_edit_smoke" in content
 
 
 def test_runtime_workflow_includes_imported_project_smoke() -> None:
@@ -78,6 +82,12 @@ def test_runtime_workflow_includes_imported_project_smoke() -> None:
     content = (root / ".github/workflows/windows-runtime-smoke.yml").read_text(encoding="utf-8")
     assert "Imported project runtime smoke" in content
     assert "-k imported_project_smoke" in content
+    assert "Imported world authoring runtime smoke" in content
+    assert "-k imported_world_edit_smoke" in content
+    assert "MCP authoring contract smoke" in content
+    assert "-k mcp_authoring_contract_smoke" in content
+    assert "MCP authoring contract smoke" in content
+    assert "-k mcp_authoring_contract_smoke" in content
 
 
 def test_release_and_package_workflows_smoke_project_and_scenario_commands() -> None:

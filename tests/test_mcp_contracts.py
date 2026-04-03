@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from webots_mcp_kit.errors import KitError
 from webots_mcp_kit import mcp_server
+from webots_mcp_kit.models import bundled_example_root
+from webots_mcp_kit.scenario_ops import init_project, init_scenario
 
 
 def test_list_devices_payload_is_stable() -> None:
@@ -94,3 +99,113 @@ def test_mcp_tool_failure_payload_is_structured() -> None:
             "retriable": False,
         },
     }
+
+
+def test_world_authoring_payloads_are_stable(tmp_path: Path) -> None:
+    examples_root = bundled_example_root()
+    source_world = examples_root / "line-follower" / "worlds" / "line_follower_benchmark.wbt"
+    editable_world = tmp_path / "editable-world.wbt"
+    editable_world.write_text(source_world.read_text(encoding="utf-8"), encoding="utf-8")
+    plan_path = tmp_path / "world-edit.json"
+    plan_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {"type": "add_landmark", "name": "stable-landmark", "position": [0.0, 0.0], "radius": 0.04}
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    inspect_payload = mcp_server.webots_world_inspect(str(editable_world))
+    validate_payload = mcp_server.webots_world_validate(str(editable_world))
+    edit_payload = mcp_server.webots_world_edit(str(editable_world), str(plan_path))
+
+    assert inspect_payload["status"] == "ready"
+    assert isinstance(inspect_payload["externproto"], list)
+    assert isinstance(inspect_payload["robots"], list)
+    assert isinstance(inspect_payload["supported_edit_targets"], list)
+    assert isinstance(inspect_payload["spatial_summary"], dict)
+    assert inspect_payload["support_tier"] == "experimental-foundation"
+
+    assert validate_payload["world_path"] == str(editable_world)
+    assert isinstance(validate_payload["valid"], bool)
+    assert isinstance(validate_payload["issues"], list)
+    assert isinstance(validate_payload["supported_edit_targets"], list)
+    assert isinstance(validate_payload["summary"], dict)
+    assert validate_payload["support_tier"] == "experimental-foundation"
+
+    assert edit_payload["world_path"] == str(editable_world)
+    assert isinstance(edit_payload["applied_operations"], list)
+    assert isinstance(edit_payload["validation"], dict)
+    assert edit_payload["support_tier"] == "experimental-foundation"
+
+
+def test_controller_authoring_payloads_are_stable(tmp_path: Path) -> None:
+    project_root = tmp_path / "controller-project"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-waypoint"
+    init_scenario(scenario_dir, template="epuck-waypoint")
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["walls"] = [{"name": "wall-preview", "start": [-0.2, -0.3], "end": [-0.2, 0.3], "thickness": 0.02, "height": 0.08}]
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    controller_path = tmp_path / "demo_agent.py"
+    edit_plan_path = tmp_path / "controller-edit.json"
+    edit_plan_path.write_text(
+        json.dumps(
+                {
+                    "schema_version": 1,
+                    "operations": [
+                        {"type": "inject_helper_function", "code": "def preview_helper() -> float:\n    return 1.0"}
+                    ],
+                    "scenario_context": {"scenario": "waypoint-nav"},
+                },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    scaffold_payload = mcp_server.webots_controller_scaffold(
+        path=str(controller_path),
+        scenario="waypoint-nav",
+        language="python",
+        spec=str(spec_path),
+        world=str(scenario_dir / "worlds" / "demo-waypoint.wbt"),
+        robot_name="epuck-demo-waypoint-waypoint-nav",
+        robot_def="EPUCK",
+    )
+    inspect_payload = mcp_server.webots_controller_inspect(str(controller_path), scenario="waypoint-nav", spec=str(spec_path))
+    validate_payload = mcp_server.webots_controller_validate(str(controller_path), scenario="waypoint-nav", strict=True, spec=str(spec_path))
+    edit_payload = mcp_server.webots_controller_edit(str(controller_path), str(edit_plan_path))
+
+    assert scaffold_payload["path"] == str(controller_path)
+    assert scaffold_payload["language"] == "python"
+    assert isinstance(scaffold_payload["copied_files"], list)
+    assert isinstance(scaffold_payload["editable_regions"], list)
+    assert scaffold_payload["spec_path"] == str(spec_path)
+    assert scaffold_payload["target_robot_def"] == "EPUCK"
+
+    assert inspect_payload["path"] == str(controller_path)
+    assert inspect_payload["language"] == "python"
+    assert isinstance(inspect_payload["editable_regions"], list)
+    assert isinstance(inspect_payload["device_bindings"], list)
+    assert isinstance(inspect_payload["telemetry_sections"], dict)
+    assert isinstance(inspect_payload["benchmark_readiness"], dict)
+    assert isinstance(inspect_payload["issues"], list)
+
+    assert validate_payload["path"] == str(controller_path)
+    assert isinstance(validate_payload["valid"], bool)
+    assert isinstance(validate_payload["errors"], list)
+    assert isinstance(validate_payload["warnings"], list)
+    assert isinstance(validate_payload["details"], dict)
+
+    assert edit_payload["path"] == str(controller_path)
+    assert edit_payload["language"] == "python"
+    assert isinstance(edit_payload["applied_operations"], list)
+    assert isinstance(edit_payload["editable_regions"], list)
+    assert isinstance(edit_payload["next_step"], str)

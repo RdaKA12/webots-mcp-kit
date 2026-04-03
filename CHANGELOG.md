@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.6.0-alpha.1
+
+- Hardened the feature-branch authoring surface with explicit MCP authoring smoke coverage for controller scaffold/inspect/validate/edit and world inspect/validate/edit.
+- Pulled MCP authoring parity into clean-user acceptance, the preview gate, and the self-hosted runtime workflow so authoring lanes are visible in the merge gate instead of relying on unit coverage alone.
+- Split and tightened onboarding/docs around world-from-scratch, existing-world edit, controller-from-scratch, and existing-controller edit flows while keeping the scope additive on `feature/agent-authoring-platform`.
+
+## v1.5.0-alpha.1
+
+- Extended template-driven scenario authoring so `walls`, `landmarks`, `zones`, and `props` now participate in richer validation, doctoring, generated metadata, and world output.
+- Added geometric authoring checks for blocked spawn states, wall overlap, zone bounds, landmark name collisions, and obstacle/prop collisions.
+- Promoted richer generated-world authoring into the feature-branch acceptance flow, gate preview, and runtime smoke coverage across the bundled task families.
+
+## v1.4.0-alpha.1
+
+- Added generated-world and imported-world authoring runtime smoke coverage so world edits are now exercised through real `world edit -> validate -> session start` flows.
+- Extended the preview gate and self-hosted runtime workflow with authoring lanes for generated and imported world edit paths.
+- Promoted the feature-branch preview versioning to `v1.4.0-alpha.1` while keeping the work isolated on `feature/agent-authoring-platform`.
+
+## v1.3.0-alpha.1
+
+- Added an agent-authoring preview branch foundation for controller scaffold, inspect, edit, and validate across Python and C++ sources.
+- Added a preserve-first WBT inspect, validate, and edit foundation with selector-based world operations for supported task-world node families.
+- Extended clean-user acceptance with controller and world authoring flows while keeping the existing runtime/session/benchmark surfaces intact.
+
 ## v1.2.0
 
 - Expanded `project import` with deterministic discovery for robot name/DEF, controller device usage, suggested benchmark profile, and minimal imported scenario metadata.
