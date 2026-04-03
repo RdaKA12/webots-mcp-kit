@@ -13,8 +13,9 @@
 - imported-world authoring runtime smoke passed on the interactive runner when authoring code changed
 - MCP authoring/editing contract smoke passed when `mcp_server`, controller authoring, or world authoring code changed
 - package build and `twine check` are green
-- TestPyPI install smoke passes through `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime`
-- PyPI install smoke passes through `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime`
+- TestPyPI install smoke passes through the public `verify_install.ps1` path on the hosted Windows runner
+- PyPI install smoke passes through the public `verify_install.ps1` path on the hosted Windows runner
+- real runtime benchmark proof still comes from the self-hosted `interactive-webots` runtime smoke workflow
 - README quickstart has been rerun once from a clean machine or clean virtual environment
 - changelog and README version notes are updated
 

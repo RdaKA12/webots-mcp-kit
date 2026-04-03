@@ -34,6 +34,10 @@ function Get-CommandTail {
     return $CommandParts[1..($CommandParts.Length - 1)]
 }
 
+function Test-GitHubHostedRunner {
+    return $env:GITHUB_ACTIONS -eq "true" -and $env:RUNNER_ENVIRONMENT -eq "github-hosted"
+}
+
 function Resolve-PythonCommand {
     $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
     if ($pythonCommand) {
@@ -99,6 +103,7 @@ $workspace = Join-Path $env:TEMP ("webots-kit-verify-" + [System.Guid]::NewGuid(
 New-Item -ItemType Directory -Force -Path $workspace | Out-Null
 $controllerPath = Join-Path $workspace "verify_line_follower.py"
 $reportPath = Join-Path $workspace "line-follower-report.json"
+$runtimeBenchmarkSkipped = $false
 
 try {
     $webotsKit = Resolve-WebotsKitCommand
@@ -180,15 +185,22 @@ try {
 }
 
 if ($Runtime) {
-    try {
-        $benchmark = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("benchmark", "run", "line-follower", "--controller", "example", "--output", $reportPath, "--duration-s", "3") -StepName "Running a real line-follower benchmark"
-        if (-not $benchmark.pass) {
-            Fail-Verification -Step "benchmark run" -LikelyCause "The runtime started but the benchmark did not pass cleanly." -NextAction "Run `webots-kit benchmark report `"$reportPath`"` and inspect $troubleshootingDoc"
+    if (Test-GitHubHostedRunner) {
+        $runtimeBenchmarkSkipped = $true
+        Write-Step "Skipping real runtime benchmark on the GitHub-hosted runner"
+        Write-Host "Runtime benchmark skipped: GitHub-hosted Windows runners are not a supported interactive Webots runtime."
+        Write-Host "Quick install verification still passed."
+    } else {
+        try {
+            $benchmark = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("benchmark", "run", "line-follower", "--controller", "example", "--output", $reportPath, "--duration-s", "3") -StepName "Running a real line-follower benchmark"
+            if (-not $benchmark.pass) {
+                Fail-Verification -Step "benchmark run" -LikelyCause "The runtime started but the benchmark did not pass cleanly." -NextAction "Run `webots-kit benchmark report `"$reportPath`"` and inspect $troubleshootingDoc"
+            }
+        } catch {
+            Fail-Verification -Step "benchmark run" `
+                -LikelyCause "The interactive runtime is not actually usable in this shell or machine session." `
+                -NextAction "Run `webots-kit benchmark run line-follower --controller example --output `"$reportPath`" --duration-s 3` manually, then inspect $troubleshootingDoc"
         }
-    } catch {
-        Fail-Verification -Step "benchmark run" `
-            -LikelyCause "The interactive runtime is not actually usable in this shell or machine session." `
-            -NextAction "Run `webots-kit benchmark run line-follower --controller example --output `"$reportPath`" --duration-s 3` manually, then inspect $troubleshootingDoc"
     }
 }
 
@@ -196,8 +208,12 @@ Write-Host ""
 Write-Host "Verification passed."
 Write-Host "Workspace: $workspace"
 if ($Runtime) {
-    Write-Host "Runtime benchmark report: $reportPath"
-    Write-Host "Next action: try `webots-kit session start --scenario line-follower --controller example --mode fast --render off`."
+    if ($runtimeBenchmarkSkipped) {
+        Write-Host "Next action: rerun this script with -Runtime on a local Windows machine or self-hosted `interactive-webots` runner when you need a real benchmark."
+    } else {
+        Write-Host "Runtime benchmark report: $reportPath"
+        Write-Host "Next action: try `webots-kit session start --scenario line-follower --controller example --mode fast --render off`."
+    }
 } else {
     Write-Host "Next action: rerun this script with -Runtime when you want a full real-benchmark check."
 }

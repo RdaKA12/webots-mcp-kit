@@ -40,6 +40,7 @@ Symptom:
 Likely cause:
 
 - the runner or shell is not inside an interactive desktop session
+- you are on a GitHub-hosted Windows runner, which is not a supported interactive Webots runtime
 
 Exact commands to diagnose:
 
@@ -55,6 +56,8 @@ Exact next action:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime
 ```
+
+- if you are in a GitHub-hosted release smoke job, treat the public verify script as a quick install check there and use the self-hosted Windows Runtime Smoke workflow for the real benchmark path
 
 ## Render / Init Failure
 
@@ -152,6 +155,7 @@ Likely cause:
 
 - runtime is healthy, but the chosen controller or world is not meeting benchmark expectations
 - a custom controller is missing telemetry keys, device bindings, or stable control behavior
+- or you are trying to run the real benchmark on a GitHub-hosted Windows runner that cannot provide the supported interactive runtime
 
 Exact commands to diagnose:
 

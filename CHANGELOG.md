@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.1
+
+- Fixed `scripts/verify_install.ps1 -Runtime` so GitHub-hosted Windows runners now treat the runtime benchmark as an unsupported skip instead of a hard failure.
+- Kept the public verify path green for release install smoke while preserving real benchmark enforcement for local Windows machines and self-hosted `interactive-webots` runners.
+- Tightened troubleshooting and release-checklist language around the hosted-runner limitation.
+
 ## v2.1.0
 
 - Reframed the release as a user-adoption milestone with a `pipx`-first install story, a public `scripts/install.ps1` helper, and a public `scripts/verify_install.ps1` verification path.

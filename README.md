@@ -19,7 +19,7 @@ Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webot
 
 ## Unsupported Matrix
 
-| Area | Not supported in `v2.1.0` |
+| Area | Not supported in `v2.1.1` |
 | --- | --- |
 | Runtime | Windows service runner, Linux, macOS |
 | Robotics stack | ROS2, multi-robot orchestration |

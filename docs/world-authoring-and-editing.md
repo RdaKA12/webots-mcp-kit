@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the world authoring/editing surface in `v2.1.0`.
+This page documents the world authoring/editing surface in `v2.1.1`.
 
 ## Supported scope
 
@@ -23,7 +23,7 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
-`v2.1.0` keeps the general-scene inspection layer and mutation support:
+`v2.1.1` keeps the general-scene inspection layer and mutation support:
 
 - nested `node_tree`
 - `def_use_map`

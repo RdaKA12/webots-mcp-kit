@@ -220,9 +220,9 @@ The code values above are frozen starting with `v1.0.0`. Future codes may be add
 - `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
 - Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.
 
-## Authoring tools in `v2.1.0`
+## Authoring tools in `v2.1.1`
 
-`v2.1.0` also exposes additive `experimental-foundation` authoring tools:
+`v2.1.1` also exposes additive `experimental-foundation` authoring tools:
 
 - `webots_world_inspect`
 - `webots_world_validate`
@@ -232,7 +232,7 @@ The code values above are frozen starting with `v1.0.0`. Future codes may be add
 - `webots_controller_validate`
 - `webots_controller_edit`
 
-These tools are not retroactively part of the `v1.0.0` stable baseline. In `v2.1.0` they ship on `main`, remain additive and `experimental-foundation`, and their documented top-level keys are regression-tested. They use the same structured failure shape documented above.
+These tools are not retroactively part of the `v1.0.0` stable baseline. In `v2.1.1` they ship on `main`, remain additive and `experimental-foundation`, and their documented top-level keys are regression-tested. They use the same structured failure shape documented above.
 
 ### `webots_world_inspect`
 

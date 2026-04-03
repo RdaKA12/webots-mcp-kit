@@ -47,13 +47,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -Upgrade
 Pinned PyPI version:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.1.0"
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.1.1"
 ```
 
 Local wheel:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.1.0-py3-none-any.whl"
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.1.1-py3-none-any.whl"
 ```
 
 ## Fallback: Virtual Environment
