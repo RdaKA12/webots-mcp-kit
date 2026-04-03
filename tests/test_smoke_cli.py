@@ -216,7 +216,7 @@ def test_generated_world_edit_smoke(tmp_path: Path) -> None:
     assert inspect_payload["spatial_summary"]["zone_count"] == 2
     assert inspect_payload["spatial_summary"]["prop_count"] == 1
 
-    edited = json.loads(run_cli("world", "edit", str(world_path), "--plan", str(plan_path)).stdout)
+    edited = json.loads(run_cli("world", "edit", str(world_path), "--plan", str(plan_path), "--json").stdout)
     assert edited["status"] == "ready"
     validation = json.loads(run_cli("world", "validate", str(world_path), "--json").stdout)
     assert validation["valid"] is True
@@ -266,6 +266,99 @@ def test_generated_world_edit_smoke(tmp_path: Path) -> None:
     benchmark_payload = json.loads(benchmark.stdout)
     assert benchmark_payload["benchmark"] == "waypoint-nav"
     assert report_path.exists()
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_python_controller_authoring_and_edit_smoke(tmp_path: Path) -> None:
+    controller_path = tmp_path / "line_agent.py"
+    run_cli("controller", "scaffold", str(controller_path), "--scenario", "line-follower", "--force")
+    inspect_payload = json.loads(run_cli("controller", "inspect", str(controller_path), "--scenario", "line-follower", "--json").stdout)
+    assert inspect_payload["status"] == "ready"
+    assert inspect_payload["function_inventory"]
+
+    plan_path = tmp_path / "python-controller-edit.json"
+    write_json(
+        plan_path,
+        {
+            "schema_version": 1,
+            "operations": [
+                {"type": "set_symbol_value", "symbol": "TURN_GAIN", "value": 5},
+                {"type": "add_import_or_include", "statement": "import math"},
+                {"type": "remove_import_or_include", "statement": "import math"},
+            ],
+            "scenario_context": {"scenario": "line-follower"},
+        },
+    )
+    edit_payload = json.loads(run_cli("controller", "edit", str(controller_path), "--plan", str(plan_path), "--json").stdout)
+    assert edit_payload["status"] == "ready"
+    validate_payload = json.loads(
+        run_cli("controller", "validate", str(controller_path), "--scenario", "line-follower", "--strict", "--json").stdout
+    )
+    assert validate_payload["valid"] is True
+
+    report_path = tmp_path / "python-controller-report.json"
+    benchmark_payload = json.loads(
+        run_cli(
+            "benchmark",
+            "run",
+            "line-follower",
+            "--controller",
+            str(controller_path),
+            "--output",
+            str(report_path),
+            "--duration-s",
+            "3",
+            timeout=240,
+        ).stdout
+    )
+    assert benchmark_payload["benchmark"] == "line-follower"
+    report_text = run_cli("benchmark", "report", str(report_path)).stdout
+    assert "next_step:" in report_text
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+def test_cpp_controller_authoring_and_edit_smoke(tmp_path: Path) -> None:
+    controller_path = tmp_path / "waypoint_agent.cpp"
+    run_cli("controller", "scaffold", str(controller_path), "--scenario", "waypoint-nav", "--language", "cpp", "--force")
+    inspect_payload = json.loads(run_cli("controller", "inspect", str(controller_path), "--scenario", "waypoint-nav", "--json").stdout)
+    assert inspect_payload["status"] == "ready"
+    assert inspect_payload["function_inventory"]
+
+    plan_path = tmp_path / "cpp-controller-edit.json"
+    write_json(
+        plan_path,
+        {
+            "schema_version": 1,
+            "language": "cpp",
+            "operations": [{"type": "set_symbol_value", "symbol": "CRUISE_SPEED", "value": 4.0}],
+            "scenario_context": {"scenario": "waypoint-nav"},
+        },
+    )
+    edit_payload = json.loads(run_cli("controller", "edit", str(controller_path), "--plan", str(plan_path), "--json").stdout)
+    assert edit_payload["status"] == "ready"
+    validate_payload = json.loads(
+        run_cli("controller", "validate", str(controller_path), "--scenario", "waypoint-nav", "--strict", "--json", timeout=240).stdout
+    )
+    assert validate_payload["valid"] is True
+
+    report_path = tmp_path / "cpp-controller-report.json"
+    benchmark_payload = json.loads(
+        run_cli(
+            "benchmark",
+            "run",
+            "waypoint-nav",
+            "--controller",
+            str(controller_path),
+            "--output",
+            str(report_path),
+            "--duration-s",
+            "5",
+            timeout=360,
+        ).stdout
+    )
+    assert benchmark_payload["benchmark"] == "waypoint-nav"
+    report_text = run_cli("benchmark", "report", str(report_path)).stdout
+    assert "next_step:" in report_text
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
@@ -338,7 +431,7 @@ def test_imported_world_edit_smoke(tmp_path: Path) -> None:
     assert payload["world_inventory"]["status"] == "ready"
     assert isinstance(payload["edit_target_summary"], list)
 
-    edited = json.loads(run_cli("world", "edit", str(editable_world), "--plan", str(plan_path)).stdout)
+    edited = json.loads(run_cli("world", "edit", str(editable_world), "--plan", str(plan_path), "--json").stdout)
     assert edited["status"] == "ready"
     validation = json.loads(run_cli("world", "validate", str(editable_world), "--json").stdout)
     assert validation["valid"] is True

@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the `experimental-foundation` world authoring/editing surface in `v1.6.0`.
+This page documents the `experimental-foundation` world authoring/editing surface in `v2.0.0`.
 
 ## Supported scope
 
@@ -23,6 +23,17 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
+`v2.0.0` keeps the general-scene inspection layer and mutation support:
+
+- nested `node_tree`
+- `def_use_map`
+- field inventories per node
+- editability and supported mutation modes per node
+- opaque interstitial region reporting
+- preserve-first generic node clone/move/reorder support
+- `Shape` geometry and appearance replacement
+- frozen top-level `status` / `summary` / `support_tier` / `next_step` shapes across inspect, validate, and edit
+
 The same authoring surface is also exposed through MCP:
 
 - `webots_world_inspect`
@@ -41,11 +52,18 @@ webots-kit world inspect .\worlds\demo.wbt --json
 - `EXTERNPROTO` lines
 - robot inventory
 - target robot summary
+- nested `node_tree`
+- `field_inventory`
+- `def_use_map`
+- `editability`
+- `opaque_regions`
+- `preserve_notes`
 - controller bindings
 - DEF map
 - supported edit targets
 - spatial summary
 - inferred task cues
+- explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Validate
 
@@ -56,15 +74,24 @@ webots-kit world validate .\worlds\demo.wbt --json
 The current validator checks:
 
 - duplicate `DEF`
+- broken `USE`
 - missing target robot
 - missing target robot controller
 - malformed supported transforms
+- duplicate node paths
 - preserve-first task-world inventory for supported node families
+- explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Edit
 
 ```powershell
 webots-kit world edit .\worlds\demo.wbt --plan .\plans\world-edit.json
+```
+
+Use `--json` when an agent needs the frozen machine-readable payload:
+
+```powershell
+webots-kit world edit .\worlds\demo.wbt --plan .\plans\world-edit.json --json
 ```
 
 Example plan:
@@ -94,14 +121,26 @@ Supported selector shapes:
 - `by_name`
 - `by_type`
 - `by_path`
+- `by_parent_path`
+- `by_child_index`
 
 Current operation families:
 
 - `set_spawn`
 - `set_transform`
+- `set_field`
+- `unset_field`
 - `set_robot_controller`
 - `rename_def`
 - `remove_node`
+- `remove_child`
+- `add_node`
+- `insert_child`
+- `clone_node`
+- `move_node`
+- `reorder_children`
+- `replace_geometry`
+- `replace_appearance`
 - `add_obstacle`
 - `update_obstacle`
 - `remove_obstacle`
@@ -117,6 +156,17 @@ Current operation families:
 - `add_prop`
 - `update_prop`
 - `remove_prop`
+
+Frozen top-level edit payload keys:
+
+- `status`
+- `summary`
+- `changed_paths`
+- `issues`
+- `warnings`
+- `validation`
+- `support_tier`
+- `next_step`
 
 ## From-scratch world authoring
 

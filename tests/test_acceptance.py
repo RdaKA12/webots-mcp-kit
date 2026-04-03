@@ -15,6 +15,7 @@ def test_clean_user_acceptance_steps_cover_expected_flow(tmp_path: Path) -> None
         "controller_validate",
         "controller_inspect",
         "controller_edit",
+        "controller_validate_after_edit",
         "project_init",
         "scenario_init",
         "scenario_enrich",
@@ -27,8 +28,11 @@ def test_clean_user_acceptance_steps_cover_expected_flow(tmp_path: Path) -> None
         "world_edit",
         "mcp_authoring_smoke",
         "project_import",
+        "controller_cpp_scaffold",
+        "controller_cpp_inspect",
+        "controller_cpp_validate",
     ]
-    project_import = steps[-1]
+    project_import = next(step for step in steps if step.name == "project_import")
     controller_scaffold = next(step for step in steps if step.name == "controller_scaffold")
     project_init = next(step for step in steps if step.name == "project_init")
     scenario_init = next(step for step in steps if step.name == "scenario_init")

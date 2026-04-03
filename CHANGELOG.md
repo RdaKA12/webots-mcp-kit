@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.0.0
+
+- Merged `feature/general-scene-editor` into the stable `main` line with preserve-first general scene inspection and mutation on `.wbt` files.
+- Shipped controller repair-loop support for Python and C++ authoring, including richer inspect inventories, generic controller edit operations, and benchmark/replay fix hints.
+- Froze additive authoring top-level shapes across CLI JSON and MCP for `world inspect/validate/edit` and `controller inspect/validate/edit`, while keeping the authoring surface `experimental-foundation`.
+
+## v2.0.0-alpha.1
+
+- Froze the preview authoring top-level shapes across CLI JSON and MCP for `world inspect/validate/edit` and `controller inspect/validate/edit`, including explicit `status`, `summary`, `support_tier`, and `next_step` fields.
+- Hardened the preview gate and acceptance flows around controller repair lanes, benchmark report review, and general-scene authoring smoke on `feature/general-scene-editor`.
+- Prepared the general-scene editor and controller repair loop for stable release review while keeping the authoring surface additive and `experimental-foundation`.
+
+## v1.9.0-alpha.1
+
+- Added controller repair-loop inventories for Python and C++: `function_inventory`, `editable_symbols`, `device_access_inventory`, `telemetry_contract`, `benchmark_contract_gaps`, `compile_readiness`, `runtime_readiness`, and `controller_fix_hints`.
+- Added generic controller edit operations for `set_symbol_value`, `replace_function_body`, `add_import_or_include`, and `remove_import_or_include`.
+- Added benchmark/replay-facing controller fix hints and introduced `tree-sitter` + `tree-sitter-cpp` as the C++ inspection/edit foundation on `feature/general-scene-editor`.
+
+## v1.8.0-alpha.1
+
+- Added generic preserve-first world mutation support for `clone_node`, `move_node`, `reorder_children`, `replace_geometry`, and `replace_appearance` on the `feature/general-scene-editor` branch.
+- Hardened clone semantics by remapping nested `DEF` / `USE` pairs inside cloned world fragments so real bundled worlds stay validation-clean after clone operations.
+- Extended world selector and parent-field flows with tested nested move/reorder behavior across arbitrary editable scene nodes.
+
+## v1.7.0-alpha.1
+
+- Added a preserve-first general scene graph foundation on `feature/general-scene-editor`, including nested `node_tree` inspection, `def_use_map`, field inventories, editability metadata, and opaque-region reporting for `.wbt` files.
+- Expanded `world edit` with generic `set_field`, `unset_field`, `add_node`, `insert_child`, `remove_child`, and richer selector filters such as `by_parent_path` and `by_child_index`.
+- Aligned `project import` with the richer world vocabulary through additive `scene_node_summary`, `authoring_targets`, and `controller_authoring_context` payloads.
+
 ## v1.6.0
 
 - Merged the agent-authoring expansion into `main` with structured task-world authoring/editing for `.wbt` files and scenario-driven world generation.

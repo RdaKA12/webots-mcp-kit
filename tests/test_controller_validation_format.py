@@ -13,5 +13,5 @@ def test_validation_report_includes_summary_and_next_step() -> None:
         details={"scenario": "line-follower", "strict": True, "default_camera": "camera", "report_step_keywords": ["sensors"]},
     )
     formatted = format_validation_report(result)
-    assert "summary: 1 errors, 1 warnings" in formatted
+    assert "summary: {'error_count': 1, 'warning_count': 1" in formatted
     assert "next_step:" in formatted

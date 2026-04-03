@@ -59,7 +59,11 @@ def main(argv: list[str] | None = None) -> int:
     shutil.copy2(source_world, editable_world)
     write_json(
         controller_plan,
-        {"schema_version": 1, "operations": [{"type": "inject_helper_function", "code": "def preview_helper() -> float:\n    return 1.0"}]},
+        {
+            "schema_version": 1,
+            "operations": [{"type": "set_symbol_value", "symbol": "TURN_GAIN", "value": 6}],
+            "scenario_context": {"scenario": "line-follower"},
+        },
     )
     write_json(world_plan, {"schema_version": 1, "operations": [{"type": "add_landmark", "name": "mcp-landmark", "position": [0.0, 0.0], "radius": 0.04}]})
 
@@ -93,12 +97,22 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     assert scaffold_payload["language"] == "python"
+    assert scaffold_payload["support_tier"] == "experimental-foundation"
     assert inspect_payload["language"] == "python"
+    assert inspect_payload["status"] in {"ready", "misconfigured"}
+    assert isinstance(inspect_payload["summary"], dict)
     assert validate_payload["valid"] is True
-    assert "inject_helper_function" in edit_payload["applied_operations"]
+    assert validate_payload["status"] == "ready"
+    assert isinstance(validate_payload["summary"], dict)
+    assert "set_symbol_value" in edit_payload["applied_operations"]
+    assert edit_payload["status"] in {"ready", "misconfigured"}
+    assert isinstance(edit_payload["summary"], dict)
     assert world_inspect_payload["status"] == "ready"
+    assert isinstance(world_inspect_payload["node_tree"], list)
     assert world_validate_payload["valid"] is True
+    assert isinstance(world_validate_payload["summary"], dict)
     assert world_edit_payload["status"] == "ready"
+    assert isinstance(world_edit_payload["changed_paths"], list)
 
     print(
         json.dumps(

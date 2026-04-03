@@ -10,6 +10,7 @@
 #include <fstream>
 #include <map>
 #include <optional>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -158,12 +159,14 @@ private:
       if (bytes > 0) {
         recv_buffer_.append(buffer, bytes);
       } else if (bytes == 0) {
-        break;
+        close_socket();
+        return;
       } else {
         int error = WSAGetLastError();
         if (error == WSAEWOULDBLOCK)
           break;
-        throw std::runtime_error("Runtime socket receive failed.");
+        close_socket();
+        return;
       }
     }
 
@@ -237,6 +240,20 @@ private:
     }
   }
 
+  void wait_for_socket_writable(long timeout_ms = 2000) {
+    fd_set write_set;
+    FD_ZERO(&write_set);
+    FD_SET(socket_, &write_set);
+    timeval timeout{};
+    timeout.tv_sec = timeout_ms / 1000;
+    timeout.tv_usec = (timeout_ms % 1000) * 1000;
+    const int ready = select(0, nullptr, &write_set, nullptr, &timeout);
+    if (ready == SOCKET_ERROR)
+      throw std::runtime_error("Runtime socket select failed.");
+    if (ready == 0)
+      throw std::runtime_error("Runtime socket send timed out.");
+  }
+
   void send_line(const std::string &line) {
     if (socket_ == INVALID_SOCKET)
       return;
@@ -244,8 +261,24 @@ private:
     int remaining = static_cast<int>(line.size());
     while (remaining > 0) {
       int sent = send(socket_, data, remaining, 0);
-      if (sent <= 0)
-        throw std::runtime_error("Runtime socket send failed.");
+      if (sent == SOCKET_ERROR) {
+        const int error = WSAGetLastError();
+        if (error == WSAEWOULDBLOCK) {
+          try {
+            wait_for_socket_writable();
+          } catch (const std::exception &) {
+            close_socket();
+            return;
+          }
+          continue;
+        }
+        close_socket();
+        return;
+      }
+      if (sent == 0) {
+        close_socket();
+        return;
+      }
       data += sent;
       remaining -= sent;
     }

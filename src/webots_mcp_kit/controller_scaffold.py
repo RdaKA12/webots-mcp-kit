@@ -26,6 +26,8 @@ def scaffold_controller(
             "world": str(world) if world else None,
             "target_robot_name": robot_name or scenario_def.target_robot_name,
             "target_robot_def": robot_def or scenario_def.target_robot_def,
+            "support_tier": "experimental-foundation",
+            "next_step": f"Run `webots-kit controller inspect \"{payload['path']}\" --scenario {scenario}` or `webots-kit controller validate \"{payload['path']}\" --strict --json`.",
         }
     )
     return payload

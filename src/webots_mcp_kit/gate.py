@@ -57,11 +57,37 @@ def build_v1_gate_steps(workspace: Path) -> list[GateStep]:
     imported_world_copy = root / "editable-imported-line.wbt"
     generated_waypoint_plan = plans_dir / "generated-waypoint-world-edit.json"
     imported_world_plan = plans_dir / "imported-world-edit.json"
+    python_controller = root / "controllers" / "gate_line_agent.py"
+    python_controller_plan = plans_dir / "python-controller-edit.json"
+    python_controller_report = reports_dir / "controller-line-follower.json"
+    cpp_controller = root / "controllers" / "gate_waypoint_agent.cpp"
+    cpp_controller_plan = plans_dir / "cpp-controller-edit.json"
+    cpp_controller_report = reports_dir / "controller-waypoint.json"
 
     steps: list[GateStep] = [
         GateStep("doctor", ("doctor", "--json")),
         GateStep("clean_user_acceptance", ("..\\scripts\\clean_user_acceptance.py",)),  # marker step for the runner
         GateStep("mcp_authoring_smoke", (str(root / "mcp-authoring"),)),
+        GateStep("controller_python_scaffold", ("controller", "scaffold", str(python_controller), "--scenario", "line-follower", "--force")),
+        GateStep("controller_python_inspect", ("controller", "inspect", str(python_controller), "--scenario", "line-follower")),
+        GateStep("controller_python_validate", ("controller", "validate", str(python_controller), "--scenario", "line-follower", "--strict")),
+        GateStep("controller_python_edit", ("controller", "edit", str(python_controller), "--plan", str(python_controller_plan))),
+        GateStep("controller_python_validate_after_edit", ("controller", "validate", str(python_controller), "--scenario", "line-follower", "--strict")),
+        GateStep(
+            "controller_python_benchmark",
+            ("benchmark", "run", "line-follower", "--controller", str(python_controller), "--output", str(python_controller_report), "--duration-s", "3"),
+        ),
+        GateStep("controller_python_benchmark_report", ("benchmark", "report", str(python_controller_report))),
+        GateStep("controller_cpp_scaffold", ("controller", "scaffold", str(cpp_controller), "--scenario", "waypoint-nav", "--language", "cpp", "--force")),
+        GateStep("controller_cpp_inspect", ("controller", "inspect", str(cpp_controller), "--scenario", "waypoint-nav")),
+        GateStep("controller_cpp_validate", ("controller", "validate", str(cpp_controller), "--scenario", "waypoint-nav", "--strict")),
+        GateStep("controller_cpp_edit", ("controller", "edit", str(cpp_controller), "--plan", str(cpp_controller_plan))),
+        GateStep("controller_cpp_validate_after_edit", ("controller", "validate", str(cpp_controller), "--scenario", "waypoint-nav", "--strict")),
+        GateStep(
+            "controller_cpp_benchmark",
+            ("benchmark", "run", "waypoint-nav", "--controller", str(cpp_controller), "--output", str(cpp_controller_report), "--duration-s", "5"),
+        ),
+        GateStep("controller_cpp_benchmark_report", ("benchmark", "report", str(cpp_controller_report))),
         GateStep("bundled_benchmark_line", ("benchmark", "run", "line-follower", "--controller", "example", "--output", str(reports_dir / "line-follower.json"), "--duration-s", "3")),
         GateStep(
             "bundled_benchmark_obstacle",

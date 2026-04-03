@@ -77,6 +77,9 @@ class BenchmarkReport:
     artifacts: dict[str, str]
     notes: list[str]
     extra_metrics: dict[str, Any] = field(default_factory=dict)
+    controller_fix_hints: list[str] = field(default_factory=list)
+    missing_telemetry_keys: list[str] = field(default_factory=list)
+    device_binding_hints: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)

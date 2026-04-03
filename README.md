@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Release
 
-`v1.6.0`
+`v2.0.0`
 
 Stable baseline:
 
@@ -37,6 +37,11 @@ Stable baseline:
 - generated and imported world authoring runtime smoke on the structured authoring surface
 - richer from-scratch world authoring for `walls`, `landmarks`, `zones`, and `props` across generated scenarios
 - MCP authoring parity smoke and split onboarding flows for world/controller authoring
+- preserve-first general scene graph inspection with `node_tree`, `def_use_map`, field inventories, and opaque-region reporting
+- generic scene edit operations for `set_field`, `unset_field`, `add_node`, `insert_child`, and nested selector filters
+- broader general scene mutations for `clone_node`, `move_node`, `reorder_children`, `replace_geometry`, and `replace_appearance`
+- controller repair-loop inventories, generic controller edit ops, and benchmark/replay fix hints
+- frozen authoring contracts with explicit `status` / `summary` / `next_step` shapes across CLI JSON and MCP payloads for world/controller inspect, validate, and edit
 
 Operational runtime model:
 
@@ -53,6 +58,7 @@ Supported:
 - interactive self-hosted runtime through the `interactive-webots` runner label as the only supported runtime execution model
 - foundation workflows for `project init`, `scenario init`, `scenario validate`, `scenario build`, `scenario describe`, `scenario doctor`, `project import`, `session export`, and `session replay`
 - experimental-foundation authoring workflows for `controller scaffold`, `controller inspect`, `controller edit`, `controller validate`, `world inspect`, `world validate`, `world edit`, and the matching `webots_controller_*` / `webots_world_*` MCP tools
+- preserve-first general scene editing and controller repair loops on the stable `main` release line
 
 Foundation schema note:
 
@@ -60,7 +66,7 @@ Foundation schema note:
 - the documented core `ScenarioSpec` subset is stable in `v1.1.0`
 - the wider JSON schema remains additive and `experimental-foundation`
 
-Unsupported at `v1.0.0`:
+Unsupported at `v2.0.0`:
 
 - Windows service runner runtime
 - Linux/macOS runtime support

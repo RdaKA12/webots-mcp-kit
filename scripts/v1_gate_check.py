@@ -92,6 +92,35 @@ def main(argv: list[str] | None = None) -> int:
         ),
         encoding="utf-8",
     )
+    (plans_dir / "python-controller-edit.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {"type": "set_symbol_value", "symbol": "TURN_GAIN", "value": 5},
+                    {"type": "add_import_or_include", "statement": "import math"},
+                    {"type": "remove_import_or_include", "statement": "import math"},
+                ],
+                "scenario_context": {"scenario": "line-follower"},
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    (plans_dir / "cpp-controller-edit.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "language": "cpp",
+                "operations": [
+                    {"type": "set_symbol_value", "symbol": "CRUISE_SPEED", "value": 4.0},
+                ],
+                "scenario_context": {"scenario": "waypoint-nav"},
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     summary: list[dict[str, str]] = []
     session_ids: dict[str, str] = {}
 

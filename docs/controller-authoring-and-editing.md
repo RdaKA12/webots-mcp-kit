@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the `experimental-foundation` controller authoring surface in `v1.6.0`.
+This page documents the `experimental-foundation` controller authoring surface in `v2.0.0`.
 
 ## Supported scope
 
@@ -57,15 +57,30 @@ webots-kit controller inspect .\controllers\demo_agent.py --scenario line-follow
 - detected language
 - integration mode
 - editable regions
+- function inventory
+- editable symbols
 - device bindings
+- device access inventory
 - default camera
 - telemetry sections
+- telemetry contract
 - benchmark readiness
+- benchmark contract gaps
+- compile readiness
+- runtime readiness
+- controller fix hints
+- explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Edit
 
 ```powershell
 webots-kit controller edit .\controllers\demo_agent.py --plan .\plans\controller-edit.json
+```
+
+Use `--json` when an agent needs the frozen machine-readable payload:
+
+```powershell
+webots-kit controller edit .\controllers\demo_agent.py --plan .\plans\controller-edit.json --json
 ```
 
 Example plan:
@@ -86,6 +101,10 @@ Example plan:
 
 Current edit operations:
 
+- `set_symbol_value`
+- `replace_function_body`
+- `add_import_or_include`
+- `remove_import_or_include`
 - `replace_control_policy`
 - `set_goal_logic`
 - `set_line_follow_logic`
@@ -111,7 +130,11 @@ Validation checks:
 - `ControllerAgent` usage
 - default camera
 - benchmark-facing telemetry keys
+- benchmark contract gaps
+- runtime readiness
+- controller fix hints
 - C++ compile smoke when the source language is `cpp`
+- explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Recommended loop
 

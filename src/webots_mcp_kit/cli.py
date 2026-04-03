@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .benchmark import format_benchmark_report, list_benchmarks, run_benchmark
 from .benchmarks import scenario_names
-from .controller_authoring import edit_controller, format_controller_inspection_report, inspect_controller
+from .controller_authoring import edit_controller, format_controller_edit_report, format_controller_inspection_report, inspect_controller
 from .controller_scaffold import scaffold_controller
 from .controller_validation import format_validation_report, validate_controller
 from .doctor import format_doctor_report, run_doctor
@@ -27,7 +27,7 @@ from .scenario_ops import (
     scenario_doctor,
     validate_scenario,
 )
-from .world_ops import edit_world, format_world_inspection, format_world_validation, inspect_world, validate_world
+from .world_ops import edit_world, format_world_edit, format_world_inspection, format_world_validation, inspect_world, validate_world
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate = controller_sub.add_parser("validate")
     validate.add_argument("path")
     validate.add_argument("--scenario", choices=scenario_names())
+    validate.add_argument("--spec")
     validate.add_argument("--strict", action="store_true")
     validate.add_argument("--json", action="store_true")
     scaffold = controller_sub.add_parser("scaffold")
@@ -100,6 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
     edit_controller_parser = controller_sub.add_parser("edit")
     edit_controller_parser.add_argument("path")
     edit_controller_parser.add_argument("--plan", required=True)
+    edit_controller_parser.add_argument("--json", action="store_true")
 
     project = subparsers.add_parser("project")
     project_sub = project.add_subparsers(dest="project_command", required=True)
@@ -145,6 +147,7 @@ def build_parser() -> argparse.ArgumentParser:
     world_edit_parser = world_sub.add_parser("edit")
     world_edit_parser.add_argument("path")
     world_edit_parser.add_argument("--plan", required=True)
+    world_edit_parser.add_argument("--json", action="store_true")
     return parser
 
 
@@ -257,7 +260,11 @@ def main(argv: list[str] | None = None) -> None:
             print(format_controller_inspection_report(payload))
         return
     if args.command == "controller" and args.controller_command == "edit":
-        print(json.dumps(edit_controller(Path(args.path), plan_path=Path(args.plan)), indent=2))
+        payload = edit_controller(Path(args.path), plan_path=Path(args.plan))
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(format_controller_edit_report(payload))
         return
 
     if args.command == "project" and args.project_command == "init":
@@ -319,7 +326,12 @@ def main(argv: list[str] | None = None) -> None:
             print(format_world_validation(payload))
         return
     if args.command == "world" and args.world_command == "edit":
-        print(json.dumps(edit_world(Path(args.path), plan_path=Path(args.plan)), indent=2))
+        payload = edit_world(Path(args.path), plan_path=Path(args.plan))
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(format_world_edit(payload))
+        return
 
 
 if __name__ == "__main__":

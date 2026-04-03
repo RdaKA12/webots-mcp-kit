@@ -220,9 +220,9 @@ The code values above are frozen starting with `v1.0.0`. Future codes may be add
 - `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
 - Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.
 
-## Authoring tools in `v1.6.0`
+## Authoring tools in `v2.0.0`
 
-`v1.6.0` also exposes additive `experimental-foundation` authoring tools:
+`v2.0.0` also exposes additive `experimental-foundation` authoring tools:
 
 - `webots_world_inspect`
 - `webots_world_validate`
@@ -232,7 +232,7 @@ The code values above are frozen starting with `v1.0.0`. Future codes may be add
 - `webots_controller_validate`
 - `webots_controller_edit`
 
-These tools are not retroactively part of the `v1.0.0` stable baseline, but their documented top-level success shapes are now intentionally frozen in `v1.6.0` so agents and regression tests can depend on them. They use the same structured failure shape documented above.
+These tools are not retroactively part of the `v1.0.0` stable baseline. In `v2.0.0` they ship on `main`, remain additive and `experimental-foundation`, and their documented top-level keys are regression-tested. They use the same structured failure shape documented above.
 
 ### `webots_world_inspect`
 
@@ -250,7 +250,15 @@ Documented top-level keys:
   "supported_edit_targets": [],
   "spatial_summary": {},
   "summary": {},
+  "scene_node_summary": {},
+  "node_tree": [],
+  "field_inventory": {},
   "inferred_task_cues": {},
+  "def_use_map": {},
+  "editability": {},
+  "opaque_regions": [],
+  "preserve_notes": [],
+  "supported_mutation_modes": {},
   "support_tier": "experimental-foundation",
   "next_step": "Run `webots-kit world validate ...`."
 }
@@ -266,9 +274,13 @@ Documented top-level keys:
   "valid": true,
   "status": "ready",
   "issues": [],
+  "warnings": [],
   "supported_edit_targets": [],
   "spatial_summary": {},
   "summary": {},
+  "def_use_map": {},
+  "opaque_regions": [],
+  "preserve_notes": [],
   "support_tier": "experimental-foundation",
   "next_step": "Apply `webots-kit world edit ...`."
 }
@@ -282,9 +294,16 @@ Documented top-level keys:
 {
   "world_path": "C:\\Users\\...\\demo.wbt",
   "applied_operations": [],
+  "changed_paths": [],
   "status": "ready",
   "issues": [],
+  "warnings": [],
+  "summary": {},
   "validation": {},
+  "supported_edit_targets": [],
+  "def_use_map": {},
+  "opaque_regions": [],
+  "preserve_notes": [],
   "support_tier": "experimental-foundation",
   "next_step": "Apply `webots-kit world edit ...`."
 }
@@ -297,17 +316,29 @@ Documented top-level keys:
 ```json
 {
   "path": "C:\\Users\\...\\demo_agent.py",
+  "status": "ready",
   "language": "python",
   "scenario": "line-follower",
   "integration_mode": "controller-agent",
   "valid_source": true,
   "editable_regions": [],
   "markers_present": true,
+  "function_inventory": [],
+  "editable_symbols": [],
   "default_camera": "camera",
   "device_bindings": [],
+  "device_access_inventory": [],
   "telemetry_sections": {},
+  "telemetry_contract": {},
   "benchmark_readiness": {},
-  "issues": []
+  "benchmark_contract_gaps": [],
+  "compile_readiness": {},
+  "runtime_readiness": {},
+  "controller_fix_hints": [],
+  "issues": [],
+  "summary": {},
+  "support_tier": "experimental-foundation",
+  "next_step": "Run `webots-kit controller validate ...`."
 }
 ```
 
@@ -327,7 +358,9 @@ Documented top-level keys:
   "spec_path": null,
   "world": null,
   "target_robot_name": "epuck-line-follower",
-  "target_robot_def": "EPUCK"
+  "target_robot_def": "EPUCK",
+  "support_tier": "experimental-foundation",
+  "next_step": "Run `webots-kit controller inspect ...` or `webots-kit controller validate ...`."
 }
 ```
 
@@ -339,10 +372,14 @@ This tool uses the same normalized validation top-level shape as the controller-
 {
   "path": "C:\\Users\\...\\demo_agent.py",
   "valid": true,
+  "status": "ready",
   "integration_mode": "controller-agent",
   "errors": [],
   "warnings": [],
-  "details": {}
+  "details": {},
+  "summary": {},
+  "support_tier": "experimental-foundation",
+  "next_step": "Run `webots-kit benchmark run ...`."
 }
 ```
 
@@ -356,6 +393,12 @@ Documented top-level keys:
   "language": "python",
   "applied_operations": [],
   "editable_regions": [],
+  "status": "ready",
+  "summary": {},
+  "benchmark_readiness": {},
+  "benchmark_contract_gaps": [],
+  "controller_fix_hints": [],
+  "support_tier": "experimental-foundation",
   "next_step": "Run `webots-kit controller validate ...`."
 }
 ```
