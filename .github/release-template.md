@@ -22,6 +22,13 @@
 - first-hour guide changes
 - user-visible command changes
 
+## Team Upgrade Checklist
+
+- starter workspace impact
+- `bootstrap_workspace` changes
+- `upgrade_check` changes
+- team docs impact
+
 ## Validation
 
 - unit tests

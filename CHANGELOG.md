@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.2.0
+
+- Added team-adoption starter workspaces under `examples/getting-started/` so new users can begin from known-good line-follower, controller-edit, world-edit, and import-replay flows instead of blank files.
+- Added `scripts/bootstrap_workspace.ps1` and `scripts/upgrade_check.ps1`, then wired them into acceptance, Windows CI, and release install smoke so team onboarding and upgrade verification use public entrypoints.
+- Reworked docs, templates, and release guidance around repeatable team flows, upgrade discipline, and operator-friendly import/replay handoff summaries while keeping the runtime and authoring surfaces stable.
+
 ## v2.1.1
 
 - Fixed `scripts/verify_install.ps1 -Runtime` so GitHub-hosted Windows runners now treat the runtime benchmark as an unsupported skip instead of a hard failure.

@@ -69,6 +69,26 @@ def main(argv: list[str] | None = None) -> int:
                 text=True,
             )
             continue
+        if step.name == "upgrade_check":
+            rendered = f"powershell -ExecutionPolicy Bypass -File scripts\\upgrade_check.ps1 -Workspace {step.args[0]} -Runtime"
+            print(f"[acceptance] {step.name}: {rendered}")
+            if args.print_only:
+                continue
+            subprocess.run(
+                [
+                    "powershell",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    "scripts\\upgrade_check.ps1",
+                    "-Workspace",
+                    step.args[0],
+                    "-Runtime",
+                ],
+                check=True,
+                text=True,
+            )
+            continue
 
         print(f"[acceptance] {step.name}: webots-kit {rendered}")
         if args.print_only:

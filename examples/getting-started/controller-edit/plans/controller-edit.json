@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "operations": [
+    {
+      "type": "update_control_constants",
+      "constants": {
+        "TURN_GAIN": 5
+      }
+    }
+  ],
+  "scenario_context": {
+    "scenario": "line-follower"
+  }
+}

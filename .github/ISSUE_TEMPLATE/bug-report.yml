@@ -58,3 +58,8 @@ body:
       description: OS, Python version, Webots version/path, and any extra context that matters.
     validations:
       required: true
+  - type: input
+    id: starter_workspace
+    attributes:
+      label: Starter workspace or example used
+      description: If you used `bootstrap_workspace.ps1`, which starter workspace was it?

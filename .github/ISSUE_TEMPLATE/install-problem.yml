@@ -34,6 +34,11 @@ body:
       description: Paste the output of `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1`.
     validations:
       required: true
+  - type: input
+    id: starter_workspace
+    attributes:
+      label: Starter workspace used
+      description: If you also tried `bootstrap_workspace.ps1`, note which starter workspace you used.
   - type: textarea
     id: notes
     attributes:

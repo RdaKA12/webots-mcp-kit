@@ -9,6 +9,7 @@
 - [ ] install or onboarding path checked if user-facing behavior changed
 - [ ] `README` and docs updated if user-facing behavior changed
 - [ ] `verify_install` path checked if install or packaging behavior changed
+- [ ] `bootstrap_workspace` and `upgrade_check` paths checked if team-facing behavior changed
 - [ ] smoke scenario checked if runtime behavior changed
 - [ ] packaging/build checked if release or install behavior changed
 - [ ] self-hosted runtime smoke considered if session/runtime code changed

@@ -15,6 +15,8 @@
 - package build and `twine check` are green
 - TestPyPI install smoke passes through the public `verify_install.ps1` path on the hosted Windows runner
 - PyPI install smoke passes through the public `verify_install.ps1` path on the hosted Windows runner
+- starter workspace smoke is green through `bootstrap_workspace.ps1` or `upgrade_check.ps1`
+- team upgrade smoke is green through `powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace <path> -Runtime`
 - real runtime benchmark proof still comes from the self-hosted `interactive-webots` runtime smoke workflow
 - README quickstart has been rerun once from a clean machine or clean virtual environment
 - changelog and README version notes are updated
@@ -57,6 +59,9 @@ Configure PyPI and TestPyPI trusted publishers for:
 8. Verify the public install story still works:
    - `pipx install webots-mcp-kit`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime`
+9. Verify the team adoption lane still works:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter line-follower -Destination .\workspaces\line-follower-demo`
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\upgrade-check -Runtime`
 
 ## After release
 

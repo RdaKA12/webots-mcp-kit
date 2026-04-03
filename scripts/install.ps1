@@ -147,7 +147,9 @@ function Test-WebotsDiscovery {
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $verifyScript = Join-Path $PSScriptRoot "verify_install.ps1"
+$bootstrapScript = Join-Path $PSScriptRoot "bootstrap_workspace.ps1"
 $troubleshootingDoc = Join-Path $repoRoot "docs\troubleshooting.md"
+$teamFlowsDoc = Join-Path $repoRoot "docs\team-flows.md"
 
 try {
     $pythonCommand = Resolve-PythonCommand
@@ -176,6 +178,8 @@ try {
     Write-Host "Install finished."
     Write-Advice "If `webots-kit` is not available in this shell, start a new PowerShell window or add this path for the current session: `$env:PATH = `"$pipxBinDir;`$env:PATH`""
     Write-Advice "Then run: powershell -ExecutionPolicy Bypass -File `"$verifyScript`""
+    Write-Advice "For a ready sample workspace, run: powershell -ExecutionPolicy Bypass -File `"$bootstrapScript`" -Starter line-follower -Destination .\workspaces\line-follower-demo"
+    Write-Advice "Team flow guide: $teamFlowsDoc"
 }
 catch {
     Write-Host ""

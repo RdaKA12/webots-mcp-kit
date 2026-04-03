@@ -776,6 +776,11 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
     }
     spec.environment["imported"] = True
     atomic_write_text(spec_path, json.dumps(spec.to_dict(), indent=2), encoding="utf-8")
+    next_commands = [
+        f'webots-kit scenario validate "{spec_path}"',
+        f'webots-kit world inspect "{world_path}" --json',
+        f'webots-kit controller inspect "{controller_path}" --scenario {suggested_benchmark_name} --json',
+    ]
     return {
         "project_root": str(root),
         "manifest_path": str(manifest_path),
@@ -794,6 +799,8 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "authoring_targets": authoring_targets,
         "controller_authoring_context": controller_authoring_context,
         "edit_target_summary": authoring_targets,
+        "next_commands": next_commands,
+        "team_handoff_summary": f"Imported {world_path.name} as {scenario_name}; validate the generated spec, inspect the world, then inspect the controller contract before a rerun.",
         "support_tier": "experimental-foundation",
     }
 
@@ -919,6 +926,7 @@ def replay_session(export_path: Path) -> dict[str, Any]:
             if copied_artifacts is not None
             else sorted(path.name for path in (export_root / "artifacts").glob("*"))
         ),
+        "team_handoff_summary": f"Replay indicates {runtime_failure_class} focus; start with {triage_recipe.get('primary_artifacts', [])} before handing the session back for a rerun.",
         "next_step": benchmark_next_step(benchmark_name, result_reason),
         "support_tier": "experimental-foundation",
     }
@@ -1032,6 +1040,7 @@ def format_session_replay(payload: dict[str, Any]) -> str:
         f"standard_artifacts: {sorted(payload.get('standard_artifacts', {}))}",
         f"triage_focus: {triage_recipe.get('focus')}",
         f"triage_primary_artifacts: {triage_recipe.get('primary_artifacts')}",
+        f"team_handoff_summary: {payload.get('team_handoff_summary')}",
         f"summary: {len(payload['copied_logs'])} logs, {len(payload['copied_artifacts'])} artifacts",
         "support_tier: experimental-foundation",
         f"next_step: {payload['next_step']}",

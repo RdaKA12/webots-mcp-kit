@@ -42,18 +42,30 @@ Repo helper:
 powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -Upgrade
 ```
 
+Team-oriented upgrade lane:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\upgrade-check -Runtime
+```
+
+Starter workspace bootstrap:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter line-follower -Destination .\workspaces\line-follower-demo
+```
+
 ## Install A Specific Version Or Wheel
 
 Pinned PyPI version:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.1.1"
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.2.0"
 ```
 
 Local wheel:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.1.1-py3-none-any.whl"
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.2.0-py3-none-any.whl"
 ```
 
 ## Fallback: Virtual Environment
@@ -79,5 +91,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1
 - The install helpers do not silently mutate persistent `WEBOTS_HOME`
 - Bundled benchmark assets ship inside the wheel, so `benchmark list` and bundled-world inspect work without a source checkout
 - If install or verify fails, go to [Troubleshooting](./troubleshooting.md)
+- Use [Upgrade guide](./upgrade-guide.md) for the repeatable post-upgrade verification lane
+- Use [Version policy](./version-policy.md) when deciding which surfaces are stable versus additive
 
 Next: continue with [First hour guide](./first-hour-guide.md).

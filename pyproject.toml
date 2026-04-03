@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webots-mcp-kit"
-version = "2.1.1"
+version = "2.2.0"
 description = "Windows-first Webots developer toolkit with CLI, MCP server, controller SDK, and bundled benchmarks."
 readme = "README.md"
 license = "MIT"
@@ -62,6 +62,8 @@ webots_mcp_kit = [
   "examples/**/*.cpp",
   "examples/**/*.hpp",
   "examples/**/*.wbt",
+  "examples/**/*.md",
+  "examples/**/*.json",
 ]
 
 [tool.pytest.ini_options]

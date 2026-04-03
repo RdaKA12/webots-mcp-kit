@@ -2,6 +2,11 @@
 
 Use this page to choose the shortest supported path for your job.
 
+Team route map:
+
+- use [Team flows](./team-flows.md) when you want the same workflow repeated across multiple developers
+- use `bootstrap_workspace.ps1` when you want a ready starter workspace instead of a blank folder
+
 ## 1. Connect An Agent
 
 Use this when you want a live Webots session plus MCP tools.

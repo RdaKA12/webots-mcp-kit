@@ -15,6 +15,7 @@ on:
       - "src/webots_mcp_kit/world_document.py"
       - "src/webots_mcp_kit/world_ops.py"
       - "tests/test_smoke_cli.py"
+      - "examples/getting-started/**"
   pull_request:
     paths:
       - ".github/workflows/windows-runtime-smoke.yml"
@@ -28,6 +29,7 @@ on:
       - "src/webots_mcp_kit/world_document.py"
       - "src/webots_mcp_kit/world_ops.py"
       - "tests/test_smoke_cli.py"
+      - "examples/getting-started/**"
   workflow_dispatch:
 
 jobs:

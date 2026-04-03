@@ -40,3 +40,8 @@ body:
       description: Exact commands used to reproduce the failure.
     validations:
       required: true
+  - type: input
+    id: starter_workspace
+    attributes:
+      label: Starter workspace used
+      description: If the failure came from a starter workspace, note which one.

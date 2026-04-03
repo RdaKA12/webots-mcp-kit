@@ -175,3 +175,5 @@ webots-kit benchmark run line-follower --controller .\controllers\my_agent.py --
 ```
 
 Next: go back to [First hour guide](./first-hour-guide.md) once the blocking issue is cleared.
+
+For a repeatable team verification lane after install or upgrade, use [Upgrade guide](./upgrade-guide.md).

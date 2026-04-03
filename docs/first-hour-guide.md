@@ -70,11 +70,13 @@ webots-kit benchmark report .\report.json
 - Controller authoring: [Controller authoring and editing](./controller-authoring-and-editing.md)
 - World authoring: [World authoring and editing](./world-authoring-and-editing.md)
 - Import and replay: [Project import and session replay](./project-import-and-replay.md)
+- Team route map: [Team flows](./team-flows.md)
 
 ## Notes
 
 - The only supported runtime execution model is `interactive-webots`.
 - Webots runtime smoke is not supported from a Windows service session.
 - If Webots is not found or the benchmark fails, go straight to [Troubleshooting](./troubleshooting.md).
+- If you want a ready workspace instead of starting from a blank folder, run `powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter line-follower`.
 
 Next: continue with [Onboarding flows](./onboarding-flows.md).

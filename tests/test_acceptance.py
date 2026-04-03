@@ -31,6 +31,7 @@ def test_clean_user_acceptance_steps_cover_expected_flow(tmp_path: Path) -> None
         "controller_cpp_scaffold",
         "controller_cpp_inspect",
         "controller_cpp_validate",
+        "upgrade_check",
     ]
     project_import = next(step for step in steps if step.name == "project_import")
     controller_scaffold = next(step for step in steps if step.name == "controller_scaffold")

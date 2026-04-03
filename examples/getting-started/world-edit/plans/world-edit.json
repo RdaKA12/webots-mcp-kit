@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "operations": [
+    {
+      "type": "set_spawn",
+      "translation": [
+        -0.5,
+        0.08,
+        0.0
+      ],
+      "rotation_z": 0.2
+    },
+    {
+      "type": "add_obstacle",
+      "name": "starter-obstacle-a",
+      "position": [
+        0.1,
+        0.2
+      ],
+      "size": [
+        0.08,
+        0.08,
+        0.08
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the controller authoring surface in `v2.1.1`.
+This page documents the controller authoring surface in `v2.2.0`.
 
 ## Supported scope
 
@@ -148,5 +148,6 @@ Status note:
 
 - controller authoring and editing is supported on the stable release line
 - deeper plan/schema details remain `experimental-foundation` and additive
+- a ready sample workspace is available under `examples/getting-started/controller-edit`
 
 Next: continue with [World authoring and editing](./world-authoring-and-editing.md) if you also need to inspect or patch the `.wbt` side.

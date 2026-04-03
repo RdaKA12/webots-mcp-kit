@@ -1,0 +1,12 @@
+{
+  "name": "import-replay",
+  "title": "Import-and-replay starter workspace",
+  "flow": "importer-triage",
+  "support_tier": "experimental-foundation",
+  "expected_green": "project import writes imported scenario metadata and the exported session can later be replayed for triage.",
+  "recommended_commands": [
+    "webots-kit project import --world .\\worlds\\import_world.wbt --controller .\\controllers\\import_agent.py --project-root .\\imported-project",
+    "webots-kit session export <session-id> --output .\\artifacts\\exports\\<session-id>",
+    "webots-kit session replay .\\artifacts\\exports\\<session-id>"
+  ]
+}

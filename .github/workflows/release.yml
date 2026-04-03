@@ -125,7 +125,8 @@ jobs:
       - name: Install smoke
         shell: powershell
         run: |
-          powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime
+          powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime -Output .\verify-install.json
+          powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\upgrade-check -Runtime -Output .\upgrade-check.json
 
   publish-pypi:
     runs-on: ubuntu-latest
@@ -187,4 +188,5 @@ jobs:
       - name: Install smoke
         shell: powershell
         run: |
-          powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime
+          powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime -Output .\verify-install.json
+          powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\upgrade-check -Runtime -Output .\upgrade-check.json

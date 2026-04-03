@@ -74,4 +74,4 @@ Replay is observability-focused. It does not rerun physics. Instead, it gives yo
 - copied logs and artifacts
 - the suggested next step for triage or rerun
 
-Next: continue with [World authoring and editing](./world-authoring-and-editing.md) if the replay outcome tells you the imported world needs a structured patch.
+Next: continue with [World authoring and editing](./world-authoring-and-editing.md) if the replay outcome tells you the imported world needs a structured patch, or use [Team flows](./team-flows.md) for the importer/triage lane.

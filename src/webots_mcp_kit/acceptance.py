@@ -63,27 +63,27 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
 
     steps.extend(
         [
-        AcceptanceStep("benchmark_list", ("benchmark", "list")),
-        AcceptanceStep("controller_scaffold", ("controller", "scaffold", str(controller_path), "--scenario", "line-follower", "--force")),
-        AcceptanceStep("controller_validate", ("controller", "validate", str(controller_path), "--scenario", "line-follower")),
-        AcceptanceStep("controller_inspect", ("controller", "inspect", str(controller_path), "--scenario", "line-follower")),
-        AcceptanceStep("controller_edit", ("controller", "edit", str(controller_path), "--plan", str(controller_edit_plan), "--json")),
-        AcceptanceStep("controller_validate_after_edit", ("controller", "validate", str(controller_path), "--scenario", "line-follower", "--strict")),
-        AcceptanceStep("project_init", ("project", "init", str(project_root), "--force")),
-        AcceptanceStep("scenario_init", ("scenario", "init", str(project_root / "scenarios" / "demo-waypoint"), "--template", "epuck-waypoint", "--force")),
-        AcceptanceStep("scenario_enrich", (str(spec_path),)),
-        AcceptanceStep("scenario_validate", ("scenario", "validate", str(spec_path))),
-        AcceptanceStep("scenario_build", ("scenario", "build", str(spec_path), "--force")),
-        AcceptanceStep("scenario_describe", ("scenario", "describe", str(spec_path))),
-        AcceptanceStep("scenario_doctor", ("scenario", "doctor", str(spec_path))),
-        AcceptanceStep("world_inspect", ("world", "inspect", str(editable_world), "--json")),
-        AcceptanceStep("world_validate", ("world", "validate", str(editable_world), "--json")),
-        AcceptanceStep("world_edit", ("world", "edit", str(editable_world), "--plan", str(world_edit_plan), "--json")),
-        AcceptanceStep("mcp_authoring_smoke", (str(root / "mcp-authoring"),)),
-        AcceptanceStep(
-            "project_import",
-            ("project", "import", "--world", str(import_world), "--controller", str(import_controller), "--project-root", str(import_project_root)),
-        ),
+            AcceptanceStep("benchmark_list", ("benchmark", "list")),
+            AcceptanceStep("controller_scaffold", ("controller", "scaffold", str(controller_path), "--scenario", "line-follower", "--force")),
+            AcceptanceStep("controller_validate", ("controller", "validate", str(controller_path), "--scenario", "line-follower")),
+            AcceptanceStep("controller_inspect", ("controller", "inspect", str(controller_path), "--scenario", "line-follower")),
+            AcceptanceStep("controller_edit", ("controller", "edit", str(controller_path), "--plan", str(controller_edit_plan), "--json")),
+            AcceptanceStep("controller_validate_after_edit", ("controller", "validate", str(controller_path), "--scenario", "line-follower", "--strict")),
+            AcceptanceStep("project_init", ("project", "init", str(project_root), "--force")),
+            AcceptanceStep("scenario_init", ("scenario", "init", str(project_root / "scenarios" / "demo-waypoint"), "--template", "epuck-waypoint", "--force")),
+            AcceptanceStep("scenario_enrich", (str(spec_path),)),
+            AcceptanceStep("scenario_validate", ("scenario", "validate", str(spec_path))),
+            AcceptanceStep("scenario_build", ("scenario", "build", str(spec_path), "--force")),
+            AcceptanceStep("scenario_describe", ("scenario", "describe", str(spec_path))),
+            AcceptanceStep("scenario_doctor", ("scenario", "doctor", str(spec_path))),
+            AcceptanceStep("world_inspect", ("world", "inspect", str(editable_world), "--json")),
+            AcceptanceStep("world_validate", ("world", "validate", str(editable_world), "--json")),
+            AcceptanceStep("world_edit", ("world", "edit", str(editable_world), "--plan", str(world_edit_plan), "--json")),
+            AcceptanceStep("mcp_authoring_smoke", (str(root / "mcp-authoring"),)),
+            AcceptanceStep(
+                "project_import",
+                ("project", "import", "--world", str(import_world), "--controller", str(import_controller), "--project-root", str(import_project_root)),
+            ),
         ]
     )
     if profile == FULL_ACCEPTANCE_PROFILE:
@@ -92,6 +92,7 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
                 AcceptanceStep("controller_cpp_scaffold", ("controller", "scaffold", str(cpp_controller_path), "--scenario", "waypoint-nav", "--language", "cpp", "--force")),
                 AcceptanceStep("controller_cpp_inspect", ("controller", "inspect", str(cpp_controller_path), "--scenario", "waypoint-nav")),
                 AcceptanceStep("controller_cpp_validate", ("controller", "validate", str(cpp_controller_path), "--scenario", "waypoint-nav", "--strict")),
+                AcceptanceStep("upgrade_check", (str(root / "upgrade-check"),)),
             ]
         )
     return steps

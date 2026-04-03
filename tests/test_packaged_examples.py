@@ -7,6 +7,8 @@ def test_packaged_example_root_exists() -> None:
     root = package_example_root()
     assert (root / "line-follower" / "worlds" / "line_follower_benchmark.wbt").exists()
     assert (root / "waypoint-nav" / "controllers" / "waypoint_nav_agent.py").exists()
+    assert (root / "getting-started" / "line-follower" / "starter.json").exists()
+    assert (root / "getting-started" / "world-edit" / "README.md").exists()
 
 
 def test_bundled_example_root_prefers_repo_or_package() -> None:

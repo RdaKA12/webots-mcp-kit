@@ -96,9 +96,12 @@ def test_release_and_package_workflows_use_public_verify_path() -> None:
     release_content = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
     assert "User adoption static checks" in package_content
     assert "tests/test_user_adoption.py" in package_content
+    assert "tests/test_team_adoption.py" in package_content
     assert "python scripts/clean_user_acceptance.py --workspace package-smoke --profile hosted-safe" in package_content
-    assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\verify_install.ps1 -Runtime" in release_content
-    assert release_content.count("verify_install.ps1 -Runtime") >= 2
+    assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\verify_install.ps1 -Runtime -Output .\\verify-install.json" in release_content
+    assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\upgrade_check.ps1 -Workspace .\\upgrade-check -Runtime -Output .\\upgrade-check.json" in release_content
+    assert release_content.count("verify_install.ps1 -Runtime -Output") >= 2
+    assert release_content.count("upgrade_check.ps1 -Workspace .\\upgrade-check -Runtime -Output") >= 2
 
 
 def test_release_install_smoke_jobs_checkout_repo_for_verify_script() -> None:
@@ -107,3 +110,12 @@ def test_release_install_smoke_jobs_checkout_repo_for_verify_script() -> None:
     assert "test-install-testpypi:" in release_content
     assert "test-install-pypi:" in release_content
     assert release_content.count("uses: actions/checkout@v5") >= 2
+
+
+def test_windows_ci_includes_team_upgrade_smoke() -> None:
+    root = Path(__file__).resolve().parents[1]
+    content = (root / ".github/workflows/windows-ci.yml").read_text(encoding="utf-8")
+    assert "Public verify JSON smoke" in content
+    assert "verify_install.ps1 -Json -Output .\\verify-install.json" in content
+    assert "Team upgrade smoke" in content
+    assert "upgrade_check.ps1 -Workspace .\\upgrade-check -Runtime -Output .\\upgrade-check.json" in content

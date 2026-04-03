@@ -1,6 +1,6 @@
 # webots-mcp-kit
 
-`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows for `e-puck` task worlds.
+`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows for `e-puck` task worlds. `v2.2.0` focuses on team adoption: starter workspaces, repeatable upgrade checks, and clearer team-facing docs on top of the existing runtime and authoring surface.
 
 ## Support Matrix
 
@@ -19,7 +19,7 @@ Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webot
 
 ## Unsupported Matrix
 
-| Area | Not supported in `v2.1.1` |
+| Area | Not supported in `v2.2.0` |
 | --- | --- |
 | Runtime | Windows service runner, Linux, macOS |
 | Robotics stack | ROS2, multi-robot orchestration |
@@ -57,6 +57,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime
 - Inspect or edit a world: start with [World authoring and editing](./docs/world-authoring-and-editing.md)
 - Import an existing project and replay a session: start with [Project import and session replay](./docs/project-import-and-replay.md)
 
+## For Teams
+
+Use the team starter workspaces when you want a repeatable path that can be handed to another developer without extra setup decisions:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter line-follower -Destination .\workspaces\line-follower-demo
+powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\upgrade-check -Runtime
+```
+
+Use [Team flows](./docs/team-flows.md) when you want the exact command sequence for:
+
+- evaluator flow
+- controller author flow
+- world author flow
+- importer and triage flow
+
 ## Install And Upgrade
 
 Primary install path:
@@ -87,6 +103,7 @@ python -m pip install webots-mcp-kit
 ```
 
 Packaging, pinned-version, and wheel-install details live in [PyPI install and upgrade](./docs/pypi-install-and-upgrade.md).
+Upgrade and post-release verification live in [Upgrade guide](./docs/upgrade-guide.md).
 
 ## Troubleshooting
 
@@ -121,8 +138,11 @@ Authoring workflows are supported on the stable release line, but the deeper sch
 
 - [First hour guide](./docs/first-hour-guide.md)
 - [Onboarding flows](./docs/onboarding-flows.md)
+- [Team flows](./docs/team-flows.md)
 - [Troubleshooting](./docs/troubleshooting.md)
 - [PyPI install and upgrade](./docs/pypi-install-and-upgrade.md)
+- [Upgrade guide](./docs/upgrade-guide.md)
+- [Version policy](./docs/version-policy.md)
 - [Controller authoring and editing](./docs/controller-authoring-and-editing.md)
 - [World authoring and editing](./docs/world-authoring-and-editing.md)
 - [Custom controller integration](./docs/custom-controller-integration.md)

@@ -51,6 +51,18 @@ jobs:
         shell: powershell
         run: webots-kit doctor --json
 
+      - name: Public verify JSON smoke
+        shell: powershell
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Json -Output .\verify-install.json
+          Get-Content .\verify-install.json
+
+      - name: Team upgrade smoke
+        shell: powershell
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\upgrade-check -Runtime -Output .\upgrade-check.json
+          Get-Content .\upgrade-check.json
+
       - name: MCP smoke
         shell: powershell
         env:

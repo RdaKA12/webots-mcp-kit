@@ -1,0 +1,13 @@
+{
+  "name": "controller-edit",
+  "title": "Controller-edit starter workspace",
+  "flow": "controller-author",
+  "support_tier": "experimental-foundation",
+  "expected_green": "controller edit applies cleanly, strict validate passes, and the benchmark still passes.",
+  "recommended_commands": [
+    "webots-kit controller inspect .\\controllers\\demo_agent.py --scenario line-follower --json",
+    "webots-kit controller edit .\\controllers\\demo_agent.py --plan .\\plans\\controller-edit.json --json",
+    "webots-kit controller validate .\\controllers\\demo_agent.py --scenario line-follower --strict --json",
+    "webots-kit benchmark run line-follower --controller .\\controllers\\demo_agent.py --output .\\artifacts\\controller-edit-report.json --duration-s 3"
+  ]
+}
