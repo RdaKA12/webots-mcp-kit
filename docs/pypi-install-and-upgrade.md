@@ -1,35 +1,83 @@
 # PyPI Install and Upgrade
 
-## Install
+Use this page when you need the package-install reference. For the shortest first-success path, use [First hour guide](./first-hour-guide.md).
+
+## Recommended Install Path
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install webots-mcp-kit
+pipx install webots-mcp-kit
 ```
 
-## Verify
+From a repo checkout, the helper script drives the same public install story:
 
 ```powershell
-webots-kit doctor --json
-webots-kit benchmark list
-webots-kit controller scaffold .\controllers\demo_agent.py --scenario line-follower
-webots-kit controller validate .\controllers\demo_agent.py --scenario line-follower
-webots-kit project init .\my-webots-project
-webots-kit scenario init .\my-webots-project\scenarios\demo-waypoint --template epuck-waypoint
-webots-kit scenario validate .\my-webots-project\scenarios\demo-waypoint\webots-kit.scenario.json
-webots-kit scenario build .\my-webots-project\scenarios\demo-waypoint\webots-kit.scenario.json
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
+```
+
+## Verify The Install
+
+Quick verification:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1
+```
+
+Runtime verification:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime
 ```
 
 ## Upgrade
 
+Direct upgrade:
+
 ```powershell
-pip install --upgrade webots-mcp-kit
+pipx upgrade webots-mcp-kit
+```
+
+Repo helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -Upgrade
+```
+
+## Install A Specific Version Or Wheel
+
+Pinned PyPI version:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.1.0"
+```
+
+Local wheel:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.1.0-py3-none-any.whl"
+```
+
+## Fallback: Virtual Environment
+
+Use this only when `pipx` is not appropriate for your machine or workflow:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install webots-mcp-kit
+```
+
+Then run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1
 ```
 
 ## Notes
 
-- The package is Windows-first and assumes Webots `R2025a`.
-- If `doctor` fails after upgrade, verify `WEBOTS_HOME` and the active Python environment.
-- Bundled benchmark assets are shipped inside the wheel, so `benchmark list` should work without a source checkout.
-- `controller scaffold`, `controller validate`, `project import`, and `mcp serve` are also supported from a PyPI install.
+- Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots`, `e-puck`
+- The install helpers do not silently mutate persistent `WEBOTS_HOME`
+- Bundled benchmark assets ship inside the wheel, so `benchmark list` and bundled-world inspect work without a source checkout
+- If install or verify fails, go to [Troubleshooting](./troubleshooting.md)
+
+Next: continue with [First hour guide](./first-hour-guide.md).

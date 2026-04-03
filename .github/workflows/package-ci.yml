@@ -20,7 +20,13 @@ jobs:
       - name: Install packaging tools
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build twine
+          python -m pip install build twine pytest mcp tree-sitter tree-sitter-cpp
+
+      - name: User adoption static checks
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pytest -q tests/test_version_consistency.py tests/test_workflow_install_consistency.py tests/test_user_adoption.py
 
       - name: Build distributions
         run: python -m build

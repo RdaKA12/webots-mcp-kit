@@ -174,3 +174,5 @@ webots-kit benchmark run waypoint-nav --controller .\scenarios\warehouse-demo\co
 - Arena generation is currently rectangle-based.
 - Richer generated task-world authoring currently targets supported task primitives like walls, landmarks, zones, props, obstacles, lines, and goal regions rather than arbitrary full-scene composition.
 - Runtime smoke still requires an interactive self-hosted runner labeled `interactive-webots`.
+
+Next: continue with [World authoring and editing](./world-authoring-and-editing.md) if you want to inspect or patch the generated `.wbt` after build.

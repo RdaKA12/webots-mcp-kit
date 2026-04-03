@@ -1,0 +1,41 @@
+name: Install problem
+description: Report a problem with install, upgrade, or the public verify path.
+title: "[Install] "
+labels: ["install"]
+body:
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Install method
+      options:
+        - pipx
+        - venv
+        - source
+    validations:
+      required: true
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      placeholder: "3.11.9"
+    validations:
+      required: true
+  - type: textarea
+    id: webots
+    attributes:
+      label: Webots version and path
+      description: Include the Webots version and the install path or `WEBOTS_HOME`.
+    validations:
+      required: true
+  - type: textarea
+    id: verify_output
+    attributes:
+      label: verify_install.ps1 output
+      description: Paste the output of `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1`.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Include anything unusual about the machine or shell setup.

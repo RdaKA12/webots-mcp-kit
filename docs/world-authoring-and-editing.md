@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the `experimental-foundation` world authoring/editing surface in `v2.0.0`.
+This page documents the world authoring/editing surface in `v2.1.0`.
 
 ## Supported scope
 
@@ -23,7 +23,7 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
-`v2.0.0` keeps the general-scene inspection layer and mutation support:
+`v2.1.0` keeps the general-scene inspection layer and mutation support:
 
 - nested `node_tree`
 - `def_use_map`
@@ -204,3 +204,10 @@ Richer generated scenarios can now carry:
 4. `world validate`
 5. `session start`
 6. `benchmark run` when the world maps to a benchmarked task
+
+Status note:
+
+- world authoring and editing is supported on the stable release line
+- deeper plan/schema details remain `experimental-foundation` and additive
+
+Next: continue with [Project import and session replay](./project-import-and-replay.md) if you need to bring an existing world into a kit-managed workflow.

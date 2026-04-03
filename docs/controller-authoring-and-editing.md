@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the `experimental-foundation` controller authoring surface in `v2.0.0`.
+This page documents the controller authoring surface in `v2.1.0`.
 
 ## Supported scope
 
@@ -143,3 +143,10 @@ Validation checks:
 3. `controller edit`
 4. `controller validate --strict`
 5. `benchmark run`
+
+Status note:
+
+- controller authoring and editing is supported on the stable release line
+- deeper plan/schema details remain `experimental-foundation` and additive
+
+Next: continue with [World authoring and editing](./world-authoring-and-editing.md) if you also need to inspect or patch the `.wbt` side.

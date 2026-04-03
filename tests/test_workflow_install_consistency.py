@@ -90,16 +90,18 @@ def test_runtime_workflow_includes_imported_project_smoke() -> None:
     assert "-k mcp_authoring_contract_smoke" in content
 
 
-def test_release_and_package_workflows_smoke_project_and_scenario_commands() -> None:
+def test_release_and_package_workflows_use_public_verify_path() -> None:
     root = Path(__file__).resolve().parents[1]
     package_content = (root / ".github/workflows/package-ci.yml").read_text(encoding="utf-8")
     release_content = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    assert "User adoption static checks" in package_content
+    assert "tests/test_user_adoption.py" in package_content
     assert "python scripts/clean_user_acceptance.py --workspace package-smoke --profile hosted-safe" in package_content
-    assert "python scripts\\clean_user_acceptance.py --workspace testpypi-smoke" in release_content
-    assert "python scripts\\clean_user_acceptance.py --workspace pypi-smoke" in release_content
+    assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\verify_install.ps1 -Runtime" in release_content
+    assert release_content.count("verify_install.ps1 -Runtime") >= 2
 
 
-def test_release_install_smoke_jobs_checkout_repo_for_acceptance_script() -> None:
+def test_release_install_smoke_jobs_checkout_repo_for_verify_script() -> None:
     root = Path(__file__).resolve().parents[1]
     release_content = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
     assert "test-install-testpypi:" in release_content

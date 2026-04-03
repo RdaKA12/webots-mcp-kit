@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.0
+
+- Reframed the release as a user-adoption milestone with a `pipx`-first install story, a public `scripts/install.ps1` helper, and a public `scripts/verify_install.ps1` verification path.
+- Rewrote the GitHub landing and onboarding docs around the shortest first-success flow, including a dedicated troubleshooting guide and a four-path onboarding map.
+- Moved release-facing install smoke onto the same public verify script used by users and added static workflow/docs/template coverage so the install story stays regression-tested.
+
 ## v2.0.0
 
 - Merged `feature/general-scene-editor` into the stable `main` line with preserve-first general scene inspection and mutation on `.wbt` files.

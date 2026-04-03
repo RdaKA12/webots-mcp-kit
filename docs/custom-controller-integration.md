@@ -95,3 +95,5 @@ Recommended first tools:
 - `--strict` is meant for release-grade validation, not early sketches.
 - `controller inspect` and `controller edit` are `experimental-foundation` surfaces for agent-driven authoring.
 - If validation passes but runtime still fails, inspect `session inspect` and `session logs` before changing the controller contract.
+
+Next: continue with [Controller authoring and editing](./controller-authoring-and-editing.md) if you want structured inspect/edit plans instead of a manual integration-only flow.

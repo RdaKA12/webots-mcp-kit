@@ -13,7 +13,9 @@
 - imported-world authoring runtime smoke passed on the interactive runner when authoring code changed
 - MCP authoring/editing contract smoke passed when `mcp_server`, controller authoring, or world authoring code changed
 - package build and `twine check` are green
-- PyPI/TestPyPI install smoke expectations are ready to pass
+- TestPyPI install smoke passes through `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime`
+- PyPI install smoke passes through `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime`
+- README quickstart has been rerun once from a clean machine or clean virtual environment
 - changelog and README version notes are updated
 
 ## Historical pre-`v1.0.0` hardening gate
@@ -26,13 +28,8 @@
 - generated-scenario smoke stays green
 - imported-project basic runtime smoke stays green
 - the clean-user acceptance flow is still repeatable:
-  - `pip install webots-mcp-kit`
-  - `webots-kit doctor`
-  - `webots-kit benchmark list`
-  - `webots-kit controller scaffold`
-  - `webots-kit project init`
-  - `webots-kit scenario init`
-  - `webots-kit scenario build`
+  - `pipx install webots-mcp-kit`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1`
 - the centralized acceptance script still matches the clean-user flow:
   - `python scripts/clean_user_acceptance.py --workspace <path>`
 - the explicit no-mock v1 gate still passes on the real runtime:
@@ -56,13 +53,15 @@ Configure PyPI and TestPyPI trusted publishers for:
 5. Verify TestPyPI install smoke
 6. Verify PyPI publish
 7. Verify PyPI install smoke
-8. Verify `project init -> scenario init -> scenario build` works from the published package
+8. Verify the public install story still works:
+   - `pipx install webots-mcp-kit`
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime`
 
 ## After release
 
 - replace template text in GitHub release notes if needed
 - add package link to release summary
-- confirm `pip install webots-mcp-kit` install path works on a clean machine
+- confirm `pipx install webots-mcp-kit` install path works on a clean machine
 
 ## `v1.0.0` baseline gate
 

@@ -1,0 +1,42 @@
+name: Runtime smoke failure
+description: Report a failing runtime smoke, benchmark, or session verification path.
+title: "[Runtime Smoke] "
+labels: ["runtime"]
+body:
+  - type: input
+    id: scenario
+    attributes:
+      label: Scenario
+      placeholder: "line-follower"
+    validations:
+      required: true
+  - type: dropdown
+    id: runtime_type
+    attributes:
+      label: Runtime path
+      options:
+        - local
+        - self-hosted interactive-webots
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: doctor --json
+      description: Paste the output of `webots-kit doctor --json`.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Benchmark, session, or replay artifacts
+      description: Paste the benchmark report, session logs, or artifact/replay paths that show the failure.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Exact commands used to reproduce the failure.
+    validations:
+      required: true

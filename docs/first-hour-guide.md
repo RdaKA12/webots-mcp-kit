@@ -1,110 +1,80 @@
 # First Hour Guide
 
-Use the supported `interactive-webots` runtime model below. There are two entry paths, but only one supported operational runtime path for real Webots execution.
+Use this guide when you want the shortest supported path from install to a real `line-follower` benchmark on Windows.
 
-If you are looking for the other public onboarding paths, use:
+## 1. Install From A Repo Checkout
 
-- [Generate a scenario from a spec](./zero-to-sim.md)
-- [Import and replay](./project-import-and-replay.md)
-
-## Path A: I want to connect an agent to Webots
-
-### 1. Install
+Primary path:
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install webots-mcp-kit
+pipx install webots-mcp-kit
 ```
 
-### 2. Verify runtime readiness
+If you want the repo helper to install `pipx` and the package for you:
 
 ```powershell
-webots-kit doctor --json
-webots-kit benchmark list
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
 ```
 
-You should confirm:
+## 2. Run The Public Verification Script
 
-- `runtime_readiness.status` is `ready`
-- `runtime_readiness.runner_label` is `interactive-webots`
-- Webots `R2025a` is detected
+Quick verification:
 
-The human-readable CLI outputs for `controller validate`, `benchmark report`, `scenario validate`, `scenario doctor`, and `session replay` all follow the same short-summary plus `next_step` style. Use the text output when you want a compact operator-facing readout, and `--json` when you want machine parsing.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1
+```
 
-### 3. Start a bundled session
+Runtime verification:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime
+```
+
+The script checks:
+
+- `webots-kit --version`
+- `webots-kit doctor --json`
+- `webots-kit benchmark list`
+- temporary Python controller scaffold + strict validate
+- bundled world inspect
+- a short real `line-follower` benchmark when `-Runtime` is used
+
+## 3. Understand What A Green Result Means
+
+You are ready to continue when:
+
+- `doctor` reports `status: ready`
+- `benchmark list` returns the bundled scenarios
+- the temporary controller validates cleanly
+- bundled world inspect reports `status: ready`
+- the short runtime benchmark passes in `-Runtime` mode
+
+## 4. Start A Session Or Benchmark Manually
+
+Start a bundled session:
 
 ```powershell
 webots-kit session start --scenario line-follower --controller example --mode fast --render off
 ```
 
-What a successful session looks like:
-
-```json
-{
-  "session_id": "abc123def456",
-  "status": "ready",
-  "scenario": "line-follower",
-  "target_robot_name": "epuck-line-follower"
-}
-```
-
-### 4. Inspect state and capture a frame
-
-```powershell
-webots-kit session inspect --session <session-id>
-webots-kit mcp serve
-```
-
-Expected first MCP flow:
-
-1. `webots_session_start`
-2. `webots_get_state`
-3. `webots_get_sensors`
-4. `webots_capture_camera`
-5. `webots_session_stop`
-
-### 5. Run a bundled benchmark
+Run the canonical benchmark:
 
 ```powershell
 webots-kit benchmark run line-follower --controller example --output .\report.json --duration-s 3
 webots-kit benchmark report .\report.json
 ```
 
-## Path B: I want to integrate my own controller
+## 5. Choose The Next Workflow
 
-### 1. Scaffold from the closest scenario
-
-```powershell
-webots-kit controller scaffold .\controllers\my_agent.py --scenario line-follower
-```
-
-### 2. Keep the stable controller contract
-
-- `ControllerAgent.from_robot(...)`
-- `begin_step()`
-- `report_step(...)`
-
-### 3. Validate strictly
-
-```powershell
-webots-kit controller validate .\controllers\my_agent.py --scenario line-follower --strict --json
-```
-
-### 4. Benchmark it
-
-```powershell
-webots-kit benchmark run line-follower --controller .\controllers\my_agent.py --output .\report.json
-```
-
-### 5. Expose MCP if you want live agent control
-
-```powershell
-webots-kit mcp serve
-```
+- Live MCP session: [Onboarding flows](./onboarding-flows.md)
+- Controller authoring: [Controller authoring and editing](./controller-authoring-and-editing.md)
+- World authoring: [World authoring and editing](./world-authoring-and-editing.md)
+- Import and replay: [Project import and session replay](./project-import-and-replay.md)
 
 ## Notes
 
-- Hosted GitHub Actions runners do not run full Webots runtime smoke.
-- Real runtime smoke and real session execution require an `interactive-webots` self-hosted runner started from a logged-in desktop session.
-- Windows service mode is not a supported runtime path for Webots session execution.
+- The only supported runtime execution model is `interactive-webots`.
+- Webots runtime smoke is not supported from a Windows service session.
+- If Webots is not found or the benchmark fails, go straight to [Troubleshooting](./troubleshooting.md).
+
+Next: continue with [Onboarding flows](./onboarding-flows.md).

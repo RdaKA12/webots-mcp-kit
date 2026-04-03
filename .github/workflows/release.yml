@@ -125,7 +125,7 @@ jobs:
       - name: Install smoke
         shell: powershell
         run: |
-          python scripts\clean_user_acceptance.py --workspace testpypi-smoke
+          powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime
 
   publish-pypi:
     runs-on: ubuntu-latest
@@ -187,4 +187,4 @@ jobs:
       - name: Install smoke
         shell: powershell
         run: |
-          python scripts\clean_user_acceptance.py --workspace pypi-smoke
+          powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime

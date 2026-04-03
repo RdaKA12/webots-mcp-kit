@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from . import __version__
 from .benchmark import format_benchmark_report, list_benchmarks, run_benchmark
 from .benchmarks import scenario_names
 from .controller_authoring import edit_controller, format_controller_edit_report, format_controller_inspection_report, inspect_controller
@@ -32,6 +33,7 @@ from .world_ops import edit_world, format_world_edit, format_world_inspection, f
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="webots-kit")
+    parser.add_argument("--version", action="version", version=f"webots-mcp-kit {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     doctor = subparsers.add_parser("doctor")

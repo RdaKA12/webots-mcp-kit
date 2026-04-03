@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a defect in the CLI, MCP server, SDK, or bundled scenarios.
+description: Report a defect in the CLI, MCP server, SDK, authoring flows, or bundled scenarios.
 title: "[Bug] "
 labels: ["bug"]
 body:
@@ -11,21 +11,50 @@ body:
     validations:
       required: true
   - type: textarea
-    id: repro
+    id: reproduction
     attributes:
       label: Reproduction
-      description: Commands, controller paths, and scenario details.
+      description: Exact commands, scenario/controller/world paths, and the result you expected.
+    validations:
+      required: true
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Install method
+      options:
+        - pipx
+        - venv
+        - source
+    validations:
+      required: true
+  - type: dropdown
+    id: runner_type
+    attributes:
+      label: Runner type
+      options:
+        - local
+        - interactive-webots
+        - hosted
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: webots-kit --version
+      description: Paste the output of `webots-kit --version`.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: doctor --json
+      description: Paste the output of `webots-kit doctor --json`.
     validations:
       required: true
   - type: textarea
     id: environment
     attributes:
       label: Environment
-      description: OS, Python version, Webots version, install method (source/TestPyPI/PyPI), and runner type (local/self-hosted/hosted CI).
+      description: OS, Python version, Webots version/path, and any extra context that matters.
     validations:
       required: true
-  - type: textarea
-    id: diagnostics
-    attributes:
-      label: Diagnostics
-      description: Relevant `doctor --json`, `session inspect`, release workflow, or runtime smoke artifact details.
