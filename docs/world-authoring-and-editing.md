@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the `experimental-foundation` world authoring/editing preview in `v1.7.0-alpha.1` on `feature/general-scene-editor`.
+This page documents the `experimental-foundation` world authoring/editing preview in `v1.8.0-alpha.1` on `feature/general-scene-editor`.
 
 ## Supported scope
 
@@ -23,13 +23,15 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
-`v1.7.0-alpha.1` also adds the first general-scene inspection layer:
+`v1.8.0-alpha.1` keeps the general-scene inspection layer and extends mutation support:
 
 - nested `node_tree`
 - `def_use_map`
 - field inventories per node
 - editability and supported mutation modes per node
 - opaque interstitial region reporting
+- preserve-first generic node clone/move/reorder support
+- `Shape` geometry and appearance replacement
 
 The same authoring surface is also exposed through MCP:
 
@@ -125,6 +127,11 @@ Current operation families:
 - `remove_child`
 - `add_node`
 - `insert_child`
+- `clone_node`
+- `move_node`
+- `reorder_children`
+- `replace_geometry`
+- `replace_appearance`
 - `add_obstacle`
 - `update_obstacle`
 - `remove_obstacle`

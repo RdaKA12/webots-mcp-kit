@@ -618,11 +618,11 @@ def _is_editable_node(node_type: str | None) -> bool:
 
 def _build_editability(node: WbtNode) -> dict[str, Any]:
     supported = bool(node.editable)
-    modes = ["remove_node", "set_field", "unset_field"]
+    modes = ["clone_node", "move_node", "remove_node", "set_field", "unset_field"]
     if node.node_type in TRANSFORMABLE_NODE_TYPES:
         modes.append("set_transform")
     if node.node_type in CHILD_CONTAINER_NODE_TYPES:
-        modes.extend(["add_node", "insert_child"])
+        modes.extend(["add_node", "insert_child", "reorder_children"])
     if node.node_type in GEOMETRY_PARENT_TYPES:
         modes.append("replace_geometry")
     if node.node_type in APPEARANCE_PARENT_TYPES:

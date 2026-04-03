@@ -150,3 +150,192 @@ def test_edit_world_supports_nested_selector_filters(tmp_path: Path) -> None:
 
     assert payload["status"] == "ready"
     assert nested["translation"] == [0.2, 0.0, 0.0]
+
+
+def test_edit_world_supports_clone_node_with_unique_def(tmp_path: Path) -> None:
+    source = _example_world("line-follower") / "line_follower_benchmark.wbt"
+    target = tmp_path / source.name
+    shutil.copy2(source, target)
+    plan_path = tmp_path / "clone-edit.json"
+    plan_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {"type": "clone_node", "selector": {"by_def": "WALL"}}
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    payload = edit_world(target, plan_path=plan_path)
+    updated = inspect_world(target)
+
+    assert payload["status"] == "ready"
+    assert "WALL_COPY1" in updated["def_map"]
+
+
+def test_edit_world_supports_move_node_between_parents(tmp_path: Path) -> None:
+    world = tmp_path / "move-world.wbt"
+    world.write_text(
+        '#VRML_SIM R2025a utf8\n'
+        'DEF SOURCE Transform {\n'
+        '  children [\n'
+        '    Solid {\n'
+        '      name "crate-a"\n'
+        '    }\n'
+        '  ]\n'
+        '}\n'
+        'DEF TARGET Transform {\n'
+        '  children [\n'
+        '  ]\n'
+        '}\n'
+        'DEF EPUCK E-puck {\n'
+        '  name "move-bot"\n'
+        '  controller "<extern>"\n'
+        '}\n'
+        'Robot {\n'
+        '  name "kit-supervisor"\n'
+        '  controller "<extern>"\n'
+        '  supervisor TRUE\n'
+        '}\n',
+        encoding="utf-8",
+    )
+    plan_path = tmp_path / "move-edit.json"
+    plan_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {
+                        "type": "move_node",
+                        "selector": {"by_parent_path": "/World/DEF:SOURCE", "by_child_index": 0, "by_type": "Solid"},
+                        "parent_selector": {"by_def": "TARGET"},
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    payload = edit_world(world, plan_path=plan_path)
+    updated = inspect_world(world)
+    source_children = [node for node in updated["supported_edit_targets"] if node["parent_path"] == "/World/DEF:SOURCE"]
+    target_children = [node for node in updated["supported_edit_targets"] if node["parent_path"] == "/World/DEF:TARGET"]
+
+    assert payload["status"] == "ready"
+    assert source_children == []
+    assert any(node["name"] == "crate-a" for node in target_children)
+
+
+def test_edit_world_supports_reorder_children(tmp_path: Path) -> None:
+    world = tmp_path / "reorder-world.wbt"
+    world.write_text(
+        '#VRML_SIM R2025a utf8\n'
+        'DEF GROUP Transform {\n'
+        '  children [\n'
+        '    Solid {\n'
+        '      name "crate-a"\n'
+        '    }\n'
+        '    Solid {\n'
+        '      name "crate-b"\n'
+        '    }\n'
+        '  ]\n'
+        '}\n'
+        'DEF EPUCK E-puck {\n'
+        '  name "reorder-bot"\n'
+        '  controller "<extern>"\n'
+        '}\n'
+        'Robot {\n'
+        '  name "kit-supervisor"\n'
+        '  controller "<extern>"\n'
+        '  supervisor TRUE\n'
+        '}\n',
+        encoding="utf-8",
+    )
+    plan_path = tmp_path / "reorder-edit.json"
+    plan_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {
+                        "type": "reorder_children",
+                        "selector": {"by_def": "GROUP"},
+                        "order": ["crate-b", "crate-a"],
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    payload = edit_world(world, plan_path=plan_path)
+    updated = inspect_world(world)
+    ordered = sorted(
+        [node for node in updated["supported_edit_targets"] if node["parent_path"] == "/World/DEF:GROUP"],
+        key=lambda item: item["child_ordinal"],
+    )
+
+    assert payload["status"] == "ready"
+    assert [node["name"] for node in ordered] == ["crate-b", "crate-a"]
+
+
+def test_edit_world_supports_replace_geometry_and_appearance(tmp_path: Path) -> None:
+    world = tmp_path / "shape-world.wbt"
+    world.write_text(
+        '#VRML_SIM R2025a utf8\n'
+        'Transform {\n'
+        '  children [\n'
+        '    Shape {\n'
+        '      appearance PBRAppearance {\n'
+        '        baseColor 0.1 0.1 0.1\n'
+        '      }\n'
+        '      geometry Box {\n'
+        '        size 0.1 0.1 0.1\n'
+        '      }\n'
+        '    }\n'
+        '  ]\n'
+        '}\n'
+        'DEF EPUCK E-puck {\n'
+        '  name "shape-bot"\n'
+        '  controller "<extern>"\n'
+        '}\n'
+        'Robot {\n'
+        '  name "kit-supervisor"\n'
+        '  controller "<extern>"\n'
+        '  supervisor TRUE\n'
+        '}\n',
+        encoding="utf-8",
+    )
+    plan_path = tmp_path / "shape-edit.json"
+    plan_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {"type": "replace_geometry", "selector": {"by_type": "Shape"}, "node_raw": "Sphere {\n  radius 0.15\n}"},
+                    {
+                        "type": "replace_appearance",
+                        "selector": {"by_type": "Shape"},
+                        "node_raw": "Appearance {\n  material Material {\n    diffuseColor 1 0 0\n  }\n}",
+                    },
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    payload = edit_world(world, plan_path=plan_path)
+    updated = inspect_world(world)
+    sphere_nodes = [node for node in updated["supported_edit_targets"] if node["node_type"] == "Sphere"]
+    appearance_nodes = [node for node in updated["supported_edit_targets"] if node["node_type"] == "Appearance"]
+
+    assert payload["status"] == "ready"
+    assert sphere_nodes
+    assert appearance_nodes

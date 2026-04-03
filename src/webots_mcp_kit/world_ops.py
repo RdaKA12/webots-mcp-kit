@@ -39,6 +39,11 @@ SUPPORTED_WORLD_EDIT_OPERATIONS = {
     "unset_field",
     "add_node",
     "insert_child",
+    "clone_node",
+    "move_node",
+    "reorder_children",
+    "replace_geometry",
+    "replace_appearance",
 }
 
 
@@ -422,6 +427,89 @@ def _apply_world_operation(document: WbtDocument, op_type: str, operation: dict[
             "parent": parent.selector_path(),
             "field": field_name,
         }
+    if op_type == "clone_node":
+        selector = operation.get("selector")
+        target = _select_node(document.nodes, selector)
+        clone_raw = _prepare_cloned_raw(document, target, operation)
+        if operation.get("parent_selector"):
+            parent = _select_node(document.nodes, operation.get("parent_selector"))
+            field_name = str(operation.get("field") or "children")
+            updated = _insert_child_raw(parent, field_name, clone_raw)
+            return _replace_node_text(document.text, parent, updated), {
+                "type": op_type,
+                "target": target.selector_path(),
+                "parent": parent.selector_path(),
+                "field": field_name,
+            }
+        if target.parent_index is not None:
+            parent = document.nodes[target.parent_index]
+            field_name = target.field_name or "children"
+            original_field = next((item for item in parent.fields if item.name == field_name and target.index in item.child_indexes), None)
+            if original_field is not None and original_field.kind == "sfnode":
+                raise KitError(
+                    "unsupported-world-edit-operation",
+                    "clone_node for SFNode fields requires an explicit parent_selector and compatible target field.",
+                )
+            updated = _insert_child_raw(parent, field_name, clone_raw)
+            return _replace_node_text(document.text, parent, updated), {
+                "type": op_type,
+                "target": target.selector_path(),
+                "parent": parent.selector_path(),
+                "field": field_name,
+            }
+        return _insert_before_supervisor(document.text, clone_raw), {"type": op_type, "target": target.selector_path(), "parent": "/World"}
+    if op_type == "move_node":
+        selector = operation.get("selector")
+        target = _select_node(document.nodes, selector)
+        if target.parent_index is not None and not operation.get("parent_selector"):
+            parent = document.nodes[target.parent_index]
+            field_name = target.field_name or "children"
+            original_field = next((item for item in parent.fields if item.name == field_name and target.index in item.child_indexes), None)
+            if original_field is not None and original_field.kind == "sfnode":
+                raise KitError(
+                    "unsupported-world-edit-operation",
+                    "move_node for SFNode fields requires an explicit parent_selector and compatible target field.",
+                )
+        text_without_target = _detach_node(document, target)
+        detached_document = _load_document_from_text(Path.cwd() / "inline.wbt", text_without_target)
+        parent_selector = operation.get("parent_selector")
+        if parent_selector:
+            parent = _select_node(detached_document.nodes, parent_selector)
+            field_name = str(operation.get("field") or "children")
+            updated_parent = _insert_child_raw(parent, field_name, target.raw)
+            return _replace_node_text(text_without_target, parent, updated_parent), {
+                "type": op_type,
+                "target": target.selector_path(),
+                "parent": parent.selector_path(),
+                "field": field_name,
+            }
+        if target.parent_index is not None and target.parent_path:
+            parent = _select_node(detached_document.nodes, {"by_path": target.parent_path})
+            field_name = target.field_name or "children"
+            updated_parent = _insert_child_raw(parent, field_name, target.raw)
+            return _replace_node_text(text_without_target, parent, updated_parent), {
+                "type": op_type,
+                "target": target.selector_path(),
+                "parent": parent.selector_path(),
+                "field": field_name,
+            }
+        return _insert_before_supervisor(text_without_target, target.raw), {"type": op_type, "target": target.selector_path(), "parent": "/World"}
+    if op_type == "reorder_children":
+        selector = operation.get("selector")
+        parent = _select_node(document.nodes, selector)
+        field_name = str(operation.get("field") or "children")
+        updated = _reorder_child_field(document, parent, field_name, operation.get("order"))
+        return _replace_node_text(document.text, parent, updated), {
+            "type": op_type,
+            "parent": parent.selector_path(),
+            "field": field_name,
+        }
+    if op_type in {"replace_geometry", "replace_appearance"}:
+        selector = operation.get("selector")
+        target = _select_node(document.nodes, selector)
+        field_name = "geometry" if op_type == "replace_geometry" else "appearance"
+        updated_text, target_path = _replace_shape_child(document, target, field_name, operation)
+        return updated_text, {"type": op_type, "target": target_path, "field": field_name}
 
     family, mode = _operation_family_mode(op_type)
     if mode == "add":
@@ -607,6 +695,144 @@ def _insert_child_raw(parent: WbtNode, field_name: str, node_raw: str) -> str:
         return parent.raw
     block = f"  {field_name} [\n{_indent_block(normalized, 4)}\n  ]\n"
     return parent.raw[:insert_at] + block + parent.raw[insert_at:]
+
+
+def _detach_node(document: WbtDocument, target: WbtNode) -> str:
+    if target.parent_index is None:
+        return _remove_node_text(document.text, target)
+    parent = document.nodes[target.parent_index]
+    updated_parent = _remove_nested_child(document, parent, target)
+    return _replace_node_text(document.text, parent, updated_parent)
+
+
+def _remove_nested_child(document: WbtDocument, parent: WbtNode, target: WbtNode) -> str:
+    if target.field_name is None:
+        raise KitError("world-edit-unsafe", "Nested world node is missing a field context.")
+    field = next((item for item in parent.fields if item.name == target.field_name and target.index in item.child_indexes), None)
+    if field is None:
+        raise KitError("world-selector-not-found", f"Unable to resolve parent field for {target.selector_path()}.")
+    if field.kind == "sfnode":
+        return _replace_field_block(parent, field, "")
+    if field.kind in {"list", "mfnode"}:
+        child_nodes = [parent_child for parent_child in field.child_indexes if parent_child != target.index]
+        if not child_nodes:
+            return _replace_field_block(parent, field, "")
+        raws: list[str] = []
+        for child_index in field.child_indexes:
+            if child_index == target.index:
+                continue
+            raws.append(document.nodes[child_index].raw)
+        return _replace_field_block(parent, field, _render_mfnode_field(field.name, raws))
+    raise KitError("unsupported-world-field-mutation", f"Field '{field.name}' cannot remove child nodes safely.")
+
+
+def _reorder_child_field(document: WbtDocument, parent: WbtNode, field_name: str, order: Any) -> str:
+    field = next((item for item in parent.fields if item.name == field_name), None)
+    if field is None or field.kind not in {"list", "mfnode"}:
+        raise KitError("unsupported-world-field-mutation", f"Field '{field_name}' on {parent.selector_path()} is not an MFNode field.")
+    child_nodes = [document.nodes[index] for index in field.child_indexes]
+    if not isinstance(order, list) or not order:
+        raise KitError("invalid-world-edit-operation", "reorder_children requires a non-empty order list.")
+    ordered_indexes: list[int] = []
+    for item in order:
+        selector = {"by_name": item} if isinstance(item, str) else item
+        child = _select_node(child_nodes, selector)
+        if child.index not in ordered_indexes:
+            ordered_indexes.append(child.index)
+    for child in child_nodes:
+        if child.index not in ordered_indexes:
+            ordered_indexes.append(child.index)
+    raws = [document.nodes[child_index].raw for child_index in ordered_indexes]
+    return _replace_field_block(parent, field, _render_mfnode_field(field_name, raws))
+
+
+def _replace_shape_child(document: WbtDocument, target: WbtNode, field_name: str, operation: dict[str, Any]) -> tuple[str, str]:
+    node_raw = str(operation.get("node_raw") or "").strip()
+    if not node_raw:
+        raise KitError("invalid-world-edit-operation", f"{field_name} replacement requires node_raw.")
+    if target.node_type == "Shape":
+        parent = target
+        field = next((item for item in target.fields if item.name == field_name), None)
+        replacement = _render_sfnode_field(field_name, node_raw)
+        if field is not None:
+            updated_parent = _replace_field_block(parent, field, replacement)
+        else:
+            updated_parent = _insert_sfnode_field(parent, field_name, node_raw)
+        return _replace_node_text(document.text, parent, updated_parent), parent.selector_path()
+    if target.field_name == field_name and target.parent_index is not None:
+        parent = document.nodes[target.parent_index]
+        field = next((item for item in parent.fields if item.name == field_name and target.index in item.child_indexes), None)
+        if field is None:
+            raise KitError("world-selector-not-found", f"Unable to resolve {field_name} field for {target.selector_path()}.")
+        updated_parent = _replace_field_block(parent, field, _render_sfnode_field(field_name, node_raw))
+        return _replace_node_text(document.text, parent, updated_parent), target.selector_path()
+    raise KitError(
+        "unsupported-world-edit-operation",
+        f"{field_name} replacement requires selecting a Shape node or its {field_name} child.",
+    )
+
+
+def _prepare_cloned_raw(document: WbtDocument, target: WbtNode, operation: dict[str, Any]) -> str:
+    clone_raw = target.raw
+    reserved_defs = set(document.def_use_map.get("defs", {}))
+    def_matches = re.findall(r"\bDEF\s+([A-Za-z0-9_]+)\b", target.raw)
+    if not def_matches:
+        return clone_raw
+    def_map: dict[str, str] = {}
+    requested = operation.get("def_name")
+    for index, old_def in enumerate(def_matches):
+        if old_def in def_map:
+            continue
+        if index == 0 and target.def_name == old_def and requested:
+            new_def = str(requested)
+            if new_def in reserved_defs:
+                raise KitError("duplicate-def", f"Requested clone DEF '{new_def}' already exists in the world.")
+        else:
+            new_def = _next_clone_def(old_def, reserved_defs)
+        def_map[old_def] = new_def
+        reserved_defs.add(new_def)
+    for old_def, new_def in def_map.items():
+        clone_raw = re.sub(rf"\bDEF\s+{re.escape(old_def)}\b", f"DEF {new_def}", clone_raw)
+    for old_def, new_def in def_map.items():
+        clone_raw = re.sub(rf"\bUSE\s+{re.escape(old_def)}\b", f"USE {new_def}", clone_raw)
+    return clone_raw
+
+
+def _next_clone_def(base_def: str, reserved_defs: set[str]) -> str:
+    candidate_index = 1
+    while True:
+        candidate = f"{base_def}_COPY{candidate_index}"
+        if candidate not in reserved_defs:
+            return candidate
+        candidate_index += 1
+
+
+def _replace_field_block(parent: WbtNode, field: Any, replacement: str) -> str:
+    relative_start = field.start - parent.start
+    relative_end = field.end - parent.start
+    return parent.raw[:relative_start] + replacement + parent.raw[relative_end:]
+
+
+def _render_mfnode_field(field_name: str, child_raws: list[str]) -> str:
+    if not child_raws:
+        return ""
+    joined = "\n".join(_indent_block(raw.rstrip(), 4) for raw in child_raws)
+    return f"  {field_name} [\n{joined}\n  ]\n"
+
+
+def _render_sfnode_field(field_name: str, node_raw: str) -> str:
+    body = node_raw.strip().replace("\n", "\n    ")
+    return f"  {field_name} {body}\n"
+
+
+def _insert_sfnode_field(parent: WbtNode, field_name: str, node_raw: str) -> str:
+    insert_at = parent.raw.rfind("}")
+    if insert_at < 0:
+        return parent.raw
+    block = _render_sfnode_field(field_name, node_raw)
+    return parent.raw[:insert_at] + block + parent.raw[insert_at:]
+
+
 
 
 def _indent_block(text: str, spaces: int) -> str:

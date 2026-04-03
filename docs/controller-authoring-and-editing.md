@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the `experimental-foundation` controller authoring surface in `v1.7.0-alpha.1`.
+This page documents the `experimental-foundation` controller authoring surface in `v1.8.0-alpha.1`.
 
 ## Supported scope
 

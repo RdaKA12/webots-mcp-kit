@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.8.0-alpha.1
+
+- Added generic preserve-first world mutation support for `clone_node`, `move_node`, `reorder_children`, `replace_geometry`, and `replace_appearance` on the `feature/general-scene-editor` branch.
+- Hardened clone semantics by remapping nested `DEF` / `USE` pairs inside cloned world fragments so real bundled worlds stay validation-clean after clone operations.
+- Extended world selector and parent-field flows with tested nested move/reorder behavior across arbitrary editable scene nodes.
+
 ## v1.7.0-alpha.1
 
 - Added a preserve-first general scene graph foundation on `feature/general-scene-editor`, including nested `node_tree` inspection, `def_use_map`, field inventories, editability metadata, and opaque-region reporting for `.wbt` files.

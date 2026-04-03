@@ -72,14 +72,14 @@ The documented core subset is:
 - `benchmark.profile`, `benchmark.duration_s`, `benchmark.threshold_overrides`
 - `sensors.required`, `actuators.required`
 
-Additional authoring fields in `v1.7.0-alpha.1`:
+Additional authoring fields in `v1.8.0-alpha.1`:
 
 - `layout.walls[]`
 - `layout.landmarks[]`
 - `layout.zones[]`
 - `layout.props[]`
 
-These remain additive and `experimental-foundation`, but they already participate in `scenario validate`, `scenario doctor`, `scenario build`, `world inspect`, and runtime smoke in `v1.7.0-alpha.1`.
+These remain additive and `experimental-foundation`, but they already participate in `scenario validate`, `scenario doctor`, `scenario build`, `world inspect`, and runtime smoke in `v1.8.0-alpha.1`.
 
 ## Example specs
 
