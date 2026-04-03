@@ -220,9 +220,9 @@ The code values above are frozen starting with `v1.0.0`. Future codes may be add
 - `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
 - Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.
 
-## Authoring tools in `v1.6.0`
+## Authoring tools in `v1.7.0-alpha.1`
 
-`v1.6.0` also exposes additive `experimental-foundation` authoring tools:
+`v1.7.0-alpha.1` on `feature/general-scene-editor` also exposes additive `experimental-foundation` authoring tools:
 
 - `webots_world_inspect`
 - `webots_world_validate`
@@ -232,7 +232,7 @@ The code values above are frozen starting with `v1.0.0`. Future codes may be add
 - `webots_controller_validate`
 - `webots_controller_edit`
 
-These tools are not retroactively part of the `v1.0.0` stable baseline, but their documented top-level success shapes are now intentionally frozen in `v1.6.0` so agents and regression tests can depend on them. They use the same structured failure shape documented above.
+These tools are not retroactively part of the `v1.0.0` stable baseline. On the feature branch preview they stay additive and `experimental-foundation`, but their documented top-level keys are still regression-tested. They use the same structured failure shape documented above.
 
 ### `webots_world_inspect`
 
@@ -250,7 +250,15 @@ Documented top-level keys:
   "supported_edit_targets": [],
   "spatial_summary": {},
   "summary": {},
+  "scene_node_summary": {},
+  "node_tree": [],
+  "field_inventory": {},
   "inferred_task_cues": {},
+  "def_use_map": {},
+  "editability": {},
+  "opaque_regions": [],
+  "preserve_notes": [],
+  "supported_mutation_modes": {},
   "support_tier": "experimental-foundation",
   "next_step": "Run `webots-kit world validate ...`."
 }
@@ -266,9 +274,13 @@ Documented top-level keys:
   "valid": true,
   "status": "ready",
   "issues": [],
+  "warnings": [],
   "supported_edit_targets": [],
   "spatial_summary": {},
   "summary": {},
+  "def_use_map": {},
+  "opaque_regions": [],
+  "preserve_notes": [],
   "support_tier": "experimental-foundation",
   "next_step": "Apply `webots-kit world edit ...`."
 }

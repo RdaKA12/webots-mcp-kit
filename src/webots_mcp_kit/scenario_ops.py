@@ -731,6 +731,17 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
     discovered_robot_name, discovered_robot_def = _discover_world_robot_identity(world_path, suggested_benchmark_name)
     discovered_devices = _discover_controller_devices(controller_path)
     world_inventory = inspect_world(world_path)
+    scenario_def = get_scenario(suggested_benchmark_name)
+    scene_node_summary = world_inventory.get("scene_node_summary", world_inventory.get("summary", {}))
+    authoring_targets = world_inventory.get("supported_edit_targets", [])
+    controller_authoring_context = {
+        "scenario": suggested_benchmark_name,
+        "default_camera": scenario_def.default_camera,
+        "expected_sensor_keys": list(scenario_def.required_sensor_keys),
+        "expected_metric_keys": list(scenario_def.required_metric_keys),
+        "expected_actuator_keys": list(scenario_def.required_actuator_keys),
+        "discovered_devices": discovered_devices,
+    }
     scenario_name = f"imported-{world_path.stem}"
     scenario_dir = root / "scenarios" / scenario_name
     scenario_dir.mkdir(parents=True, exist_ok=True)
@@ -759,6 +770,9 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "suggested_benchmark_name": suggested_benchmark_name,
         "minimal_scenario_metadata": minimal_scenario_metadata,
         "world_inventory": world_inventory,
+        "scene_node_summary": scene_node_summary,
+        "authoring_targets": authoring_targets,
+        "controller_authoring_context": controller_authoring_context,
     }
     spec.environment["imported"] = True
     atomic_write_text(spec_path, json.dumps(spec.to_dict(), indent=2), encoding="utf-8")
@@ -776,7 +790,10 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "discovered_devices": discovered_devices,
         "minimal_scenario_metadata": minimal_scenario_metadata,
         "world_inventory": world_inventory,
-        "edit_target_summary": world_inventory["supported_edit_targets"],
+        "scene_node_summary": scene_node_summary,
+        "authoring_targets": authoring_targets,
+        "controller_authoring_context": controller_authoring_context,
+        "edit_target_summary": authoring_targets,
         "support_tier": "experimental-foundation",
     }
 

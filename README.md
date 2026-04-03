@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Release
 
-`v1.6.0`
+`v1.7.0-alpha.1`
 
 Stable baseline:
 
@@ -37,6 +37,8 @@ Stable baseline:
 - generated and imported world authoring runtime smoke on the structured authoring surface
 - richer from-scratch world authoring for `walls`, `landmarks`, `zones`, and `props` across generated scenarios
 - MCP authoring parity smoke and split onboarding flows for world/controller authoring
+- preview general scene graph inspection with preserve-first `node_tree`, `def_use_map`, field inventories, and opaque-region reporting
+- preview generic scene edit operations for `set_field`, `unset_field`, `add_node`, `insert_child`, and nested selector filters
 
 Operational runtime model:
 
@@ -53,6 +55,7 @@ Supported:
 - interactive self-hosted runtime through the `interactive-webots` runner label as the only supported runtime execution model
 - foundation workflows for `project init`, `scenario init`, `scenario validate`, `scenario build`, `scenario describe`, `scenario doctor`, `project import`, `session export`, and `session replay`
 - experimental-foundation authoring workflows for `controller scaffold`, `controller inspect`, `controller edit`, `controller validate`, `world inspect`, `world validate`, `world edit`, and the matching `webots_controller_*` / `webots_world_*` MCP tools
+- preview preserve-first general scene editing on `feature/general-scene-editor`
 
 Foundation schema note:
 

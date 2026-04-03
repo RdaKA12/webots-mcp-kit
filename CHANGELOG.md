@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.7.0-alpha.1
+
+- Added a preserve-first general scene graph foundation on `feature/general-scene-editor`, including nested `node_tree` inspection, `def_use_map`, field inventories, editability metadata, and opaque-region reporting for `.wbt` files.
+- Expanded `world edit` with generic `set_field`, `unset_field`, `add_node`, `insert_child`, `remove_child`, and richer selector filters such as `by_parent_path` and `by_child_index`.
+- Aligned `project import` with the richer world vocabulary through additive `scene_node_summary`, `authoring_targets`, and `controller_authoring_context` payloads.
+
 ## v1.6.0
 
 - Merged the agent-authoring expansion into `main` with structured task-world authoring/editing for `.wbt` files and scenario-driven world generation.

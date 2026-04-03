@@ -128,12 +128,15 @@ def test_world_authoring_payloads_are_stable(tmp_path: Path) -> None:
     assert isinstance(inspect_payload["externproto"], list)
     assert isinstance(inspect_payload["robots"], list)
     assert isinstance(inspect_payload["supported_edit_targets"], list)
+    assert isinstance(inspect_payload["node_tree"], list)
+    assert isinstance(inspect_payload["def_use_map"], dict)
     assert isinstance(inspect_payload["spatial_summary"], dict)
     assert inspect_payload["support_tier"] == "experimental-foundation"
 
     assert validate_payload["world_path"] == str(editable_world)
     assert isinstance(validate_payload["valid"], bool)
     assert isinstance(validate_payload["issues"], list)
+    assert isinstance(validate_payload["warnings"], list)
     assert isinstance(validate_payload["supported_edit_targets"], list)
     assert isinstance(validate_payload["summary"], dict)
     assert validate_payload["support_tier"] == "experimental-foundation"

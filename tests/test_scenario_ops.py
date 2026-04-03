@@ -320,6 +320,9 @@ def test_project_import_creates_metadata(tmp_path: Path) -> None:
     assert payload["discovered_robot_def"] == "IMPORTED_BOT"
     assert payload["discovered_devices"] == ["camera", "left wheel motor"]
     assert payload["minimal_scenario_metadata"]["benchmark_name"] == "waypoint-nav"
+    assert payload["scene_node_summary"]["node_count"] >= 1
+    assert payload["authoring_targets"]
+    assert payload["controller_authoring_context"]["default_camera"] == "camera"
     assert payload["support_tier"] == "experimental-foundation"
 
 

@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the `experimental-foundation` world authoring/editing surface in `v1.6.0`.
+This page documents the `experimental-foundation` world authoring/editing preview in `v1.7.0-alpha.1` on `feature/general-scene-editor`.
 
 ## Supported scope
 
@@ -23,6 +23,14 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
+`v1.7.0-alpha.1` also adds the first general-scene inspection layer:
+
+- nested `node_tree`
+- `def_use_map`
+- field inventories per node
+- editability and supported mutation modes per node
+- opaque interstitial region reporting
+
 The same authoring surface is also exposed through MCP:
 
 - `webots_world_inspect`
@@ -41,6 +49,12 @@ webots-kit world inspect .\worlds\demo.wbt --json
 - `EXTERNPROTO` lines
 - robot inventory
 - target robot summary
+- nested `node_tree`
+- `field_inventory`
+- `def_use_map`
+- `editability`
+- `opaque_regions`
+- `preserve_notes`
 - controller bindings
 - DEF map
 - supported edit targets
@@ -56,9 +70,11 @@ webots-kit world validate .\worlds\demo.wbt --json
 The current validator checks:
 
 - duplicate `DEF`
+- broken `USE`
 - missing target robot
 - missing target robot controller
 - malformed supported transforms
+- duplicate node paths
 - preserve-first task-world inventory for supported node families
 
 ## Edit
@@ -94,14 +110,21 @@ Supported selector shapes:
 - `by_name`
 - `by_type`
 - `by_path`
+- `by_parent_path`
+- `by_child_index`
 
 Current operation families:
 
 - `set_spawn`
 - `set_transform`
+- `set_field`
+- `unset_field`
 - `set_robot_controller`
 - `rename_def`
 - `remove_node`
+- `remove_child`
+- `add_node`
+- `insert_child`
 - `add_obstacle`
 - `update_obstacle`
 - `remove_obstacle`
