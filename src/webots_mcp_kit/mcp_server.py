@@ -105,10 +105,14 @@ def _normalize_validation_payload(payload: Any) -> dict[str, Any]:
     normalized = dict(payload)
     normalized["path"] = payload.get("path")
     normalized["valid"] = bool(payload.get("valid", False))
+    normalized["status"] = payload.get("status")
     normalized["integration_mode"] = payload.get("integration_mode")
     normalized["errors"] = payload.get("errors") if isinstance(payload.get("errors"), list) else []
     normalized["warnings"] = payload.get("warnings") if isinstance(payload.get("warnings"), list) else []
     normalized["details"] = payload.get("details") if isinstance(payload.get("details"), dict) else {}
+    normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    normalized["support_tier"] = payload.get("support_tier")
+    normalized["next_step"] = payload.get("next_step")
     return normalized
 
 
@@ -126,7 +130,15 @@ def _normalize_world_inspect_payload(payload: Any) -> dict[str, Any]:
     normalized["supported_edit_targets"] = payload.get("supported_edit_targets") if isinstance(payload.get("supported_edit_targets"), list) else []
     normalized["spatial_summary"] = payload.get("spatial_summary") if isinstance(payload.get("spatial_summary"), dict) else {}
     normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    normalized["scene_node_summary"] = payload.get("scene_node_summary") if isinstance(payload.get("scene_node_summary"), dict) else {}
     normalized["inferred_task_cues"] = payload.get("inferred_task_cues") if isinstance(payload.get("inferred_task_cues"), dict) else {}
+    normalized["node_tree"] = payload.get("node_tree") if isinstance(payload.get("node_tree"), list) else []
+    normalized["field_inventory"] = payload.get("field_inventory") if isinstance(payload.get("field_inventory"), dict) else {}
+    normalized["def_use_map"] = payload.get("def_use_map") if isinstance(payload.get("def_use_map"), dict) else {}
+    normalized["editability"] = payload.get("editability") if isinstance(payload.get("editability"), dict) else {}
+    normalized["opaque_regions"] = payload.get("opaque_regions") if isinstance(payload.get("opaque_regions"), list) else []
+    normalized["preserve_notes"] = payload.get("preserve_notes") if isinstance(payload.get("preserve_notes"), list) else []
+    normalized["supported_mutation_modes"] = payload.get("supported_mutation_modes") if isinstance(payload.get("supported_mutation_modes"), dict) else {}
     normalized["support_tier"] = payload.get("support_tier")
     normalized["next_step"] = payload.get("next_step")
     return normalized
@@ -139,9 +151,13 @@ def _normalize_world_validate_payload(payload: Any) -> dict[str, Any]:
     normalized["valid"] = bool(payload.get("valid", False))
     normalized["status"] = payload.get("status")
     normalized["issues"] = payload.get("issues") if isinstance(payload.get("issues"), list) else []
+    normalized["warnings"] = payload.get("warnings") if isinstance(payload.get("warnings"), list) else []
     normalized["supported_edit_targets"] = payload.get("supported_edit_targets") if isinstance(payload.get("supported_edit_targets"), list) else []
     normalized["spatial_summary"] = payload.get("spatial_summary") if isinstance(payload.get("spatial_summary"), dict) else {}
     normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    normalized["def_use_map"] = payload.get("def_use_map") if isinstance(payload.get("def_use_map"), dict) else {}
+    normalized["opaque_regions"] = payload.get("opaque_regions") if isinstance(payload.get("opaque_regions"), list) else []
+    normalized["preserve_notes"] = payload.get("preserve_notes") if isinstance(payload.get("preserve_notes"), list) else []
     normalized["support_tier"] = payload.get("support_tier")
     normalized["next_step"] = payload.get("next_step")
     return normalized
@@ -154,7 +170,14 @@ def _normalize_world_edit_payload(payload: Any) -> dict[str, Any]:
     normalized["applied_operations"] = payload.get("applied_operations") if isinstance(payload.get("applied_operations"), list) else []
     normalized["status"] = payload.get("status")
     normalized["issues"] = payload.get("issues") if isinstance(payload.get("issues"), list) else []
+    normalized["warnings"] = payload.get("warnings") if isinstance(payload.get("warnings"), list) else []
+    normalized["changed_paths"] = payload.get("changed_paths") if isinstance(payload.get("changed_paths"), list) else []
+    normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
     normalized["validation"] = payload.get("validation") if isinstance(payload.get("validation"), dict) else {}
+    normalized["supported_edit_targets"] = payload.get("supported_edit_targets") if isinstance(payload.get("supported_edit_targets"), list) else []
+    normalized["def_use_map"] = payload.get("def_use_map") if isinstance(payload.get("def_use_map"), dict) else {}
+    normalized["opaque_regions"] = payload.get("opaque_regions") if isinstance(payload.get("opaque_regions"), list) else []
+    normalized["preserve_notes"] = payload.get("preserve_notes") if isinstance(payload.get("preserve_notes"), list) else []
     normalized["support_tier"] = payload.get("support_tier")
     normalized["next_step"] = payload.get("next_step")
     return normalized
@@ -183,6 +206,10 @@ def _normalize_controller_inspect_payload(payload: Any) -> dict[str, Any]:
     normalized["runtime_readiness"] = payload.get("runtime_readiness") if isinstance(payload.get("runtime_readiness"), dict) else {}
     normalized["controller_fix_hints"] = payload.get("controller_fix_hints") if isinstance(payload.get("controller_fix_hints"), list) else []
     normalized["issues"] = payload.get("issues") if isinstance(payload.get("issues"), list) else []
+    normalized["status"] = payload.get("status")
+    normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    normalized["support_tier"] = payload.get("support_tier")
+    normalized["next_step"] = payload.get("next_step")
     return normalized
 
 
@@ -200,6 +227,8 @@ def _normalize_controller_scaffold_payload(payload: Any) -> dict[str, Any]:
     normalized["world"] = payload.get("world")
     normalized["target_robot_name"] = payload.get("target_robot_name")
     normalized["target_robot_def"] = payload.get("target_robot_def")
+    normalized["support_tier"] = payload.get("support_tier")
+    normalized["next_step"] = payload.get("next_step")
     return normalized
 
 
@@ -210,6 +239,12 @@ def _normalize_controller_edit_payload(payload: Any) -> dict[str, Any]:
     normalized["language"] = payload.get("language")
     normalized["applied_operations"] = payload.get("applied_operations") if isinstance(payload.get("applied_operations"), list) else []
     normalized["editable_regions"] = payload.get("editable_regions") if isinstance(payload.get("editable_regions"), list) else []
+    normalized["status"] = payload.get("status")
+    normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+    normalized["benchmark_readiness"] = payload.get("benchmark_readiness") if isinstance(payload.get("benchmark_readiness"), dict) else {}
+    normalized["benchmark_contract_gaps"] = payload.get("benchmark_contract_gaps") if isinstance(payload.get("benchmark_contract_gaps"), list) else []
+    normalized["controller_fix_hints"] = payload.get("controller_fix_hints") if isinstance(payload.get("controller_fix_hints"), list) else []
+    normalized["support_tier"] = payload.get("support_tier")
     normalized["next_step"] = payload.get("next_step")
     return normalized
 

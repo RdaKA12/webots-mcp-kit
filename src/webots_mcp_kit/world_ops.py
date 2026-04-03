@@ -146,7 +146,7 @@ def validate_world(path: Path) -> dict[str, Any]:
         "warnings": warnings,
         "supported_edit_targets": inspection["supported_edit_targets"],
         "spatial_summary": inspection["spatial_summary"],
-        "summary": {**inspection["summary"], "warning_count": len(warnings)},
+        "summary": {**inspection["summary"], "issue_count": len(issues), "warning_count": len(warnings)},
         "def_use_map": inspection["def_use_map"],
         "opaque_regions": inspection["opaque_regions"],
         "preserve_notes": inspection["preserve_notes"],
@@ -190,13 +190,31 @@ def edit_world(path: Path, plan: dict[str, Any] | Path | None = None, *, plan_pa
         applied.append(summary)
     world_path.write_text(text, encoding="utf-8")
     validation = validate_world(world_path)
+    changed_paths = sorted(
+        {
+            str(item.get("target") or item.get("parent"))
+            for item in applied
+            if item.get("target") or item.get("parent")
+        }
+    )
     return {
         "world_path": str(world_path),
         "applied_operations": applied,
+        "changed_paths": changed_paths,
         "status": validation["status"],
         "issues": validation["issues"],
         "warnings": validation.get("warnings", []),
+        "summary": {
+            "applied_operation_count": len(applied),
+            "changed_path_count": len(changed_paths),
+            "issue_count": len(validation["issues"]),
+            "warning_count": len(validation.get("warnings", [])),
+        },
         "validation": validation,
+        "supported_edit_targets": validation.get("supported_edit_targets", []),
+        "def_use_map": validation.get("def_use_map", {}),
+        "opaque_regions": validation.get("opaque_regions", []),
+        "preserve_notes": validation.get("preserve_notes", []),
         "support_tier": "experimental-foundation",
         "next_step": validation["next_step"],
     }
@@ -204,16 +222,22 @@ def edit_world(path: Path, plan: dict[str, Any] | Path | None = None, *, plan_pa
 
 def format_world_inspection(payload: dict[str, Any]) -> str:
     lines = [
-        "world_inspect: ready",
+        f"world_inspect: {payload.get('status')}",
         f"world_path: {payload['world_path']}",
+        f"summary: {payload.get('summary')}",
         f"robots: {len(payload.get('robots', []))}",
         f"supported_edit_targets: {len(payload.get('supported_edit_targets', []))}",
-        f"scene_node_summary: {payload.get('scene_node_summary')}",
-        f"def_use_map: {payload.get('def_use_map')}",
-        f"opaque_regions: {len(payload.get('opaque_regions', []))}",
+    ]
+    if payload.get("def_use_map"):
+        lines.append(f"def_use_map: {payload.get('def_use_map')}")
+    if payload.get("opaque_regions"):
+        lines.append(f"opaque_regions: {len(payload.get('opaque_regions', []))}")
+    lines.extend(
+        [
         f"support_tier: {payload.get('support_tier')}",
         f"next_step: {payload.get('next_step')}",
-    ]
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -221,7 +245,7 @@ def format_world_validation(payload: dict[str, Any]) -> str:
     lines = [
         f"world_validate: {payload['status']}",
         f"world_path: {payload['world_path']}",
-        f"summary: {len(payload.get('issues', []))} issues",
+        f"summary: {payload.get('summary')}",
         f"spatial_summary: {payload.get('spatial_summary')}",
     ]
     issues = payload.get("issues") or []
@@ -232,6 +256,24 @@ def format_world_validation(payload: dict[str, Any]) -> str:
     if warnings:
         lines.append("warnings:")
         lines.extend(f"- {warning['code']}: {warning['message']}" for warning in warnings)
+    lines.append(f"support_tier: {payload.get('support_tier')}")
+    lines.append(f"next_step: {payload.get('next_step')}")
+    return "\n".join(lines)
+
+
+def format_world_edit(payload: dict[str, Any]) -> str:
+    lines = [
+        f"world_edit: {payload.get('status')}",
+        f"world_path: {payload.get('world_path')}",
+        f"summary: {payload.get('summary')}",
+        f"changed_paths: {payload.get('changed_paths')}",
+    ]
+    if payload.get("issues"):
+        lines.append("issues:")
+        lines.extend(f"- {issue['code']}: {issue['message']}" for issue in payload.get("issues", []))
+    if payload.get("warnings"):
+        lines.append("warnings:")
+        lines.extend(f"- {warning['code']}: {warning['message']}" for warning in payload.get("warnings", []))
     lines.append(f"support_tier: {payload.get('support_tier')}")
     lines.append(f"next_step: {payload.get('next_step')}")
     return "\n".join(lines)

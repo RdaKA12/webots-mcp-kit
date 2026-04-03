@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .benchmarks import get_scenario, scenario_registry
 from .client import SessionClient
+from .controller_authoring import detect_controller_language
 from .launcher import start_session
 from .models import BenchmarkReport
 
@@ -45,7 +46,7 @@ def run_benchmark(
     client = SessionClient(session)
     try:
         request_payload = {"benchmark": scenario, "duration_s": duration_s, **scenario_def.benchmark_thresholds}
-        result = client.request("run_benchmark", request_payload, timeout=max(duration_s + 20.0, 45.0))
+        result = client.request("run_benchmark", request_payload, timeout=_benchmark_request_timeout(controller, duration_s))
         report = BenchmarkReport(
             benchmark=result["benchmark"],
             world=result["world"],
@@ -149,6 +150,15 @@ def benchmark_next_step(benchmark: str, result_reason: str) -> str:
     if result_reason == "insufficient-forward-speed":
         return "Inspect actuator outputs and pause/manual-override state before rerunning the benchmark."
     return f"Review session artifacts and logs for benchmark `{benchmark}` before rerunning."
+
+
+def _benchmark_request_timeout(controller: str | None, duration_s: float) -> float:
+    timeout = max(duration_s + 20.0, 45.0)
+    if controller:
+        controller_path = Path(controller)
+        if detect_controller_language(controller_path) == "cpp":
+            timeout = max(timeout, duration_s + 80.0, 90.0)
+    return timeout
 
 
 def controller_fix_hints(benchmark: str, result_reason: str) -> list[str]:

@@ -14,6 +14,8 @@ def test_validate_example_controller_strict() -> None:
     assert result.details["function_inventory"]
     assert result.details["compile_readiness"]["supported"] is False
     assert result.details["runtime_readiness"]["ready"] is True
+    assert result.status == "ready"
+    assert result.summary["error_count"] == 0
 
 
 def test_validate_missing_begin_step_is_invalid(tmp_path: Path) -> None:
@@ -38,6 +40,7 @@ while robot.step(int(robot.getBasicTimeStep())) != -1:
     )
     result = validate_controller(controller, scenario="line-follower", strict=True)
     assert result.valid is False
+    assert result.status == "misconfigured"
     assert any("begin_step" in error for error in result.errors)
 
 
@@ -56,6 +59,7 @@ while robot.step(int(robot.getBasicTimeStep())) != -1:
     )
     result = validate_controller(controller)
     assert result.valid is False
+    assert result.status == "misconfigured"
     assert result.integration_mode == "plain-webots"
 
 
@@ -80,6 +84,7 @@ while robot.step(int(robot.getBasicTimeStep())) != -1:
     )
     result = validate_controller(controller, scenario="line-follower", strict=False)
     assert result.valid is True
+    assert result.status == "ready"
     assert result.warnings
     assert result.details["benchmark_contract_gaps"]
     assert result.details["controller_fix_hints"]

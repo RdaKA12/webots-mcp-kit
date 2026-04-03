@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the `experimental-foundation` world authoring/editing preview in `v1.8.0-alpha.1` on `feature/general-scene-editor`.
+This page documents the `experimental-foundation` world authoring/editing preview in `v2.0.0-alpha.1` on `feature/general-scene-editor`.
 
 ## Supported scope
 
@@ -23,7 +23,7 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
-`v1.8.0-alpha.1` keeps the general-scene inspection layer and extends mutation support:
+`v2.0.0-alpha.1` keeps the general-scene inspection layer and extends mutation support:
 
 - nested `node_tree`
 - `def_use_map`
@@ -32,6 +32,7 @@ Current first-class edit surface is task-world oriented:
 - opaque interstitial region reporting
 - preserve-first generic node clone/move/reorder support
 - `Shape` geometry and appearance replacement
+- frozen top-level `status` / `summary` / `support_tier` / `next_step` shapes across inspect, validate, and edit
 
 The same authoring surface is also exposed through MCP:
 
@@ -62,6 +63,7 @@ webots-kit world inspect .\worlds\demo.wbt --json
 - supported edit targets
 - spatial summary
 - inferred task cues
+- explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Validate
 
@@ -78,11 +80,18 @@ The current validator checks:
 - malformed supported transforms
 - duplicate node paths
 - preserve-first task-world inventory for supported node families
+- explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Edit
 
 ```powershell
 webots-kit world edit .\worlds\demo.wbt --plan .\plans\world-edit.json
+```
+
+Use `--json` when an agent needs the frozen machine-readable payload:
+
+```powershell
+webots-kit world edit .\worlds\demo.wbt --plan .\plans\world-edit.json --json
 ```
 
 Example plan:
@@ -147,6 +156,17 @@ Current operation families:
 - `add_prop`
 - `update_prop`
 - `remove_prop`
+
+Frozen top-level edit payload keys:
+
+- `status`
+- `summary`
+- `changed_paths`
+- `issues`
+- `warnings`
+- `validation`
+- `support_tier`
+- `next_step`
 
 ## From-scratch world authoring
 

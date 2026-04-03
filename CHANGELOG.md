@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.0.0-alpha.1
+
+- Froze the preview authoring top-level shapes across CLI JSON and MCP for `world inspect/validate/edit` and `controller inspect/validate/edit`, including explicit `status`, `summary`, `support_tier`, and `next_step` fields.
+- Hardened the preview gate and acceptance flows around controller repair lanes, benchmark report review, and general-scene authoring smoke on `feature/general-scene-editor`.
+- Prepared the general-scene editor and controller repair loop for stable release review while keeping the authoring surface additive and `experimental-foundation`.
+
 ## v1.9.0-alpha.1
 
 - Added controller repair-loop inventories for Python and C++: `function_inventory`, `editable_symbols`, `device_access_inventory`, `telemetry_contract`, `benchmark_contract_gaps`, `compile_readiness`, `runtime_readiness`, and `controller_fix_hints`.

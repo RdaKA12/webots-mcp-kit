@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the `experimental-foundation` controller authoring surface in `v1.9.0-alpha.1`.
+This page documents the `experimental-foundation` controller authoring surface in `v2.0.0-alpha.1`.
 
 ## Supported scope
 
@@ -69,11 +69,18 @@ webots-kit controller inspect .\controllers\demo_agent.py --scenario line-follow
 - compile readiness
 - runtime readiness
 - controller fix hints
+- explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Edit
 
 ```powershell
 webots-kit controller edit .\controllers\demo_agent.py --plan .\plans\controller-edit.json
+```
+
+Use `--json` when an agent needs the frozen machine-readable payload:
+
+```powershell
+webots-kit controller edit .\controllers\demo_agent.py --plan .\plans\controller-edit.json --json
 ```
 
 Example plan:
@@ -127,6 +134,7 @@ Validation checks:
 - runtime readiness
 - controller fix hints
 - C++ compile smoke when the source language is `cpp`
+- explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Recommended loop
 

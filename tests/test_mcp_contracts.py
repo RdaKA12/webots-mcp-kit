@@ -129,6 +129,9 @@ def test_world_authoring_payloads_are_stable(tmp_path: Path) -> None:
     assert isinstance(inspect_payload["robots"], list)
     assert isinstance(inspect_payload["supported_edit_targets"], list)
     assert isinstance(inspect_payload["node_tree"], list)
+    assert isinstance(inspect_payload["field_inventory"], dict)
+    assert isinstance(inspect_payload["editability"], dict)
+    assert isinstance(inspect_payload["supported_mutation_modes"], dict)
     assert isinstance(inspect_payload["def_use_map"], dict)
     assert isinstance(inspect_payload["spatial_summary"], dict)
     assert inspect_payload["support_tier"] == "experimental-foundation"
@@ -139,10 +142,14 @@ def test_world_authoring_payloads_are_stable(tmp_path: Path) -> None:
     assert isinstance(validate_payload["warnings"], list)
     assert isinstance(validate_payload["supported_edit_targets"], list)
     assert isinstance(validate_payload["summary"], dict)
+    assert isinstance(validate_payload["def_use_map"], dict)
+    assert isinstance(validate_payload["opaque_regions"], list)
     assert validate_payload["support_tier"] == "experimental-foundation"
 
     assert edit_payload["world_path"] == str(editable_world)
     assert isinstance(edit_payload["applied_operations"], list)
+    assert isinstance(edit_payload["changed_paths"], list)
+    assert isinstance(edit_payload["summary"], dict)
     assert isinstance(edit_payload["validation"], dict)
     assert edit_payload["support_tier"] == "experimental-foundation"
 
@@ -192,9 +199,11 @@ def test_controller_authoring_payloads_are_stable(tmp_path: Path) -> None:
     assert isinstance(scaffold_payload["editable_regions"], list)
     assert scaffold_payload["spec_path"] == str(spec_path)
     assert scaffold_payload["target_robot_def"] == "EPUCK"
+    assert scaffold_payload["support_tier"] == "experimental-foundation"
 
     assert inspect_payload["path"] == str(controller_path)
     assert inspect_payload["language"] == "python"
+    assert inspect_payload["status"] in {"ready", "misconfigured"}
     assert isinstance(inspect_payload["editable_regions"], list)
     assert isinstance(inspect_payload["device_bindings"], list)
     assert isinstance(inspect_payload["device_access_inventory"], list)
@@ -208,15 +217,28 @@ def test_controller_authoring_payloads_are_stable(tmp_path: Path) -> None:
     assert isinstance(inspect_payload["runtime_readiness"], dict)
     assert isinstance(inspect_payload["controller_fix_hints"], list)
     assert isinstance(inspect_payload["issues"], list)
+    assert isinstance(inspect_payload["summary"], dict)
+    assert inspect_payload["support_tier"] == "experimental-foundation"
+    assert isinstance(inspect_payload["next_step"], str)
 
     assert validate_payload["path"] == str(controller_path)
     assert isinstance(validate_payload["valid"], bool)
+    assert validate_payload["status"] in {"ready", "misconfigured"}
     assert isinstance(validate_payload["errors"], list)
     assert isinstance(validate_payload["warnings"], list)
     assert isinstance(validate_payload["details"], dict)
+    assert isinstance(validate_payload["summary"], dict)
+    assert validate_payload["support_tier"] == "experimental-foundation"
+    assert isinstance(validate_payload["next_step"], str)
 
     assert edit_payload["path"] == str(controller_path)
     assert edit_payload["language"] == "python"
     assert isinstance(edit_payload["applied_operations"], list)
     assert isinstance(edit_payload["editable_regions"], list)
+    assert edit_payload["status"] in {"ready", "misconfigured"}
+    assert isinstance(edit_payload["summary"], dict)
+    assert isinstance(edit_payload["benchmark_readiness"], dict)
+    assert isinstance(edit_payload["benchmark_contract_gaps"], list)
+    assert isinstance(edit_payload["controller_fix_hints"], list)
+    assert edit_payload["support_tier"] == "experimental-foundation"
     assert isinstance(edit_payload["next_step"], str)

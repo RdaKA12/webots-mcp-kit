@@ -51,6 +51,10 @@ class ControllerInspectionResult:
     runtime_readiness: dict[str, Any] = field(default_factory=dict)
     controller_fix_hints: list[str] = field(default_factory=list)
     issues: list[str] = field(default_factory=list)
+    status: str = "misconfigured"
+    summary: dict[str, Any] = field(default_factory=dict)
+    support_tier: str = "experimental-foundation"
+    next_step: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -87,35 +91,41 @@ def inspect_controller(
     scenario_def = get_scenario(scenario_name) if scenario_name else None
 
     if not resolved.exists():
-        return ControllerInspectionResult(
+        return _finalize_inspection_result(
+            ControllerInspectionResult(
             path=str(resolved),
             language=language,
             scenario=scenario_name,
             integration_mode="unknown",
             valid_source=False,
             issues=["Controller file does not exist."],
+            )
         )
 
     if language not in {"python", "cpp"}:
-        return ControllerInspectionResult(
+        return _finalize_inspection_result(
+            ControllerInspectionResult(
             path=str(resolved),
             language=language,
             scenario=scenario_name,
             integration_mode="unknown",
             valid_source=False,
             issues=["Unsupported controller source type."],
+            )
         )
 
     try:
         source = resolved.read_text(encoding="utf-8")
     except OSError as exc:
-        return ControllerInspectionResult(
+        return _finalize_inspection_result(
+            ControllerInspectionResult(
             path=str(resolved),
             language=language,
             scenario=scenario_name,
             integration_mode="unknown",
             valid_source=False,
             issues=[f"Unable to read controller file: {exc}"],
+            )
         )
 
     if language == "python":
@@ -167,7 +177,7 @@ def inspect_controller(
     inspection.compile_readiness = _compile_readiness(inspection)
     inspection.runtime_readiness = _runtime_readiness(inspection)
     inspection.controller_fix_hints = _controller_fix_hints(inspection)
-    return inspection
+    return _finalize_inspection_result(inspection)
 
 
 def scaffold_source(*, scenario: str, language: str) -> tuple[str, dict[str, Any]]:
@@ -252,7 +262,22 @@ def edit_controller(path: Path, *, plan_path: Path | None = None, plan: dict[str
         "language": language,
         "applied_operations": applied,
         "editable_regions": inspection.editable_regions,
-        "next_step": f"Run `webots-kit controller validate \"{target}\" --strict --json`.",
+        "status": inspection.status,
+        "summary": {
+            "applied_operation_count": len(applied),
+            "benchmark_ready": bool(inspection.benchmark_readiness.get("ready")),
+            "benchmark_contract_gap_count": len(inspection.benchmark_contract_gaps),
+            "issue_count": len(inspection.issues),
+        },
+        "benchmark_readiness": inspection.benchmark_readiness,
+        "benchmark_contract_gaps": inspection.benchmark_contract_gaps,
+        "controller_fix_hints": inspection.controller_fix_hints,
+        "support_tier": "experimental-foundation",
+        "next_step": (
+            f"Run `webots-kit benchmark run {inspection.scenario} --controller \"{target}\" ...`."
+            if inspection.status == "ready" and inspection.scenario
+            else f"Run `webots-kit controller validate \"{target}\" --strict --json`."
+        ),
     }
 
 
@@ -346,30 +371,49 @@ def compile_cpp_controller(path: Path, *, output_dir: Path | None = None) -> dic
 def format_controller_inspection_report(result: ControllerInspectionResult) -> str:
     readiness = result.benchmark_readiness
     lines = [
-        f"controller_inspection: {'pass' if result.valid_source else 'fail'}",
+        f"controller_inspect: {result.status}",
         f"path: {result.path}",
         f"language: {result.language}",
         f"scenario: {result.scenario}",
         f"integration_mode: {result.integration_mode}",
+        f"summary: {result.summary}",
         f"editable_regions: {result.editable_regions}",
-        f"function_inventory: {result.function_inventory}",
-        f"editable_symbols: {result.editable_symbols}",
         f"default_camera: {result.default_camera}",
         f"device_bindings: {result.device_bindings}",
         f"benchmark_ready: {readiness.get('ready')}",
-        f"benchmark_contract_gaps: {result.benchmark_contract_gaps}",
-        f"summary: {len(result.issues)} issues",
     ]
+    if result.function_inventory:
+        lines.append(f"function_inventory: {result.function_inventory}")
+    if result.editable_symbols:
+        lines.append(f"editable_symbols: {result.editable_symbols}")
     if result.telemetry_sections:
         lines.append(f"telemetry_sections: {result.telemetry_sections}")
+    if result.benchmark_contract_gaps:
+        lines.append(f"benchmark_contract_gaps: {result.benchmark_contract_gaps}")
     if result.controller_fix_hints:
         lines.append(f"controller_fix_hints: {result.controller_fix_hints}")
     if result.issues:
         lines.append("issues:")
         lines.extend(f"- {issue}" for issue in result.issues)
-    lines.append(
-        "next_step: Run `webots-kit controller validate <path> --strict --json` or apply `webots-kit controller edit <path> --plan <plan.json>`."
-    )
+    lines.append(f"support_tier: {result.support_tier}")
+    lines.append(f"next_step: {result.next_step}")
+    return "\n".join(lines)
+
+
+def format_controller_edit_report(payload: dict[str, Any]) -> str:
+    lines = [
+        f"controller_edit: {payload.get('status')}",
+        f"path: {payload.get('path')}",
+        f"language: {payload.get('language')}",
+        f"summary: {payload.get('summary')}",
+        f"editable_regions: {payload.get('editable_regions')}",
+    ]
+    if payload.get("benchmark_contract_gaps"):
+        lines.append(f"benchmark_contract_gaps: {payload.get('benchmark_contract_gaps')}")
+    if payload.get("controller_fix_hints"):
+        lines.append(f"controller_fix_hints: {payload.get('controller_fix_hints')}")
+    lines.append(f"support_tier: {payload.get('support_tier')}")
+    lines.append(f"next_step: {payload.get('next_step')}")
     return "\n".join(lines)
 
 
@@ -392,6 +436,24 @@ def _scenario_from_spec(spec_path: Path | None) -> str | None:
         "waypoint-nav": "waypoint-nav",
         "obstacle-avoidance": "obstacle-avoidance",
     }.get(kind)
+
+
+def _finalize_inspection_result(result: ControllerInspectionResult) -> ControllerInspectionResult:
+    result.status = "ready" if result.valid_source and not result.issues else "misconfigured"
+    result.summary = {
+        "issue_count": len(result.issues),
+        "function_count": len(result.function_inventory),
+        "editable_symbol_count": len(result.editable_symbols),
+        "device_binding_count": len(result.device_bindings),
+        "benchmark_contract_gap_count": len(result.benchmark_contract_gaps),
+        "benchmark_ready": bool(result.benchmark_readiness.get("ready")),
+    }
+    result.next_step = (
+        "Run `webots-kit controller validate <path> --strict --json` or apply `webots-kit controller edit <path> --plan <plan.json>`."
+        if result.status == "ready"
+        else "Fix the listed inspection issues or benchmark contract gaps, then rerun `webots-kit controller validate --strict`."
+    )
+    return result
 
 
 def _find_regions(source: str) -> dict[str, tuple[int, int]]:

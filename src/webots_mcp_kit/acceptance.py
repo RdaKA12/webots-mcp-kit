@@ -20,6 +20,7 @@ class AcceptanceStep:
 def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_ACCEPTANCE_PROFILE) -> list[AcceptanceStep]:
     root = workspace.resolve()
     controller_path = root / "controllers" / "demo_agent.py"
+    cpp_controller_path = root / "controllers" / "demo_agent.cpp"
     controller_edit_plan = root / "controllers" / "controller-edit.json"
     project_root = root / "demo-project"
     spec_path = project_root / "scenarios" / "demo-waypoint" / "webots-kit.scenario.json"
@@ -37,7 +38,18 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
     controller_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(import_world, editable_world)
     controller_edit_plan.write_text(
-        json.dumps({"schema_version": 1, "operations": [{"type": "update_control_constants", "constants": {"CRUISE": 180}}]}, indent=2),
+        json.dumps(
+            {
+                "schema_version": 1,
+                "operations": [
+                    {"type": "set_symbol_value", "symbol": "TURN_GAIN", "value": 5},
+                    {"type": "add_import_or_include", "statement": "import math"},
+                    {"type": "remove_import_or_include", "statement": "import math"},
+                ],
+                "scenario_context": {"scenario": "line-follower"},
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
     world_edit_plan.write_text(
@@ -55,7 +67,8 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
         AcceptanceStep("controller_scaffold", ("controller", "scaffold", str(controller_path), "--scenario", "line-follower", "--force")),
         AcceptanceStep("controller_validate", ("controller", "validate", str(controller_path), "--scenario", "line-follower")),
         AcceptanceStep("controller_inspect", ("controller", "inspect", str(controller_path), "--scenario", "line-follower")),
-        AcceptanceStep("controller_edit", ("controller", "edit", str(controller_path), "--plan", str(controller_edit_plan))),
+        AcceptanceStep("controller_edit", ("controller", "edit", str(controller_path), "--plan", str(controller_edit_plan), "--json")),
+        AcceptanceStep("controller_validate_after_edit", ("controller", "validate", str(controller_path), "--scenario", "line-follower", "--strict")),
         AcceptanceStep("project_init", ("project", "init", str(project_root), "--force")),
         AcceptanceStep("scenario_init", ("scenario", "init", str(project_root / "scenarios" / "demo-waypoint"), "--template", "epuck-waypoint", "--force")),
         AcceptanceStep("scenario_enrich", (str(spec_path),)),
@@ -65,7 +78,7 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
         AcceptanceStep("scenario_doctor", ("scenario", "doctor", str(spec_path))),
         AcceptanceStep("world_inspect", ("world", "inspect", str(editable_world), "--json")),
         AcceptanceStep("world_validate", ("world", "validate", str(editable_world), "--json")),
-        AcceptanceStep("world_edit", ("world", "edit", str(editable_world), "--plan", str(world_edit_plan))),
+        AcceptanceStep("world_edit", ("world", "edit", str(editable_world), "--plan", str(world_edit_plan), "--json")),
         AcceptanceStep("mcp_authoring_smoke", (str(root / "mcp-authoring"),)),
         AcceptanceStep(
             "project_import",
@@ -73,4 +86,12 @@ def build_clean_user_acceptance_steps(workspace: Path, *, profile: str = FULL_AC
         ),
         ]
     )
+    if profile == FULL_ACCEPTANCE_PROFILE:
+        steps.extend(
+            [
+                AcceptanceStep("controller_cpp_scaffold", ("controller", "scaffold", str(cpp_controller_path), "--scenario", "waypoint-nav", "--language", "cpp", "--force")),
+                AcceptanceStep("controller_cpp_inspect", ("controller", "inspect", str(cpp_controller_path), "--scenario", "waypoint-nav")),
+                AcceptanceStep("controller_cpp_validate", ("controller", "validate", str(cpp_controller_path), "--scenario", "waypoint-nav", "--strict")),
+            ]
+        )
     return steps

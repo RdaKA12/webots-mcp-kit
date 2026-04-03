@@ -17,6 +17,10 @@ class ControllerValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     details: dict[str, Any] = field(default_factory=dict)
+    status: str = "misconfigured"
+    summary: dict[str, Any] = field(default_factory=dict)
+    support_tier: str = "experimental-foundation"
+    next_step: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -33,12 +37,12 @@ def validate_controller(
     resolved = path if path.is_absolute() else (Path.cwd() / path).resolve()
     if not resolved.exists():
         result.errors.append("Controller file does not exist.")
-        return result
+        return _finalize_validation_result(result)
 
     language = detect_controller_language(resolved)
     if language not in {"python", "cpp"}:
         result.errors.append("Only Python and C++ controllers are supported by the validator.")
-        return result
+        return _finalize_validation_result(result)
 
     inspection = inspect_controller(resolved, scenario=scenario, spec_path=spec_path)
     scenario_def = get_scenario(inspection.scenario) if inspection.scenario else None
@@ -102,7 +106,7 @@ def validate_controller(
             }
 
     result.valid = not result.errors
-    return result
+    return _finalize_validation_result(result)
 
 
 def _record_issue(result: ControllerValidationResult, strict: bool, message: str) -> None:
@@ -112,23 +116,56 @@ def _record_issue(result: ControllerValidationResult, strict: bool, message: str
         result.warnings.append(message)
 
 
+def _finalize_validation_result(result: ControllerValidationResult) -> ControllerValidationResult:
+    result.status = "ready" if result.valid else "misconfigured"
+    benchmark_readiness = result.details.get("benchmark_readiness", {})
+    compile_readiness = result.details.get("compile_readiness", {})
+    runtime_readiness = result.details.get("runtime_readiness", {})
+    result.summary = {
+        "error_count": len(result.errors),
+        "warning_count": len(result.warnings),
+        "benchmark_ready": bool(benchmark_readiness.get("ready")),
+        "compile_ready": bool(compile_readiness.get("ready", True)),
+        "runtime_ready": bool(runtime_readiness.get("ready", False)),
+    }
+    result.next_step = (
+        "Run `webots-kit benchmark run <scenario> --controller <path> ...`, inspect with `webots-kit controller inspect`, or expose MCP with `webots-kit mcp serve`."
+        if result.valid
+        else "Fix the listed controller contract issues, then rerun validation with `--strict`."
+    )
+    return result
+
+
 def format_validation_report(result: ControllerValidationResult) -> str:
     details = result.details
-    summary = f"{len(result.errors)} errors, {len(result.warnings)} warnings"
+    summary = result.summary or {
+        "error_count": len(result.errors),
+        "warning_count": len(result.warnings),
+        "benchmark_ready": bool(details.get("benchmark_readiness", {}).get("ready")),
+        "compile_ready": bool(details.get("compile_readiness", {}).get("ready", True)),
+        "runtime_ready": bool(details.get("runtime_readiness", {}).get("ready", False)),
+    }
+    status = result.status or ("ready" if result.valid else "misconfigured")
+    next_step = result.next_step or (
+        "Run `webots-kit benchmark run <scenario> --controller <path> ...`, inspect with `webots-kit controller inspect`, or expose MCP with `webots-kit mcp serve`."
+        if result.valid
+        else "Fix the listed controller contract issues, then rerun validation with `--strict`."
+    )
     lines = [
-        f"controller_validation: {'pass' if result.valid else 'fail'}",
+        f"controller_validate: {status}",
         f"path: {result.path}",
         f"language: {details.get('language')}",
         f"scenario: {details.get('scenario')}",
         f"strict: {details.get('strict')}",
         f"integration_mode: {result.integration_mode}",
-        f"editable_regions: {details.get('editable_regions')}",
         f"summary: {summary}",
+        f"editable_regions: {details.get('editable_regions')}",
         f"default_camera: {details.get('default_camera')}",
         f"device_bindings: {details.get('device_bindings')}",
         f"benchmark_readiness: {details.get('benchmark_readiness', {}).get('ready')}",
-        f"benchmark_contract_gaps: {details.get('benchmark_contract_gaps')}",
     ]
+    if details.get("benchmark_contract_gaps"):
+        lines.append(f"benchmark_contract_gaps: {details.get('benchmark_contract_gaps')}")
     if result.errors:
         lines.append("errors:")
         lines.extend(f"- {error}" for error in result.errors)
@@ -137,10 +174,6 @@ def format_validation_report(result: ControllerValidationResult) -> str:
         lines.extend(f"- {warning}" for warning in result.warnings)
     if details.get("controller_fix_hints"):
         lines.append(f"controller_fix_hints: {details.get('controller_fix_hints')}")
-    if result.valid:
-        lines.append(
-            "next_step: Run `webots-kit benchmark run <scenario> --controller <path> ...`, inspect with `webots-kit controller inspect`, or expose MCP with `webots-kit mcp serve`."
-        )
-    else:
-        lines.append("next_step: Fix the listed controller contract issues, then rerun validation with `--strict`.")
+    lines.append(f"support_tier: {result.support_tier}")
+    lines.append(f"next_step: {next_step}")
     return "\n".join(lines)
