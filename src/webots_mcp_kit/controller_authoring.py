@@ -11,6 +11,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+import tree_sitter_cpp
+from tree_sitter import Language, Node, Parser
+
 from .benchmarks import get_scenario
 from .environment import build_process_env, current_python, get_webots_environment
 from .errors import KitError
@@ -18,6 +21,7 @@ from .errors import KitError
 REGION_NAMES = ("DEVICE_INIT", "CONTROL_POLICY", "TELEMETRY_REPORT", "HELPERS")
 CPP_SOURCE_SUFFIXES = {".cpp", ".cc", ".cxx"}
 CONTROLLER_SOURCE_SUFFIXES = {".py", *CPP_SOURCE_SUFFIXES}
+CPP_LANGUAGE = Language(tree_sitter_cpp.language())
 
 
 @dataclass(slots=True)
@@ -36,8 +40,16 @@ class ControllerInspectionResult:
     has_report_step: bool = False
     default_camera: str | None = None
     device_bindings: list[str] = field(default_factory=list)
+    device_access_inventory: list[dict[str, Any]] = field(default_factory=list)
     telemetry_sections: dict[str, list[str]] = field(default_factory=dict)
+    telemetry_contract: dict[str, Any] = field(default_factory=dict)
     benchmark_readiness: dict[str, Any] = field(default_factory=dict)
+    benchmark_contract_gaps: list[str] = field(default_factory=list)
+    function_inventory: list[str] = field(default_factory=list)
+    editable_symbols: list[str] = field(default_factory=list)
+    compile_readiness: dict[str, Any] = field(default_factory=dict)
+    runtime_readiness: dict[str, Any] = field(default_factory=dict)
+    controller_fix_hints: list[str] = field(default_factory=list)
     issues: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -118,6 +130,12 @@ def inspect_controller(
             scenario_def.required_actuator_keys,
             inspection.telemetry_sections,
         )
+        telemetry_contract = _telemetry_contract(
+            scenario_def.required_sensor_keys,
+            scenario_def.required_metric_keys,
+            scenario_def.required_actuator_keys,
+            inspection.telemetry_sections,
+        )
         inspection.benchmark_readiness = {
             "ready": benchmark_ready,
             "benchmark_name": scenario_def.name,
@@ -127,6 +145,8 @@ def inspect_controller(
             "expected_actuator_keys": list(scenario_def.required_actuator_keys),
             "issues": benchmark_issues,
         }
+        inspection.telemetry_contract = telemetry_contract
+        inspection.benchmark_contract_gaps = _benchmark_contract_gaps(inspection, scenario_def, benchmark_issues)
     else:
         inspection.benchmark_readiness = {
             "ready": False,
@@ -137,6 +157,16 @@ def inspect_controller(
             "expected_actuator_keys": [],
             "issues": ["No benchmark scenario context provided."],
         }
+        inspection.telemetry_contract = {
+            "expected": {"sensors": [], "metrics": [], "actuators": []},
+            "reported": inspection.telemetry_sections,
+            "missing": {"sensors": [], "metrics": [], "actuators": []},
+            "extra": {"sensors": inspection.telemetry_sections.get("sensors", []), "metrics": inspection.telemetry_sections.get("metrics", []), "actuators": inspection.telemetry_sections.get("actuators", [])},
+        }
+        inspection.benchmark_contract_gaps = ["No benchmark scenario context provided."]
+    inspection.compile_readiness = _compile_readiness(inspection)
+    inspection.runtime_readiness = _runtime_readiness(inspection)
+    inspection.controller_fix_hints = _controller_fix_hints(inspection)
     return inspection
 
 
@@ -322,13 +352,18 @@ def format_controller_inspection_report(result: ControllerInspectionResult) -> s
         f"scenario: {result.scenario}",
         f"integration_mode: {result.integration_mode}",
         f"editable_regions: {result.editable_regions}",
+        f"function_inventory: {result.function_inventory}",
+        f"editable_symbols: {result.editable_symbols}",
         f"default_camera: {result.default_camera}",
         f"device_bindings: {result.device_bindings}",
         f"benchmark_ready: {readiness.get('ready')}",
+        f"benchmark_contract_gaps: {result.benchmark_contract_gaps}",
         f"summary: {len(result.issues)} issues",
     ]
     if result.telemetry_sections:
         lines.append(f"telemetry_sections: {result.telemetry_sections}")
+    if result.controller_fix_hints:
+        lines.append(f"controller_fix_hints: {result.controller_fix_hints}")
     if result.issues:
         lines.append("issues:")
         lines.extend(f"- {issue}" for issue in result.issues)
@@ -385,6 +420,100 @@ def _benchmark_readiness_from_sections(
     return not issues, issues
 
 
+def _telemetry_contract(
+    expected_sensors: tuple[str, ...],
+    expected_metrics: tuple[str, ...],
+    expected_actuators: tuple[str, ...],
+    telemetry_sections: dict[str, list[str]],
+) -> dict[str, Any]:
+    expected = {
+        "sensors": list(expected_sensors),
+        "metrics": list(expected_metrics),
+        "actuators": list(expected_actuators),
+    }
+    reported = {
+        "sensors": list(telemetry_sections.get("sensors", [])),
+        "metrics": list(telemetry_sections.get("metrics", [])),
+        "actuators": list(telemetry_sections.get("actuators", [])),
+    }
+    missing = {
+        section: sorted(set(expected[section]) - set(reported[section]))
+        for section in expected
+    }
+    extra = {
+        section: sorted(set(reported[section]) - set(expected[section]))
+        for section in expected
+    }
+    return {"expected": expected, "reported": reported, "missing": missing, "extra": extra}
+
+
+def _benchmark_contract_gaps(
+    inspection: ControllerInspectionResult,
+    scenario_def: Any,
+    readiness_issues: list[str],
+) -> list[str]:
+    gaps = list(readiness_issues)
+    if scenario_def.default_camera and inspection.default_camera != scenario_def.default_camera:
+        gaps.append(f"default_camera should be '{scenario_def.default_camera}'.")
+    if scenario_def.default_camera and scenario_def.default_camera not in inspection.device_bindings:
+        gaps.append(f"Default camera '{scenario_def.default_camera}' is not bound through getDevice(...).")
+    if not inspection.has_begin_step:
+        gaps.append("Missing begin_step() in control loop.")
+    if not inspection.has_report_step:
+        gaps.append("Missing report_step(...) telemetry emission.")
+    return sorted(dict.fromkeys(gaps))
+
+
+def _compile_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
+    if inspection.language != "cpp":
+        return {"supported": False, "required": False, "ready": True, "issues": []}
+    issues: list[str] = []
+    if not inspection.has_from_robot:
+        issues.append("ControllerAgent::from_robot(...) is missing.")
+    if not inspection.has_report_step:
+        issues.append("report_step(...) is missing.")
+    return {"supported": True, "required": True, "ready": not issues, "issues": issues}
+
+
+def _runtime_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
+    issues: list[str] = []
+    if not inspection.has_robot_init:
+        issues.append("Robot initialization missing.")
+    if not inspection.has_step_loop:
+        issues.append("step loop missing.")
+    if not inspection.has_from_robot:
+        issues.append("ControllerAgent integration missing.")
+    if not inspection.has_begin_step:
+        issues.append("begin_step() missing.")
+    if not inspection.has_report_step:
+        issues.append("report_step(...) missing.")
+    return {"ready": not issues, "issues": issues}
+
+
+def _controller_fix_hints(inspection: ControllerInspectionResult) -> list[str]:
+    hints: list[str] = []
+    contract = inspection.telemetry_contract
+    missing = contract.get("missing") if isinstance(contract, dict) else {}
+    if isinstance(missing, dict):
+        for section, keys in missing.items():
+            if keys:
+                hints.append(f"Populate report_step {section} keys: {', '.join(keys)}.")
+    for issue in inspection.benchmark_contract_gaps:
+        if "default_camera" in issue or "camera" in issue:
+            hints.append("Align ControllerAgent.from_robot default_camera with the benchmark scenario.")
+        elif "Sensor telemetry keys" in issue:
+            hints.append("Emit the required sensor telemetry keys in report_step(...).")
+        elif "Metric telemetry keys" in issue:
+            hints.append("Emit the required metric telemetry keys in report_step(...).")
+        elif "Actuator telemetry keys" in issue:
+            hints.append("Emit the required actuator telemetry keys in report_step(...).")
+    if inspection.language == "cpp" and inspection.compile_readiness.get("issues"):
+        hints.append("Resolve C++ compile-readiness issues before rerunning validation.")
+    if not inspection.runtime_readiness.get("ready"):
+        hints.append("Restore the Robot -> begin_step -> report_step control loop shape before rerunning.")
+    return sorted(dict.fromkeys(hints))
+
+
 def _inspect_python_source(path: Path, source: str, scenario_name: str | None) -> ControllerInspectionResult:
     result = ControllerInspectionResult(
         path=str(path),
@@ -406,14 +535,21 @@ def _inspect_python_source(path: Path, source: str, scenario_name: str | None) -
     imported_controller_agent = False
     literal_dict_assignments: dict[str, set[str]] = {}
     literal_keys: dict[str, list[str]] = {}
+    editable_symbols: list[str] = []
+    functions: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module == "webots_mcp_kit.agent":
             if any(alias.name == "ControllerAgent" for alias in node.names):
                 imported_controller_agent = True
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            functions.append(node.name)
         elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
             keys = _literal_dict_keys(node.value)
             if keys is not None:
                 literal_dict_assignments[node.targets[0].id] = keys
+            target_name = node.targets[0].id
+            if target_name.isupper():
+                editable_symbols.append(target_name)
         elif isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name) and node.func.id == "Robot":
                 result.has_robot_init = True
@@ -439,8 +575,17 @@ def _inspect_python_source(path: Path, source: str, scenario_name: str | None) -
                 first = node.args[0]
                 if isinstance(first, ast.Constant) and isinstance(first.value, str):
                     result.device_bindings.append(first.value)
+                    result.device_access_inventory.append(
+                        {
+                            "device": first.value,
+                            "accessor": "getDevice",
+                            "line": getattr(node, "lineno", None),
+                        }
+                    )
 
     result.integration_mode = "controller-agent" if imported_controller_agent else "plain-webots"
+    result.function_inventory = sorted(dict.fromkeys(functions))
+    result.editable_symbols = sorted(dict.fromkeys(editable_symbols))
     result.telemetry_sections = {
         section: literal_keys.get(section, [])
         for section in ("sensors", "metrics", "actuators")
@@ -483,12 +628,25 @@ def _inspect_cpp_source(path: Path, source: str, scenario_name: str | None) -> C
     if default_camera_match:
         result.default_camera = default_camera_match.group(1)
 
-    result.device_bindings = sorted(
+    parser = Parser(CPP_LANGUAGE)
+    tree = parser.parse(source.encode("utf-8"))
+    function_inventory, editable_symbols = _cpp_inventory(tree.root_node, source.encode("utf-8"))
+    result.function_inventory = function_inventory
+    result.editable_symbols = editable_symbols
+
+    device_entries = [
         {
-            match.group(1)
-            for match in re.finditer(r'(?:getDevice|getCamera|getMotor|getDistanceSensor)\s*\(\s*"([^"]+)"\s*\)', source)
+            "device": match.group(2),
+            "accessor": match.group(1),
+            "line": source.count("\n", 0, match.start()) + 1,
         }
-    )
+        for match in re.finditer(r'(getDevice|getCamera|getMotor|getDistanceSensor)\s*\(\s*"([^"]+)"\s*\)', source)
+    ]
+    result.device_access_inventory = [
+        {"device": entry["device"], "accessor": entry["accessor"], "line": entry["line"]}
+        for entry in device_entries
+    ]
+    result.device_bindings = sorted({entry["device"] for entry in device_entries})
 
     telemetry_sections: dict[str, list[str]] = {}
     for section in ("sensors", "metrics", "actuators"):
@@ -533,6 +691,53 @@ def _literal_dict_keys(node: ast.AST) -> set[str] | None:
     return None
 
 
+def _cpp_inventory(root: Node, source_bytes: bytes) -> tuple[list[str], list[str]]:
+    functions: list[str] = []
+    symbols: list[str] = []
+    for node in _walk_cpp_nodes(root):
+        if node.type == "function_definition":
+            name = _cpp_function_name(node, source_bytes)
+            if name:
+                functions.append(name)
+        elif node.type == "declaration":
+            symbols.extend(_cpp_declared_symbols(node, source_bytes))
+    return sorted(dict.fromkeys(functions)), sorted(dict.fromkeys(symbols))
+
+
+def _walk_cpp_nodes(node: Node) -> list[Node]:
+    nodes = [node]
+    for child in node.children:
+        nodes.extend(_walk_cpp_nodes(child))
+    return nodes
+
+
+def _cpp_function_name(node: Node, source_bytes: bytes) -> str | None:
+    declarator = node.child_by_field_name("declarator")
+    if declarator is None:
+        return None
+    return _cpp_identifier_from_declarator(declarator, source_bytes)
+
+
+def _cpp_identifier_from_declarator(node: Node, source_bytes: bytes) -> str | None:
+    if node.type == "identifier":
+        return source_bytes[node.start_byte : node.end_byte].decode("utf-8")
+    for child in node.children:
+        name = _cpp_identifier_from_declarator(child, source_bytes)
+        if name:
+            return name
+    return None
+
+
+def _cpp_declared_symbols(node: Node, source_bytes: bytes) -> list[str]:
+    names: list[str] = []
+    for child in node.children:
+        if child.type == "init_declarator":
+            name = _cpp_identifier_from_declarator(child, source_bytes)
+            if name:
+                names.append(name)
+    return names
+
+
 def _replace_region(source: str, name: str, replacement: str) -> str:
     regions = _find_regions(source)
     if name not in regions:
@@ -546,6 +751,31 @@ def _replace_region(source: str, name: str, replacement: str) -> str:
 
 def _apply_controller_operation(source: str, *, language: str, operation: dict[str, Any]) -> str:
     op_type = str(operation["type"])
+    if op_type == "set_symbol_value":
+        symbol = operation.get("symbol")
+        if not isinstance(symbol, str) or not symbol.strip():
+            raise KitError("controller-edit-plan-invalid", "set_symbol_value requires symbol.")
+        if "value" not in operation:
+            raise KitError("controller-edit-plan-invalid", "set_symbol_value requires value.")
+        return _set_symbol_value(source, language=language, symbol=symbol, value=operation["value"])
+    if op_type == "replace_function_body":
+        function = operation.get("function")
+        body = operation.get("body") or operation.get("code")
+        if not isinstance(function, str) or not function.strip():
+            raise KitError("controller-edit-plan-invalid", "replace_function_body requires function.")
+        if not isinstance(body, str) or not body.strip():
+            raise KitError("controller-edit-plan-invalid", "replace_function_body requires a non-empty body/code string.")
+        return _replace_function_body(source, language=language, function_name=function, body=body)
+    if op_type == "add_import_or_include":
+        statement = operation.get("statement")
+        if not isinstance(statement, str) or not statement.strip():
+            raise KitError("controller-edit-plan-invalid", "add_import_or_include requires statement.")
+        return _add_import_or_include(source, language=language, statement=statement)
+    if op_type == "remove_import_or_include":
+        statement = operation.get("statement")
+        if not isinstance(statement, str) or not statement.strip():
+            raise KitError("controller-edit-plan-invalid", "remove_import_or_include requires statement.")
+        return _remove_import_or_include(source, language=language, statement=statement)
     if op_type in {"replace_control_policy", "set_goal_logic", "set_line_follow_logic", "set_obstacle_avoidance_logic"}:
         body = operation.get("body") or operation.get("code")
         if not isinstance(body, str) or not body.strip():
@@ -610,6 +840,48 @@ def _apply_controller_operation(source: str, *, language: str, operation: dict[s
     raise KitError("unsupported-controller-edit-operation", f"Unsupported controller edit operation '{op_type}'.")
 
 
+def _set_symbol_value(source: str, *, language: str, symbol: str, value: Any) -> str:
+    if language == "python":
+        pattern = rf"(?m)^({re.escape(symbol)}\s*=\s*).+$"
+        replacement = rf"\g<1>{_python_literal(value)}"
+        updated, count = re.subn(pattern, replacement, source, count=1)
+        if count:
+            return updated
+    else:
+        pattern = rf"(?m)^((?:const\s+)?(?:double|int|float|bool|auto)\s+{re.escape(symbol)}\s*=\s*).+;$"
+        replacement = rf"\g<1>{_cpp_literal(value)};"
+        updated, count = re.subn(pattern, replacement, source, count=1)
+        if count:
+            return updated
+    raise KitError("controller-edit-unsafe", f"Unable to safely update symbol '{symbol}'.")
+
+
+def _replace_function_body(source: str, *, language: str, function_name: str, body: str) -> str:
+    if language == "python":
+        return _replace_python_function_body(source, function_name=function_name, body=body)
+    return _replace_cpp_function_body(source, function_name=function_name, body=body)
+
+
+def _add_import_or_include(source: str, *, language: str, statement: str) -> str:
+    normalized = statement.strip()
+    if normalized in source:
+        return source
+    if language == "python":
+        return _add_python_import(source, normalized)
+    return _add_cpp_include(source, normalized)
+
+
+def _remove_import_or_include(source: str, *, language: str, statement: str) -> str:
+    normalized = statement.strip()
+    if language == "python":
+        updated, count = re.subn(rf"(?m)^{re.escape(normalized)}\n?", "", source, count=1)
+    else:
+        updated, count = re.subn(rf"(?m)^{re.escape(normalized)}\n?", "", source, count=1)
+    if count == 0:
+        raise KitError("controller-edit-unsafe", f"Unable to remove import/include '{normalized}'.")
+    return updated
+
+
 def _replace_telemetry_section(source: str, *, language: str, section: str, entries: dict[str, Any]) -> str:
     regions = _find_regions(source)
     if "TELEMETRY_REPORT" not in regions:
@@ -627,6 +899,61 @@ def _replace_telemetry_section(source: str, *, language: str, section: str, entr
     if count == 0:
         raise KitError("controller-edit-unsafe", f"Unable to safely update telemetry section '{section}'.")
     return source[:start] + updated + source[end:]
+
+
+def _replace_python_function_body(source: str, *, function_name: str, body: str) -> str:
+    tree = ast.parse(source)
+    target = next((node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == function_name), None)
+    if target is None or not target.body:
+        raise KitError("controller-edit-unsafe", f"Unable to locate Python function '{function_name}'.")
+    lines = source.splitlines(keepends=True)
+    start_line = target.body[0].lineno - 1
+    end_line = target.end_lineno or target.body[-1].end_lineno or start_line + 1
+    indent = " " * ((target.body[0].col_offset if target.body else target.col_offset + 4))
+    replacement_lines = [f"{indent}{line.rstrip()}\n" if line.strip() else "\n" for line in body.strip().splitlines()]
+    return "".join(lines[:start_line] + replacement_lines + lines[end_line:])
+
+
+def _replace_cpp_function_body(source: str, *, function_name: str, body: str) -> str:
+    parser = Parser(CPP_LANGUAGE)
+    source_bytes = source.encode("utf-8")
+    tree = parser.parse(source_bytes)
+    for node in _walk_cpp_nodes(tree.root_node):
+        if node.type != "function_definition":
+            continue
+        name = _cpp_function_name(node, source_bytes)
+        if name != function_name:
+            continue
+        compound = next((child for child in node.children if child.type == "compound_statement"), None)
+        if compound is None:
+            break
+        start = compound.start_byte + 1
+        end = compound.end_byte - 1
+        indented = "\n".join(f"  {line.rstrip()}" if line.strip() else "" for line in body.strip().splitlines())
+        replacement = f"\n{indented}\n"
+        return source_bytes[:start].decode("utf-8") + replacement + source_bytes[end:].decode("utf-8")
+    raise KitError("controller-edit-unsafe", f"Unable to locate C++ function '{function_name}'.")
+
+
+def _add_python_import(source: str, statement: str) -> str:
+    lines = source.splitlines(keepends=True)
+    insert_at = 0
+    if lines and lines[0].startswith('"""'):
+        for index in range(1, len(lines)):
+            if lines[index].startswith('"""'):
+                insert_at = index + 1
+                break
+    while insert_at < len(lines) and (lines[insert_at].startswith("from __future__") or lines[insert_at].startswith("import ") or lines[insert_at].startswith("from ")):
+        insert_at += 1
+    return "".join(lines[:insert_at] + [statement + "\n"] + lines[insert_at:])
+
+
+def _add_cpp_include(source: str, statement: str) -> str:
+    lines = source.splitlines(keepends=True)
+    insert_at = 0
+    while insert_at < len(lines) and lines[insert_at].startswith("#include"):
+        insert_at += 1
+    return "".join(lines[:insert_at] + [statement + "\n"] + lines[insert_at:])
 
 
 def _python_literal(value: Any) -> str:

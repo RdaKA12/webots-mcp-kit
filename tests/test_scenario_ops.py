@@ -415,9 +415,11 @@ def test_replay_session_reads_canonical_export_manifest(tmp_path: Path) -> None:
     assert replay["telemetry_summary"]["connected_roles"] == ["agent", "supervisor"]
     assert replay["runtime_failure_class"] == "rendering"
     assert replay["triage_recipe"]["focus"] == "rendering"
+    assert replay["controller_fix_hints"]
     assert "session_state_status: failed" in format_session_replay(replay)
     assert "replay_mode: observability" in format_session_replay(replay)
     assert "runtime_failure_class: rendering" in format_session_replay(replay)
     assert "triage_focus: rendering" in format_session_replay(replay)
+    assert "controller_fix_hints:" in format_session_replay(replay)
     assert "summary:" in format_session_replay(replay)
     assert replay_from_dir["session_id"] == "session123"

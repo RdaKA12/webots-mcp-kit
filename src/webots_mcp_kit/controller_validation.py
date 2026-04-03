@@ -57,8 +57,16 @@ def validate_controller(
         "has_begin_step": inspection.has_begin_step,
         "has_report_step": inspection.has_report_step,
         "device_bindings": inspection.device_bindings,
+        "device_access_inventory": inspection.device_access_inventory,
         "telemetry_sections": inspection.telemetry_sections,
+        "telemetry_contract": inspection.telemetry_contract,
         "benchmark_readiness": inspection.benchmark_readiness,
+        "benchmark_contract_gaps": inspection.benchmark_contract_gaps,
+        "function_inventory": inspection.function_inventory,
+        "editable_symbols": inspection.editable_symbols,
+        "compile_readiness": inspection.compile_readiness,
+        "runtime_readiness": inspection.runtime_readiness,
+        "controller_fix_hints": inspection.controller_fix_hints,
     }
 
     result.errors.extend(inspection.issues)
@@ -119,6 +127,7 @@ def format_validation_report(result: ControllerValidationResult) -> str:
         f"default_camera: {details.get('default_camera')}",
         f"device_bindings: {details.get('device_bindings')}",
         f"benchmark_readiness: {details.get('benchmark_readiness', {}).get('ready')}",
+        f"benchmark_contract_gaps: {details.get('benchmark_contract_gaps')}",
     ]
     if result.errors:
         lines.append("errors:")
@@ -126,6 +135,8 @@ def format_validation_report(result: ControllerValidationResult) -> str:
     if result.warnings:
         lines.append("warnings:")
         lines.extend(f"- {warning}" for warning in result.warnings)
+    if details.get("controller_fix_hints"):
+        lines.append(f"controller_fix_hints: {details.get('controller_fix_hints')}")
     if result.valid:
         lines.append(
             "next_step: Run `webots-kit benchmark run <scenario> --controller <path> ...`, inspect with `webots-kit controller inspect`, or expose MCP with `webots-kit mcp serve`."

@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.9.0-alpha.1
+
+- Added controller repair-loop inventories for Python and C++: `function_inventory`, `editable_symbols`, `device_access_inventory`, `telemetry_contract`, `benchmark_contract_gaps`, `compile_readiness`, `runtime_readiness`, and `controller_fix_hints`.
+- Added generic controller edit operations for `set_symbol_value`, `replace_function_body`, `add_import_or_include`, and `remove_import_or_include`.
+- Added benchmark/replay-facing controller fix hints and introduced `tree-sitter` + `tree-sitter-cpp` as the C++ inspection/edit foundation on `feature/general-scene-editor`.
+
 ## v1.8.0-alpha.1
 
 - Added generic preserve-first world mutation support for `clone_node`, `move_node`, `reorder_children`, `replace_geometry`, and `replace_appearance` on the `feature/general-scene-editor` branch.

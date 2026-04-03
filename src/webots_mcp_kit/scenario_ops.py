@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .benchmark import benchmark_next_step
+from .benchmark import benchmark_next_step, controller_fix_hints
 from .benchmarks import get_scenario, scenario_registry
 from .controller_scaffold import scaffold_controller
 from .diagnostics import collect_runtime_diagnostics
@@ -892,6 +892,7 @@ def replay_session(export_path: Path) -> dict[str, Any]:
         last_error_code=session_state.get("last_error_code"),
     )
     triage_recipe = _build_triage_recipe(runtime_failure_class)
+    fix_hints = controller_fix_hints(benchmark_name, result_reason)
     return {
         "export_dir": str(export_root),
         "session_id": summary.get("session_id"),
@@ -911,6 +912,7 @@ def replay_session(export_path: Path) -> dict[str, Any]:
         "telemetry_summary": telemetry_summary,
         "runtime_failure_class": runtime_failure_class,
         "triage_recipe": triage_recipe,
+        "controller_fix_hints": fix_hints,
         "copied_logs": sorted(Path(path).name for path in copied_logs) if copied_logs is not None else sorted(path.name for path in (export_root / "logs").glob("*")),
         "copied_artifacts": (
             sorted(Path(path).name for path in copied_artifacts)
@@ -1004,6 +1006,7 @@ def format_session_replay(payload: dict[str, Any]) -> str:
     benchmark_summary = payload.get("benchmark_summary") if isinstance(payload.get("benchmark_summary"), dict) else {}
     telemetry_summary = payload.get("telemetry_summary") if isinstance(payload.get("telemetry_summary"), dict) else {}
     triage_recipe = payload.get("triage_recipe") if isinstance(payload.get("triage_recipe"), dict) else {}
+    fix_hints = payload.get("controller_fix_hints") if isinstance(payload.get("controller_fix_hints"), list) else []
     runner_mode = runtime_environment.get("runner_mode")
     if isinstance(runner_mode, dict):
         runner_mode_text = runner_mode.get("mode")
@@ -1033,6 +1036,8 @@ def format_session_replay(payload: dict[str, Any]) -> str:
         "support_tier: experimental-foundation",
         f"next_step: {payload['next_step']}",
     ]
+    if fix_hints:
+        lines.append(f"controller_fix_hints: {fix_hints}")
     return "\n".join(lines)
 
 

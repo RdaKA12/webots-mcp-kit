@@ -220,9 +220,9 @@ The code values above are frozen starting with `v1.0.0`. Future codes may be add
 - `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
 - Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.
 
-## Authoring tools in `v1.8.0-alpha.1`
+## Authoring tools in `v1.9.0-alpha.1`
 
-`v1.8.0-alpha.1` on `feature/general-scene-editor` also exposes additive `experimental-foundation` authoring tools:
+`v1.9.0-alpha.1` on `feature/general-scene-editor` also exposes additive `experimental-foundation` authoring tools:
 
 - `webots_world_inspect`
 - `webots_world_validate`
@@ -315,10 +315,18 @@ Documented top-level keys:
   "valid_source": true,
   "editable_regions": [],
   "markers_present": true,
+  "function_inventory": [],
+  "editable_symbols": [],
   "default_camera": "camera",
   "device_bindings": [],
+  "device_access_inventory": [],
   "telemetry_sections": {},
+  "telemetry_contract": {},
   "benchmark_readiness": {},
+  "benchmark_contract_gaps": [],
+  "compile_readiness": {},
+  "runtime_readiness": {},
+  "controller_fix_hints": [],
   "issues": []
 }
 ```

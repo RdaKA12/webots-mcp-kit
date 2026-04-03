@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the `experimental-foundation` controller authoring surface in `v1.8.0-alpha.1`.
+This page documents the `experimental-foundation` controller authoring surface in `v1.9.0-alpha.1`.
 
 ## Supported scope
 
@@ -57,10 +57,18 @@ webots-kit controller inspect .\controllers\demo_agent.py --scenario line-follow
 - detected language
 - integration mode
 - editable regions
+- function inventory
+- editable symbols
 - device bindings
+- device access inventory
 - default camera
 - telemetry sections
+- telemetry contract
 - benchmark readiness
+- benchmark contract gaps
+- compile readiness
+- runtime readiness
+- controller fix hints
 
 ## Edit
 
@@ -86,6 +94,10 @@ Example plan:
 
 Current edit operations:
 
+- `set_symbol_value`
+- `replace_function_body`
+- `add_import_or_include`
+- `remove_import_or_include`
 - `replace_control_policy`
 - `set_goal_logic`
 - `set_line_follow_logic`
@@ -111,6 +123,9 @@ Validation checks:
 - `ControllerAgent` usage
 - default camera
 - benchmark-facing telemetry keys
+- benchmark contract gaps
+- runtime readiness
+- controller fix hints
 - C++ compile smoke when the source language is `cpp`
 
 ## Recommended loop

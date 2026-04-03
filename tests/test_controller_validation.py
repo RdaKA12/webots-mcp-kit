@@ -11,6 +11,9 @@ def test_validate_example_controller_strict() -> None:
     assert result.valid is True
     assert result.integration_mode == "controller-agent"
     assert result.details["default_camera"] == "camera"
+    assert result.details["function_inventory"]
+    assert result.details["compile_readiness"]["supported"] is False
+    assert result.details["runtime_readiness"]["ready"] is True
 
 
 def test_validate_missing_begin_step_is_invalid(tmp_path: Path) -> None:
@@ -78,3 +81,5 @@ while robot.step(int(robot.getBasicTimeStep())) != -1:
     result = validate_controller(controller, scenario="line-follower", strict=False)
     assert result.valid is True
     assert result.warnings
+    assert result.details["benchmark_contract_gaps"]
+    assert result.details["controller_fix_hints"]

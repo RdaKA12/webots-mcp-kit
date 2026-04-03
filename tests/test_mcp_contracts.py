@@ -197,8 +197,16 @@ def test_controller_authoring_payloads_are_stable(tmp_path: Path) -> None:
     assert inspect_payload["language"] == "python"
     assert isinstance(inspect_payload["editable_regions"], list)
     assert isinstance(inspect_payload["device_bindings"], list)
+    assert isinstance(inspect_payload["device_access_inventory"], list)
     assert isinstance(inspect_payload["telemetry_sections"], dict)
+    assert isinstance(inspect_payload["telemetry_contract"], dict)
     assert isinstance(inspect_payload["benchmark_readiness"], dict)
+    assert isinstance(inspect_payload["benchmark_contract_gaps"], list)
+    assert isinstance(inspect_payload["function_inventory"], list)
+    assert isinstance(inspect_payload["editable_symbols"], list)
+    assert isinstance(inspect_payload["compile_readiness"], dict)
+    assert isinstance(inspect_payload["runtime_readiness"], dict)
+    assert isinstance(inspect_payload["controller_fix_hints"], list)
     assert isinstance(inspect_payload["issues"], list)
 
     assert validate_payload["path"] == str(controller_path)

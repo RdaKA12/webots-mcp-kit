@@ -172,8 +172,16 @@ def _normalize_controller_inspect_payload(payload: Any) -> dict[str, Any]:
     normalized["markers_present"] = bool(payload.get("markers_present", False))
     normalized["default_camera"] = payload.get("default_camera")
     normalized["device_bindings"] = payload.get("device_bindings") if isinstance(payload.get("device_bindings"), list) else []
+    normalized["device_access_inventory"] = payload.get("device_access_inventory") if isinstance(payload.get("device_access_inventory"), list) else []
     normalized["telemetry_sections"] = payload.get("telemetry_sections") if isinstance(payload.get("telemetry_sections"), dict) else {}
+    normalized["telemetry_contract"] = payload.get("telemetry_contract") if isinstance(payload.get("telemetry_contract"), dict) else {}
     normalized["benchmark_readiness"] = payload.get("benchmark_readiness") if isinstance(payload.get("benchmark_readiness"), dict) else {}
+    normalized["benchmark_contract_gaps"] = payload.get("benchmark_contract_gaps") if isinstance(payload.get("benchmark_contract_gaps"), list) else []
+    normalized["function_inventory"] = payload.get("function_inventory") if isinstance(payload.get("function_inventory"), list) else []
+    normalized["editable_symbols"] = payload.get("editable_symbols") if isinstance(payload.get("editable_symbols"), list) else []
+    normalized["compile_readiness"] = payload.get("compile_readiness") if isinstance(payload.get("compile_readiness"), dict) else {}
+    normalized["runtime_readiness"] = payload.get("runtime_readiness") if isinstance(payload.get("runtime_readiness"), dict) else {}
+    normalized["controller_fix_hints"] = payload.get("controller_fix_hints") if isinstance(payload.get("controller_fix_hints"), list) else []
     normalized["issues"] = payload.get("issues") if isinstance(payload.get("issues"), list) else []
     return normalized
 

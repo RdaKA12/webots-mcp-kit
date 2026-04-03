@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "webots-mcp-kit"
-version = "1.8.0a1"
+version = "1.9.0a1"
 description = "Windows-first Webots developer toolkit with CLI, MCP server, controller SDK, and bundled benchmarks."
 readme = "README.md"
 license = "MIT"
@@ -27,6 +27,8 @@ classifiers = [
 ]
 dependencies = [
   "mcp>=1.12.4,<2",
+  "tree-sitter>=0.25.2,<0.26",
+  "tree-sitter-cpp>=0.23.4,<0.24",
 ]
 
 [project.urls]

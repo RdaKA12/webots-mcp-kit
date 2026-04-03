@@ -59,6 +59,8 @@ def test_benchmark_report_formatting_waypoint_fields(tmp_path: Path) -> None:
                     "target_reached": False,
                     "target_distance": 0.3,
                 },
+                "controller_fix_hints": ["Increase goal-seeking forward progress and review waypoint control logic."],
+                "device_binding_hints": ["Bind ps0-ps7 through getDevice(...) in the controller setup block."],
             }
         ),
         encoding="utf-8",
@@ -67,4 +69,6 @@ def test_benchmark_report_formatting_waypoint_fields(tmp_path: Path) -> None:
     assert "result: fail (target-not-reached)" in formatted
     assert "target_reached: False" in formatted
     assert "target_distance: 0.3" in formatted
+    assert "controller_fix_hints:" in formatted
+    assert "device_binding_hints:" in formatted
     assert "next_step:" in formatted

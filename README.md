@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Release
 
-`v1.8.0-alpha.1`
+`v1.9.0-alpha.1`
 
 Stable baseline:
 
@@ -40,6 +40,7 @@ Stable baseline:
 - preview general scene graph inspection with preserve-first `node_tree`, `def_use_map`, field inventories, and opaque-region reporting
 - preview generic scene edit operations for `set_field`, `unset_field`, `add_node`, `insert_child`, and nested selector filters
 - preview broader general scene mutations for `clone_node`, `move_node`, `reorder_children`, `replace_geometry`, and `replace_appearance`
+- preview controller repair-loop inventories, generic controller edit ops, and benchmark/replay fix hints
 
 Operational runtime model:
 
