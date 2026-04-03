@@ -1,6 +1,6 @@
 # Onboarding Flows
 
-Use this page as the index for the authoring and runtime onboarding paths supported in the current branch preview.
+Use this page as the index for the authoring and runtime onboarding paths supported in the current release.
 
 ## 1. Connect An Agent
 

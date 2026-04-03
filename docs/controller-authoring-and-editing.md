@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the preview controller authoring surface on the `feature/agent-authoring-platform` branch.
+This page documents the `experimental-foundation` controller authoring surface in `v1.6.0`.
 
 ## Supported scope
 
@@ -32,7 +32,7 @@ C++ scaffold:
 webots-kit controller scaffold .\controllers\demo_agent.cpp --scenario waypoint-nav --language cpp
 ```
 
-The same preview surface is available through MCP:
+The same authoring surface is available through MCP:
 
 - `webots_controller_scaffold`
 - `webots_controller_inspect`
@@ -84,7 +84,7 @@ Example plan:
 }
 ```
 
-Preview edit operations currently wired:
+Current edit operations:
 
 - `replace_control_policy`
 - `set_goal_logic`

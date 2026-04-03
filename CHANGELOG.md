@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.6.0
+
+- Merged the agent-authoring expansion into `main` with structured task-world authoring/editing for `.wbt` files and scenario-driven world generation.
+- Added stable `main` support for Python and C++ controller scaffold, inspect, validate, and edit flows backed by `ControllerAgent` contracts.
+- Added experimental-foundation MCP authoring parity for `webots_world_*` and `webots_controller_*`, including dedicated smoke coverage, acceptance integration, and merge-gate visibility.
+
 ## v1.6.0-alpha.1
 
 - Hardened the feature-branch authoring surface with explicit MCP authoring smoke coverage for controller scaffold/inspect/validate/edit and world inspect/validate/edit.

@@ -212,9 +212,17 @@ Known error codes currently used by runtime/session flows:
 
 The code values above are frozen starting with `v1.0.0`. Future codes may be added, but existing codes should not be renamed or repurposed.
 
-## Feature-branch authoring preview
+## Contract notes
 
-On `feature/agent-authoring-platform`, the MCP server also exposes additive `experimental-foundation` authoring tools:
+- Tool names stay fixed.
+- Success payloads may add fields, but existing top-level keys should not be removed or renamed.
+- The six success shapes above are the stable contract surface for `v1.0.0` and later additive releases.
+- `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
+- Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.
+
+## Authoring tools in `v1.6.0`
+
+`v1.6.0` also exposes additive `experimental-foundation` authoring tools:
 
 - `webots_world_inspect`
 - `webots_world_validate`
@@ -224,38 +232,11 @@ On `feature/agent-authoring-platform`, the MCP server also exposes additive `exp
 - `webots_controller_validate`
 - `webots_controller_edit`
 
-These tool names are stable within the branch preview. Their payloads remain additive while the feature branch hardens toward merge.
-
-### World authoring payloads
-
-- `webots_world_inspect -> { status, world_path, robots, target_robot, supported_edit_targets, spatial_summary, ... }`
-- `webots_world_validate -> { world_path, valid, status, issues, supported_edit_targets, spatial_summary, ... }`
-- `webots_world_edit -> { world_path, applied_operations, status, issues, validation, support_tier, next_step }`
-
-### Controller authoring payloads
-
-- `webots_controller_scaffold -> { path, scenario, language, default_camera, editable_regions, source_controller, ... }`
-- `webots_controller_inspect -> { path, language, scenario, integration_mode, editable_regions, default_camera, device_bindings, benchmark_ready, ... }`
-- `webots_controller_validate -> { path, valid, integration_mode, errors, warnings, details }`
-- `webots_controller_edit -> { path, language, applied_operations, editable_regions, next_step }`
-
-The preview authoring tools use the same structured failure shape documented above.
-
-## Contract notes
-
-- Tool names stay fixed.
-- Success payloads may add fields, but existing top-level keys should not be removed or renamed.
-- The six success shapes above are the stable contract surface for `v1.0.0` and later additive releases.
-- `webots_list_devices` and `webots_get_sensors` must always keep their documented top-level shape.
-- Failure payloads should prefer structured `error.code` and `error.details` over free-form string dumps.
-
-## Feature-branch authoring preview
-
-On `feature/agent-authoring-platform`, the authoring tools below are additive preview tools. They are not part of the `v1.0.0` stable baseline, but their documented top-level success shapes are intentionally frozen for the preview branch so tests and agents can depend on them.
+These tools are not retroactively part of the `v1.0.0` stable baseline, but their documented top-level success shapes are now intentionally frozen in `v1.6.0` so agents and regression tests can depend on them. They use the same structured failure shape documented above.
 
 ### `webots_world_inspect`
 
-Stable preview top-level keys:
+Documented top-level keys:
 
 ```json
 {
@@ -277,7 +258,7 @@ Stable preview top-level keys:
 
 ### `webots_world_validate`
 
-Stable preview top-level keys:
+Documented top-level keys:
 
 ```json
 {
@@ -295,7 +276,7 @@ Stable preview top-level keys:
 
 ### `webots_world_edit`
 
-Stable preview top-level keys:
+Documented top-level keys:
 
 ```json
 {
@@ -311,7 +292,7 @@ Stable preview top-level keys:
 
 ### `webots_controller_inspect`
 
-Stable preview top-level keys:
+Documented top-level keys:
 
 ```json
 {
@@ -332,7 +313,7 @@ Stable preview top-level keys:
 
 ### `webots_controller_scaffold`
 
-Stable preview top-level keys:
+Documented top-level keys:
 
 ```json
 {
@@ -352,7 +333,7 @@ Stable preview top-level keys:
 
 ### `webots_controller_validate`
 
-This tool uses the same normalized validation top-level shape as the stable controller-validation CLI JSON:
+This tool uses the same normalized validation top-level shape as the controller-validation CLI JSON:
 
 ```json
 {
@@ -367,7 +348,7 @@ This tool uses the same normalized validation top-level shape as the stable cont
 
 ### `webots_controller_edit`
 
-Stable preview top-level keys:
+Documented top-level keys:
 
 ```json
 {

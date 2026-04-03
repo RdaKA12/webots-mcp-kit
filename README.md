@@ -14,7 +14,7 @@ The toolkit is meant to be reusable across other Webots robots, controllers, and
 
 ## Release
 
-`v1.6.0-alpha.1`
+`v1.6.0`
 
 Stable baseline:
 
@@ -34,9 +34,9 @@ Stable baseline:
 - richer zero-to-sim validation, doctoring, and generated runtime smoke across all three bundled task families
 - deterministic import discovery and replay triage summaries for existing project workflows
 - experimental agent-authoring foundations for controller inspect/edit and world inspect/validate/edit
-- generated and imported world authoring runtime smoke on the feature branch preview
-- richer from-scratch world authoring preview for `walls`, `landmarks`, `zones`, and `props` across generated scenarios
-- MCP authoring parity smoke and split onboarding flows for world/controller authoring on the feature branch preview
+- generated and imported world authoring runtime smoke on the structured authoring surface
+- richer from-scratch world authoring for `walls`, `landmarks`, `zones`, and `props` across generated scenarios
+- MCP authoring parity smoke and split onboarding flows for world/controller authoring
 
 Operational runtime model:
 
@@ -52,7 +52,7 @@ Supported:
 - Python `3.11+`
 - interactive self-hosted runtime through the `interactive-webots` runner label as the only supported runtime execution model
 - foundation workflows for `project init`, `scenario init`, `scenario validate`, `scenario build`, `scenario describe`, `scenario doctor`, `project import`, `session export`, and `session replay`
-- experimental-foundation authoring workflows for `controller scaffold`, `controller inspect`, `controller edit`, `controller validate`, `world inspect`, `world validate`, `world edit`, and the matching `webots_controller_*` / `webots_world_*` MCP tools on the feature branch preview
+- experimental-foundation authoring workflows for `controller scaffold`, `controller inspect`, `controller edit`, `controller validate`, `world inspect`, `world validate`, `world edit`, and the matching `webots_controller_*` / `webots_world_*` MCP tools
 
 Foundation schema note:
 
@@ -261,7 +261,7 @@ Stable payload shapes:
 - `webots_get_sensors -> { robot, scenario, state, sensors, metrics, actuators, meta }`
 - `webots_capture_camera -> { path, width, height }`
 - `webots_run_benchmark ->` stable benchmark report top-level keys with additive `extra_metrics`
-- feature-branch preview: `webots_world_*` and `webots_controller_*` use explicit normalized top-level payloads documented in [MCP contracts](./docs/mcp-contracts.md)
+- `webots_world_*` and `webots_controller_*` use explicit normalized top-level payloads documented in [MCP contracts](./docs/mcp-contracts.md)
 - failed MCP tool calls -> `{ ok: false, error: { code, message, details, retriable } }`
 - existing MCP/runtime failure codes are stable at `v1.0.0`; new codes may only be added
 

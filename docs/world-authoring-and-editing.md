@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the preview world authoring/editing surface on the `feature/agent-authoring-platform` branch.
+This page documents the `experimental-foundation` world authoring/editing surface in `v1.6.0`.
 
 ## Supported scope
 
@@ -23,7 +23,7 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
-The same preview surface is also exposed through MCP:
+The same authoring surface is also exposed through MCP:
 
 - `webots_world_inspect`
 - `webots_world_validate`
@@ -53,7 +53,7 @@ webots-kit world inspect .\worlds\demo.wbt --json
 webots-kit world validate .\worlds\demo.wbt --json
 ```
 
-The preview validator currently checks:
+The current validator checks:
 
 - duplicate `DEF`
 - missing target robot
@@ -95,7 +95,7 @@ Supported selector shapes:
 - `by_type`
 - `by_path`
 
-Preview operation families currently wired:
+Current operation families:
 
 - `set_spawn`
 - `set_transform`
@@ -129,7 +129,7 @@ webots-kit scenario validate .\demo-project\scenarios\demo-waypoint\webots-kit.s
 webots-kit scenario build .\demo-project\scenarios\demo-waypoint\webots-kit.scenario.json
 ```
 
-On the feature branch preview, richer generated scenarios can now carry:
+Richer generated scenarios can now carry:
 
 - `layout.walls[]`
 - `layout.landmarks[]`
