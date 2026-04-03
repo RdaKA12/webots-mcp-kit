@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the `experimental-foundation` world authoring/editing preview in `v2.0.0-alpha.1` on `feature/general-scene-editor`.
+This page documents the `experimental-foundation` world authoring/editing surface in `v2.0.0`.
 
 ## Supported scope
 
@@ -23,7 +23,7 @@ Current first-class edit surface is task-world oriented:
 - props
 - rename/remove supported top-level nodes
 
-`v2.0.0-alpha.1` keeps the general-scene inspection layer and extends mutation support:
+`v2.0.0` keeps the general-scene inspection layer and mutation support:
 
 - nested `node_tree`
 - `def_use_map`

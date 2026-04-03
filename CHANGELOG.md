@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.0.0
+
+- Merged `feature/general-scene-editor` into the stable `main` line with preserve-first general scene inspection and mutation on `.wbt` files.
+- Shipped controller repair-loop support for Python and C++ authoring, including richer inspect inventories, generic controller edit operations, and benchmark/replay fix hints.
+- Froze additive authoring top-level shapes across CLI JSON and MCP for `world inspect/validate/edit` and `controller inspect/validate/edit`, while keeping the authoring surface `experimental-foundation`.
+
 ## v2.0.0-alpha.1
 
 - Froze the preview authoring top-level shapes across CLI JSON and MCP for `world inspect/validate/edit` and `controller inspect/validate/edit`, including explicit `status`, `summary`, `support_tier`, and `next_step` fields.
