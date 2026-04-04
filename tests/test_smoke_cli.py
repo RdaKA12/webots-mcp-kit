@@ -19,9 +19,12 @@ RUN_SMOKE = os.environ.get("WEBOTS_KIT_RUN_SMOKE") == "1"
 RUN_RUNTIME_SMOKE = os.environ.get("WEBOTS_KIT_RUN_RUNTIME_SMOKE") == "1"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GENERATED_SCENARIO_CASES = [
-    ("epuck-line-track", "demo-line", "line-follower", 3),
-    ("epuck-waypoint", "demo-waypoint", "waypoint-nav", 5),
-    ("epuck-obstacle-course", "demo-obstacle", "obstacle-avoidance", 5),
+    ("epuck-line-track", "demo-line", "line-follower", "e-puck", 3),
+    ("epuck-waypoint", "demo-waypoint", "waypoint-nav", "e-puck", 5),
+    ("epuck-obstacle-course", "demo-obstacle", "obstacle-avoidance", "e-puck", 5),
+    ("monsterborg-line-track", "demo-monster-line", "line-follower", "monsterborg-4wd", 3),
+    ("monsterborg-waypoint", "demo-monster-waypoint", "waypoint-nav", "monsterborg-4wd", 5),
+    ("monsterborg-obstacle-course", "demo-monster-obstacle", "obstacle-avoidance", "monsterborg-4wd", 5),
 ]
 
 
@@ -88,6 +91,35 @@ def wait_for_camera_capture(session_id: str, path: Path, *, attempts: int = 3, d
     raise AssertionError(f"Camera capture did not succeed for session {session_id}: {last_payload}")
 
 
+def bundled_example_paths(robot_profile: str, scenario: str) -> tuple[Path, Path]:
+    examples_root = bundled_example_root()
+    if robot_profile == "monsterborg-4wd":
+        world_name = {
+            "line-follower": "monsterborg_line_follower_benchmark.wbt",
+            "obstacle-avoidance": "monsterborg_obstacle_avoidance_benchmark.wbt",
+            "waypoint-nav": "monsterborg_waypoint_nav_benchmark.wbt",
+        }[scenario]
+        controller_name = {
+            "line-follower": "monsterborg_line_follower_agent.py",
+            "obstacle-avoidance": "monsterborg_obstacle_avoidance_agent.py",
+            "waypoint-nav": "monsterborg_waypoint_nav_agent.py",
+        }[scenario]
+        base = examples_root / "monsterborg" / scenario
+    else:
+        world_name = {
+            "line-follower": "line_follower_benchmark.wbt",
+            "obstacle-avoidance": "obstacle_avoidance_benchmark.wbt",
+            "waypoint-nav": "waypoint_nav_benchmark.wbt",
+        }[scenario]
+        controller_name = {
+            "line-follower": "line_follower_agent.py",
+            "obstacle-avoidance": "obstacle_avoidance_agent.py",
+            "waypoint-nav": "waypoint_nav_agent.py",
+        }[scenario]
+        base = examples_root / scenario
+    return base / "worlds" / world_name, base / "controllers" / controller_name
+
+
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
 def test_session_start_inspect_stop_smoke() -> None:
     started = run_cli("session", "start", "--scenario", "line-follower", "--controller", "example", "--mode", "fast", "--render", "off")
@@ -122,8 +154,10 @@ def test_benchmark_smoke() -> None:
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
-@pytest.mark.parametrize(("template", "scenario_name", "expected_benchmark", "duration_s"), GENERATED_SCENARIO_CASES)
-def test_generated_scenario_smoke(tmp_path: Path, template: str, scenario_name: str, expected_benchmark: str, duration_s: int) -> None:
+@pytest.mark.parametrize(("template", "scenario_name", "expected_benchmark", "expected_robot_profile", "duration_s"), GENERATED_SCENARIO_CASES)
+def test_generated_scenario_smoke(
+    tmp_path: Path, template: str, scenario_name: str, expected_benchmark: str, expected_robot_profile: str, duration_s: int
+) -> None:
     project_root = tmp_path / "generated-project"
     run_cli("project", "init", str(project_root))
     scenario_dir = project_root / "scenarios" / scenario_name
@@ -137,6 +171,7 @@ def test_generated_scenario_smoke(tmp_path: Path, template: str, scenario_name: 
     built = run_cli("scenario", "build", str(spec_path))
     generated = json.loads(built.stdout)
     assert generated["benchmark_name"] == expected_benchmark
+    assert generated["robot_profile"] == expected_robot_profile
     started = run_cli(
         "session",
         "start",
@@ -146,6 +181,8 @@ def test_generated_scenario_smoke(tmp_path: Path, template: str, scenario_name: 
         generated["world_path"],
         "--controller",
         generated["controller_path"],
+        "--robot-profile",
+        generated["robot_profile"],
         "--robot-name",
         generated["target_robot_name"],
         "--robot-def",
@@ -169,6 +206,8 @@ def test_generated_scenario_smoke(tmp_path: Path, template: str, scenario_name: 
         generated["controller_path"],
         "--world",
         generated["world_path"],
+        "--robot-profile",
+        generated["robot_profile"],
         "--robot-name",
         generated["target_robot_name"],
         "--robot-def",
@@ -181,6 +220,7 @@ def test_generated_scenario_smoke(tmp_path: Path, template: str, scenario_name: 
     )
     payload = json.loads(benchmark.stdout)
     assert payload["benchmark"] == generated["benchmark_name"]
+    assert payload["robot_profile"] == generated["robot_profile"]
     assert report_path.exists()
 
 
@@ -362,20 +402,26 @@ def test_cpp_controller_authoring_and_edit_smoke(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
-def test_imported_project_smoke(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("robot_profile", "scenario"),
+    [
+        ("e-puck", "line-follower"),
+        ("monsterborg-4wd", "line-follower"),
+    ],
+)
+def test_imported_project_smoke(tmp_path: Path, robot_profile: str, scenario: str) -> None:
     project_root = tmp_path / "imported-project"
-    examples_root = bundled_example_root()
-    world = examples_root / "line-follower" / "worlds" / "line_follower_benchmark.wbt"
-    controller = examples_root / "line-follower" / "controllers" / "line_follower_agent.py"
+    world, controller = bundled_example_paths(robot_profile, scenario)
 
     imported = run_cli("project", "import", "--world", str(world), "--controller", str(controller), "--project-root", str(project_root))
     payload = json.loads(imported.stdout)
     spec_path = Path(payload["scenario_metadata_path"])
     assert spec_path.exists()
-    assert payload["suggested_benchmark_name"] == "line-follower"
+    assert payload["suggested_benchmark_name"] == scenario
     assert payload["discovered_robot_name"]
     assert payload["discovered_robot_def"]
     assert isinstance(payload["discovered_devices"], list)
+    assert payload["suggested_robot_profile"] == robot_profile
 
     validation = run_cli("scenario", "validate", str(spec_path), "--json")
     validation_payload = json.loads(validation.stdout)
@@ -385,11 +431,13 @@ def test_imported_project_smoke(tmp_path: Path) -> None:
         "session",
         "start",
         "--scenario",
-        "line-follower",
+        scenario,
         "--world",
         str(world),
         "--controller",
         str(controller),
+        "--robot-profile",
+        robot_profile,
         "--mode",
         "fast",
         "--render",
@@ -400,7 +448,7 @@ def test_imported_project_smoke(tmp_path: Path) -> None:
     assert manifest["status"] == "ready"
     inspected = run_cli("session", "inspect", "--session", manifest["session_id"])
     inspect_payload = json.loads(inspected.stdout)
-    assert inspect_payload["session_state"]["scenario"] == "line-follower"
+    assert inspect_payload["session_state"]["scenario"] == scenario
     stopped = run_cli("session", "stop", "--session", manifest["session_id"], timeout=60)
     stopped_manifest = json.loads(stopped.stdout)
     assert stopped_manifest["status"] in {"stopped", "failed"}

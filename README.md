@@ -1,6 +1,6 @@
 # webots-mcp-kit
 
-`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows for `e-puck` task worlds. `v2.2.0` focuses on team adoption: starter workspaces, repeatable upgrade checks, and clearer team-facing docs on top of the existing runtime and authoring surface.
+`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows. The `v2.5.0-alpha.1` preview branch expands the product from `e-puck`-only task worlds to a second robot family, `MonsterBorg 4WD`, and adds a replay-compatible Raspberry Pi physical-adapter lane while preserving the existing runtime and authoring surfaces.
 
 ## Support Matrix
 
@@ -10,21 +10,22 @@
 | Webots | `R2025a` |
 | Python | `3.11+` |
 | Runtime model | `interactive-webots` |
-| Robot family | `e-puck` |
+| Robot family | `e-puck`, `MonsterBorg 4WD` preview |
 | Package distribution | PyPI + GitHub |
 | Runtime workflows | `doctor`, `session`, `benchmark`, `import/export/replay` |
 | Authoring workflows | `controller scaffold/inspect/edit/validate`, `world inspect/validate/edit`, `scenario init/validate/build/doctor` |
 
-Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots`, `e-puck`.
+Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots`, `e-puck`, plus preview `MonsterBorg 4WD` Webots and physical-adapter support on the `feature/monsterborg-support` release line.
 
 ## Unsupported Matrix
 
-| Area | Not supported in `v2.2.0` |
+| Area | Not supported on `v2.5.0-alpha.1` |
 | --- | --- |
-| Runtime | Windows service runner, Linux, macOS |
+| Runtime | Windows service runner, Linux, macOS, live MCP control of physical robots |
 | Robotics stack | ROS2, multi-robot orchestration |
 | World generation | free-form natural-language-to-world generation |
 | Distribution | `.exe`, `winget`, standalone website, marketplace/app-directory packaging |
+| Physical robot lane | general Linux runtime, non-MonsterBorg hardware adapters |
 
 ## 5-Minute Quickstart
 
@@ -42,6 +43,12 @@ That path verifies:
 - temporary controller scaffold + validate
 - bundled world inspect
 - a short real `line-follower` benchmark
+
+MonsterBorg preview verification uses the same public script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime
+```
 
 If `pipx` is not installed yet, use the helper:
 
@@ -64,6 +71,13 @@ Use the team starter workspaces when you want a repeatable path that can be hand
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter line-follower -Destination .\workspaces\line-follower-demo
 powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\upgrade-check -Runtime
+```
+
+MonsterBorg preview starter workspaces:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter monsterborg-line-follower -Destination .\workspaces\monsterborg-line-follower
+powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\monsterborg-upgrade-check -RobotProfile monsterborg-4wd -Runtime
 ```
 
 Use [Team flows](./docs/team-flows.md) when you want the exact command sequence for:
@@ -112,8 +126,13 @@ If install or runtime verification fails, start with [Troubleshooting](./docs/tr
 ## Bundled Scenarios
 
 - `line-follower`: camera-based line tracking and the canonical first-success benchmark
-- `obstacle-avoidance`: proximity-sensor obstacle avoidance
+- `obstacle-avoidance`: proximity-sensor or front-range obstacle avoidance
 - `waypoint-nav`: waypoint navigation with benchmarked goal progress
+
+Robot profiles:
+
+- `e-puck`: stable bundled task-world baseline
+- `monsterborg-4wd`: preview bundled support with generated templates, bundled Webots examples, and robot-aware controller/world/import flows
 
 ## CLI And MCP Overview
 
@@ -126,13 +145,18 @@ Core CLI areas:
 - import/replay: `project import`, `session export`, `session replay`
 - MCP bridge: `mcp serve`
 
+Additive robot-aware flags:
+
+- `--robot-profile e-puck`
+- `--robot-profile monsterborg-4wd`
+
 Core MCP tools:
 
 - runtime: `webots_session_start`, `webots_get_state`, `webots_get_sensors`, `webots_capture_camera`, `webots_run_benchmark`
 - world authoring: `webots_world_inspect`, `webots_world_validate`, `webots_world_edit`
 - controller authoring: `webots_controller_scaffold`, `webots_controller_inspect`, `webots_controller_validate`, `webots_controller_edit`
 
-Authoring workflows are supported on the stable release line, but the deeper schema surfaces remain `experimental-foundation` and additive.
+Authoring workflows are supported on the stable release line, but the deeper schema surfaces remain `experimental-foundation` and additive. The MonsterBorg Webots and physical-adapter lanes are preview-scoped on `v2.5.0-alpha.1`.
 
 ## Docs Map
 
@@ -143,6 +167,7 @@ Authoring workflows are supported on the stable release line, but the deeper sch
 - [PyPI install and upgrade](./docs/pypi-install-and-upgrade.md)
 - [Upgrade guide](./docs/upgrade-guide.md)
 - [Version policy](./docs/version-policy.md)
+- [MonsterBorg physical adapter](./docs/monsterborg-physical-adapter.md)
 - [Controller authoring and editing](./docs/controller-authoring-and-editing.md)
 - [World authoring and editing](./docs/world-authoring-and-editing.md)
 - [Custom controller integration](./docs/custom-controller-integration.md)

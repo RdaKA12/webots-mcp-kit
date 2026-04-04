@@ -19,12 +19,14 @@ def test_team_scripts_exist() -> None:
     verify_script = _read("scripts/verify_install.ps1")
     assert "[switch]$Json" in verify_script
     assert "[string]$Output" in verify_script
+    assert "[string]$RobotProfile" in verify_script
     bootstrap_script = _read("scripts/bootstrap_workspace.ps1")
     assert "[string]$Starter" in bootstrap_script
     assert "[string]$Destination" in bootstrap_script
     upgrade_script = _read("scripts/upgrade_check.ps1")
     assert "verify_install.ps1" in upgrade_script
     assert "bootstrap_workspace.ps1" in upgrade_script
+    assert "[string]$RobotProfile" in upgrade_script
 
 
 def test_getting_started_workspaces_exist_with_expected_files() -> None:
@@ -34,6 +36,10 @@ def test_getting_started_workspaces_exist_with_expected_files() -> None:
         "controller-edit": ["README.md", "starter.json", "controllers/demo_agent.py", "plans/controller-edit.json"],
         "world-edit": ["README.md", "starter.json", "worlds/editable_world.wbt", "plans/world-edit.json"],
         "import-replay": ["README.md", "starter.json", "worlds/import_world.wbt", "controllers/import_agent.py"],
+        "monsterborg-line-follower": ["README.md", "starter.json", "controllers/demo_agent.py"],
+        "monsterborg-controller-edit": ["README.md", "starter.json", "controllers/demo_agent.py", "plans/controller-edit.json"],
+        "monsterborg-world-edit": ["README.md", "starter.json", "worlds/editable_world.wbt", "plans/world-edit.json"],
+        "monsterborg-import-replay": ["README.md", "starter.json", "worlds/import_world.wbt", "controllers/import_agent.py"],
     }
     for starter, files in starters.items():
         starter_root = root / starter
@@ -54,6 +60,7 @@ def test_readme_and_docs_reference_team_flows_and_scripts() -> None:
 
     assert "## For Teams" in readme
     assert "[Team flows](./docs/team-flows.md)" in readme
+    assert "monsterborg-line-follower" in readme
     assert "[Upgrade guide](./docs/upgrade-guide.md)" in readme
     assert "bootstrap_workspace.ps1" in readme
     assert "upgrade_check.ps1" in readme

@@ -21,6 +21,8 @@ The import command:
 - creates `scenarios/imported-<world-name>/webots-kit.scenario.json`
 - records the original world/controller paths in `import_source`
 - discovers `discovered_robot_name`, `discovered_robot_def`, and `discovered_devices`
+- discovers `discovered_robot_family`, `suggested_robot_profile`, and `runtime_target`
+- reports whether the imported lane can participate in the future `physical_adapter_supported` workflow
 - suggests a benchmark profile through `suggested_benchmark_name`
 - returns `minimal_scenario_metadata` so the imported scenario can be validated or evolved deterministically
 
@@ -52,6 +54,7 @@ The export bundle includes:
 - the paths of the standard JSON artifacts
 - copied log and artifact locations
 - additive scenario/result metadata such as `scenario`, `status`, `last_error_code`, and `result_reason`
+- additive robot/runtime metadata such as `robot_family`, `robot_profile`, `runtime_target`, and `physical_adapter_summary`
 
 ## Replay an exported session
 
@@ -70,6 +73,7 @@ Replay is observability-focused. It does not rerun physics. Instead, it gives yo
 - a `benchmark_summary` for the last known benchmark-facing outcome
 - a `telemetry_summary` derived from the exported runtime summary
 - a `runtime_failure_class` plus `triage_recipe`
+- additive authoring/runtime metadata including `robot_family`, `robot_profile`, and `runtime_target`
 - the copied log summary captured at export time
 - copied logs and artifacts
 - the suggested next step for triage or rerun

@@ -53,12 +53,13 @@ def test_install_docs_reference_scripts_and_pipx_first() -> None:
         "## C++ Controller Compile Failure",
         "## MCP Connection Failure",
         "## Benchmark Failure After Successful Install",
+        "## MonsterBorg Physical Adapter Verification Failure",
     ):
         assert heading in troubleshooting
-    assert troubleshooting.count("Symptom:") == 6
-    assert troubleshooting.count("Likely cause:") == 6
-    assert troubleshooting.count("Exact commands to diagnose:") == 6
-    assert troubleshooting.count("Exact next action:") == 6
+    assert troubleshooting.count("Symptom:") == 7
+    assert troubleshooting.count("Likely cause:") == 7
+    assert troubleshooting.count("Exact commands to diagnose:") == 7
+    assert troubleshooting.count("Exact next action:") == 7
 
 
 def test_onboarding_and_template_files_cover_user_adoption_paths() -> None:

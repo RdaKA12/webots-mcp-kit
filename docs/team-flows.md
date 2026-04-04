@@ -2,6 +2,11 @@
 
 Use this page when the toolkit is being repeated by more than one developer and you want a fixed, documented path.
 
+Robot profiles:
+
+- `e-puck`: stable baseline
+- `monsterborg-4wd`: preview Webots and physical-adapter lane
+
 ## Evaluator Flow
 
 Use this when a new teammate is only trying to get to the first green benchmark.
@@ -26,6 +31,15 @@ Green condition:
 - verify passes
 - strict controller validate passes
 - benchmark report shows pass
+
+MonsterBorg preview variant:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter monsterborg-line-follower -Destination .\workspaces\monsterborg-line-follower
+powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime
+webots-kit controller validate .\workspaces\monsterborg-line-follower\controllers\demo_agent.py --scenario line-follower --robot-profile monsterborg-4wd --strict --json
+webots-kit benchmark run line-follower --controller .\workspaces\monsterborg-line-follower\controllers\demo_agent.py --robot-profile monsterborg-4wd --output .\workspaces\monsterborg-line-follower\artifacts\report.json --duration-s 8
+```
 
 ## Controller Author Flow
 

@@ -24,6 +24,7 @@ from .models import (
     ScenarioSpec,
     SessionExport,
 )
+from .robot_profiles import get_robot_profile, robot_profile_from_template
 from .session_store import SessionStore
 from .utils import atomic_write_text, utc_now_iso
 from .world_ops import inspect_world
@@ -40,10 +41,13 @@ SUPPORTED_TASKS = {
 }
 
 SUPPORTED_ENVIRONMENT_TEMPLATES = {
-    "epuck-arena": {"default_kind": "waypoint-nav", "allowed_kinds": {"waypoint-nav", "obstacle-avoidance"}},
-    "epuck-line-track": {"default_kind": "line-follow", "allowed_kinds": {"line-follow"}},
-    "epuck-waypoint": {"default_kind": "waypoint-nav", "allowed_kinds": {"waypoint-nav"}},
-    "epuck-obstacle-course": {"default_kind": "obstacle-avoidance", "allowed_kinds": {"obstacle-avoidance", "waypoint-nav"}},
+    "epuck-arena": {"default_kind": "waypoint-nav", "allowed_kinds": {"waypoint-nav", "obstacle-avoidance"}, "robot_profile": "e-puck"},
+    "epuck-line-track": {"default_kind": "line-follow", "allowed_kinds": {"line-follow"}, "robot_profile": "e-puck"},
+    "epuck-waypoint": {"default_kind": "waypoint-nav", "allowed_kinds": {"waypoint-nav"}, "robot_profile": "e-puck"},
+    "epuck-obstacle-course": {"default_kind": "obstacle-avoidance", "allowed_kinds": {"obstacle-avoidance", "waypoint-nav"}, "robot_profile": "e-puck"},
+    "monsterborg-line-track": {"default_kind": "line-follow", "allowed_kinds": {"line-follow"}, "robot_profile": "monsterborg-4wd"},
+    "monsterborg-waypoint": {"default_kind": "waypoint-nav", "allowed_kinds": {"waypoint-nav"}, "robot_profile": "monsterborg-4wd"},
+    "monsterborg-obstacle-course": {"default_kind": "obstacle-avoidance", "allowed_kinds": {"obstacle-avoidance", "waypoint-nav"}, "robot_profile": "monsterborg-4wd"},
 }
 
 SUPPORTED_ARENA_FLOORS: dict[str, dict[str, Any]] = {
@@ -192,9 +196,10 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
     scenario_name = _str_field(spec.scenario, "name")
     scenario_kind = _str_field(spec.scenario, "kind")
     robot_template = _str_field(spec.robot, "template")
+    robot_profile = robot_profile_from_template(robot_template)
     environment_template = _str_field(spec.environment, "template")
     benchmark_name = SUPPORTED_TASKS.get(scenario_kind)
-    scenario_def = get_scenario(benchmark_name) if benchmark_name else None
+    scenario_def = get_scenario(benchmark_name, robot_profile=robot_profile) if benchmark_name else None
 
     if spec.schema_version != 1:
         issues.append(ValidationIssue("unsupported-scenario-schema", f"Unsupported schema version '{spec.schema_version}'.", "schema_version"))
@@ -204,8 +209,13 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
         issues.append(ValidationIssue("missing-scenario-name", "scenario.name is required.", "scenario.name"))
     if scenario_kind not in SUPPORTED_TASKS:
         issues.append(ValidationIssue("unsupported-scenario-kind", f"scenario.kind must be one of {sorted(SUPPORTED_TASKS)}.", "scenario.kind"))
-    if robot_template != "e-puck":
-        issues.append(ValidationIssue("unsupported-robot-template", "robot.template must be 'e-puck'.", "robot.template"))
+    if not robot_template:
+        issues.append(ValidationIssue("missing-robot-template", "robot.template is required.", "robot.template"))
+    else:
+        try:
+            get_robot_profile(robot_template)
+        except KeyError:
+            issues.append(ValidationIssue("unsupported-robot-template", f"robot.template must be one of {['e-puck', 'monsterborg-4wd']}.", "robot.template"))
     if environment_template not in SUPPORTED_ENVIRONMENT_TEMPLATES:
         issues.append(
             ValidationIssue(
@@ -219,6 +229,14 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
             ValidationIssue(
                 "unsupported-template-task-combination",
                 f"environment.template '{environment_template}' does not support scenario.kind '{scenario_kind}'.",
+                "environment.template",
+            )
+        )
+    elif robot_template and SUPPORTED_ENVIRONMENT_TEMPLATES[environment_template]["robot_profile"] != robot_profile:
+        issues.append(
+            ValidationIssue(
+                "unsupported-template-robot-combination",
+                f"environment.template '{environment_template}' requires robot.template '{SUPPORTED_ENVIRONMENT_TEMPLATES[environment_template]['robot_profile']}'.",
                 "environment.template",
             )
         )
@@ -455,7 +473,9 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
     normalized.setdefault("scenario", {})
     normalized["scenario"]["benchmark_name"] = benchmark_name
     normalized.setdefault("controller", {})
-    normalized["controller"]["scaffold_source"] = str(get_scenario(benchmark_name).controller) if benchmark_name else None
+    normalized["controller"]["scaffold_source"] = (
+        str(get_scenario(benchmark_name, robot_profile=robot_profile).controller) if benchmark_name else None
+    )
     return ScenarioValidationResult(str(spec_path), not issues, scenario_name, scenario_kind, environment_template, benchmark_name, issues, normalized)
 
 
@@ -470,6 +490,8 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
 
     spec_path = Path(report.spec_path)
     spec = load_scenario_spec(spec_path)
+    robot_profile = robot_profile_from_template(str(spec.robot.get("template") or "e-puck"))
+    profile = get_robot_profile(robot_profile)
     scenario_dir = spec_path.parent
     (scenario_dir / "artifacts").mkdir(parents=True, exist_ok=True)
     world_path = scenario_dir / "worlds" / f"{spec.scenario['name']}.wbt"
@@ -483,18 +505,24 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
 
     atomic_write_text(world_path, build_world_text(spec), encoding="utf-8")
     controller_language = "cpp" if controller_path.suffix.lower() in {".cpp", ".cc", ".cxx"} else "python"
-    scaffold_controller(path=controller_path, scenario=report.benchmark_name or "waypoint-nav", force=force, language=controller_language)
+    scaffold_controller(
+        path=controller_path,
+        scenario=report.benchmark_name or "waypoint-nav",
+        force=force,
+        language=controller_language,
+        robot_profile=profile.robot_profile,
+    )
     world_inventory = inspect_world(world_path)
 
     benchmark_name = report.benchmark_name or "waypoint-nav"
-    benchmark_profile = get_scenario(benchmark_name)
+    benchmark_profile = get_scenario(benchmark_name, robot_profile=profile.robot_profile)
     suggested_session_command = (
         f"webots-kit session start --scenario {benchmark_name} --world \"{world_path}\" --controller \"{controller_path}\" "
-        f"--robot-name {spec.robot['name']} --robot-def {spec.robot['def']} --mode fast --render off"
+        f"--robot-profile {profile.robot_profile} --robot-name {spec.robot['name']} --robot-def {spec.robot['def']} --mode fast --render off"
     )
     suggested_benchmark_command = (
         f"webots-kit benchmark run {benchmark_name} --controller \"{controller_path}\" --world \"{world_path}\" "
-        f"--robot-name {spec.robot['name']} --robot-def {spec.robot['def']} --output \"{scenario_dir / 'artifacts' / 'report.json'}\" "
+        f"--robot-profile {profile.robot_profile} --robot-name {spec.robot['name']} --robot-def {spec.robot['def']} --output \"{scenario_dir / 'artifacts' / 'report.json'}\" "
         f"--duration-s {spec.benchmark['duration_s']}"
     )
 
@@ -506,6 +534,9 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         "controller_path": str(controller_path),
         "target_robot_name": spec.robot["name"],
         "target_robot_def": spec.robot["def"],
+        "robot_family": profile.robot_family,
+        "robot_profile": profile.robot_profile,
+        "runtime_target": "interactive-webots",
         "default_camera": spec.controller.get("default_camera", benchmark_profile.default_camera),
         "duration_s": spec.benchmark["duration_s"],
         "threshold_overrides": spec.benchmark.get("threshold_overrides", {}),
@@ -526,6 +557,9 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         benchmark_config_path=str(benchmark_config_path),
         target_robot_name=str(spec.robot["name"]),
         target_robot_def=str(spec.robot["def"]),
+        robot_family=profile.robot_family,
+        robot_profile=profile.robot_profile,
+        runtime_target="interactive-webots",
         default_camera=str(spec.controller.get("default_camera", benchmark_profile.default_camera)),
         suggested_session_command=suggested_session_command,
         suggested_benchmark_command=suggested_benchmark_command,
@@ -610,9 +644,10 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
             "next_step": "Create a spec with `webots-kit scenario init <path> --template <template>`.",
         }
     spec = load_scenario_spec(spec_path)
+    robot_profile = robot_profile_from_template(str(spec.robot.get("template") or "e-puck"))
     benchmark_name = report.benchmark_name
     benchmark_profile = spec.benchmark.get("profile") if isinstance(spec.benchmark, dict) else None
-    scenario_def = get_scenario(benchmark_name) if benchmark_name else None
+    scenario_def = get_scenario(benchmark_name, robot_profile=robot_profile) if benchmark_name else None
     unsupported_combinations = [
         issue.to_dict()
         for issue in report.issues
@@ -694,7 +729,7 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "scenario_kind": spec.scenario.get("kind"),
         "environment_template": spec.environment.get("template"),
         "benchmark_name": benchmark_name,
-        "controller_scaffold_source": str(get_scenario(benchmark_name).controller) if benchmark_name else None,
+        "controller_scaffold_source": str(get_scenario(benchmark_name, robot_profile=robot_profile).controller) if benchmark_name else None,
         "controller_ready": bool(spec.controller.get("path")),
         "benchmark_ready": report.valid and benchmark_name is not None,
         "mcp_ready": report.valid,
@@ -727,15 +762,23 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         init_project(root, name=root.name, force=False)
 
     inferred_kind = infer_project_kind(world_path)
+    suggested_robot_profile = _discover_world_robot_profile(world_path)
     suggested_benchmark_name = SUPPORTED_TASKS[inferred_kind]
-    discovered_robot_name, discovered_robot_def = _discover_world_robot_identity(world_path, suggested_benchmark_name)
+    discovered_robot_name, discovered_robot_def = _discover_world_robot_identity(
+        world_path,
+        suggested_benchmark_name,
+        robot_profile=suggested_robot_profile,
+    )
     discovered_devices = _discover_controller_devices(controller_path)
     world_inventory = inspect_world(world_path)
-    scenario_def = get_scenario(suggested_benchmark_name)
+    scenario_def = get_scenario(suggested_benchmark_name, robot_profile=suggested_robot_profile)
+    profile = get_robot_profile(suggested_robot_profile)
     scene_node_summary = world_inventory.get("scene_node_summary", world_inventory.get("summary", {}))
     authoring_targets = world_inventory.get("supported_edit_targets", [])
     controller_authoring_context = {
         "scenario": suggested_benchmark_name,
+        "robot_family": profile.robot_family,
+        "robot_profile": profile.robot_profile,
         "default_camera": scenario_def.default_camera,
         "expected_sensor_keys": list(scenario_def.required_sensor_keys),
         "expected_metric_keys": list(scenario_def.required_metric_keys),
@@ -747,8 +790,9 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
     scenario_dir.mkdir(parents=True, exist_ok=True)
     spec_path = scenario_dir / SCENARIO_SPEC_FILENAME
 
-    spec = _default_spec(_default_template_for_kind(inferred_kind), scenario_name, _load_project_manifest(root).project_name)
+    spec = _default_spec(_default_template_for_kind(inferred_kind, robot_profile=suggested_robot_profile), scenario_name, _load_project_manifest(root).project_name)
     spec.scenario["kind"] = inferred_kind
+    spec.robot["template"] = profile.robot_profile
     spec.robot["name"] = discovered_robot_name
     spec.robot["def"] = discovered_robot_def
     spec.controller["path"] = str(controller_path)
@@ -766,6 +810,10 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "controller_path": str(controller_path),
         "discovered_robot_name": discovered_robot_name,
         "discovered_robot_def": discovered_robot_def,
+        "discovered_robot_family": profile.robot_family,
+        "suggested_robot_profile": profile.robot_profile,
+        "runtime_target": "interactive-webots",
+        "physical_adapter_supported": profile.robot_profile == "monsterborg-4wd",
         "discovered_devices": discovered_devices,
         "suggested_benchmark_name": suggested_benchmark_name,
         "minimal_scenario_metadata": minimal_scenario_metadata,
@@ -790,6 +838,10 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "inferred_kind": inferred_kind,
         "inferred_scenario_kind": inferred_kind,
         "suggested_benchmark_name": suggested_benchmark_name,
+        "discovered_robot_family": profile.robot_family,
+        "suggested_robot_profile": profile.robot_profile,
+        "runtime_target": "interactive-webots",
+        "physical_adapter_supported": profile.robot_profile == "monsterborg-4wd",
         "discovered_robot_name": discovered_robot_name,
         "discovered_robot_def": discovered_robot_def,
         "discovered_devices": discovered_devices,
@@ -934,11 +986,11 @@ def replay_session(export_path: Path) -> dict[str, Any]:
 
 def infer_project_kind(world_path: Path) -> str:
     content = world_path.read_text(encoding="utf-8", errors="replace").lower()
-    if "line follower" in content or "line_track" in content or "tri_color" in content:
+    if any(token in content for token in ("line follower", "line-follower", "line_track", "line-segment", "line_segment", "tri_color")):
         return "line-follow"
     if "woodenbox" in content or "obstacle" in content:
         return "obstacle-avoidance"
-    if "waypoint" in content:
+    if "waypoint" in content or "goal-region" in content:
         return "waypoint-nav"
     return "waypoint-nav"
 
@@ -1091,7 +1143,7 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
         arena_size=arena_dimensions,
         floor_style=floor_style,
         body="\n".join(segment_nodes),
-        robot_block=_robot_block(robot_name=str(spec.robot["name"]), spawn=spawn, camera_mode=True),
+        robot_block=_robot_block(robot_profile=str(spec.robot["template"]), robot_name=str(spec.robot["name"]), spawn=spawn, camera_mode=True),
     )
 
 
@@ -1119,7 +1171,7 @@ def _build_arena_world(spec: ScenarioSpec) -> str:
         arena_size=arena_dimensions,
         floor_style=floor_style,
         body="\n".join(body_nodes),
-        robot_block=_robot_block(robot_name=str(spec.robot["name"]), spawn=spawn, camera_mode=False),
+        robot_block=_robot_block(robot_profile=str(spec.robot["template"]), robot_name=str(spec.robot["name"]), spawn=spawn, camera_mode=False),
     )
 
 
@@ -1128,12 +1180,16 @@ def _world_shell(*, title: str, info_lines: list[str], arena_size: list[float], 
     supervisor_y = -max(float(arena_size[1]) / 2 - 0.05, 0.95)
     robot_name = robot_block.split('name "')[1].split('"', 1)[0]
     floor_overlay = _floor_overlay_block(floor_style, arena_size)
+    externproto_lines = [
+        'EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"',
+        'EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"',
+        'EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"',
+    ]
+    if "E-puck" in robot_block:
+        externproto_lines.append('EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/e-puck/protos/E-puck.proto"')
     return f"""#VRML_SIM R2025a utf8
 
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+{chr(10).join(externproto_lines)}
 
 WorldInfo {{
   info [
@@ -1242,9 +1298,372 @@ def _floor_overlay_block(floor_style: str, arena_size: list[float]) -> str:
     return "\n".join(stripe_nodes)
 
 
-def _robot_block(*, robot_name: str, spawn: dict[str, Any], camera_mode: bool) -> str:
+def _robot_block(*, robot_profile: str, robot_name: str, spawn: dict[str, Any], camera_mode: bool) -> str:
     translation = spawn["translation"]
     rotation = float(spawn.get("rotation_z", 0.0))
+    if robot_profile == "monsterborg-4wd":
+        camera_block = ""
+        if camera_mode:
+            camera_block = """
+    Transform {
+      translation 0.16 0 0.14
+      rotation 0 1 0 0.62
+      children [
+        Camera {
+          name "front_camera"
+          width 40
+          height 1
+          fieldOfView 1.05
+        }
+      ]
+    }"""
+        else:
+            camera_block = """
+    Transform {
+      translation 0.16 0 0.14
+      rotation 0 1 0 0.62
+      children [
+        Camera {
+          name "front_camera"
+          width 64
+          height 12
+          fieldOfView 1.05
+        }
+      ]
+    }"""
+        return f"""DEF MONSTERBORG Robot {{
+  translation {_fmt(translation[0])} {_fmt(translation[1])} {_fmt(translation[2])}
+  rotation 0 0 1 {_fmt(rotation)}
+  name "{robot_name}"
+  controller "<extern>"
+  children [
+    Transform {{
+      translation 0 0 0.11
+      children [
+        Shape {{
+          appearance PBRAppearance {{
+            baseColor 0.7 0.72 0.76
+            roughness 0.9
+            metalness 0.05
+          }}
+          geometry Box {{
+            size 0.24 0.18 0.04
+          }}
+        }}
+      ]
+    }}
+{camera_block}
+    Transform {{
+      translation 0.17 0 0.09
+      children [
+        DistanceSensor {{
+          name "front_range"
+          lookupTable [
+            0 1000 0
+            0.5 600 0
+            1 200 0
+          ]
+          type "infra-red"
+        }}
+      ]
+    }}
+    InertialUnit {{
+      name "imu"
+    }}
+    HingeJoint {{
+      jointParameters HingeJointParameters {{
+        axis 0 1 0
+        anchor 0 0.11 0.055
+      }}
+      device [
+        RotationalMotor {{
+          name "front_left_motor"
+          maxVelocity 9
+          maxTorque 24
+        }}
+        PositionSensor {{
+          name "left_encoder"
+        }}
+      ]
+      endPoint Solid {{
+        translation 0 0.11 0.055
+        name "front-left-drive-wheel"
+        children [
+          Pose {{
+            rotation -1 0 0 1.5708
+            children [
+              Shape {{
+                appearance PBRAppearance {{
+                  baseColor 0.05 0.05 0.05
+                  roughness 1
+                  metalness 0
+                }}
+                geometry Cylinder {{
+                  radius 0.055
+                  height 0.038
+                }}
+              }}
+            ]
+          }}
+        ]
+        boundingObject Pose {{
+          rotation -1 0 0 1.5708
+          children [
+            Cylinder {{
+              radius 0.055
+              height 0.038
+            }}
+          ]
+        }}
+        physics Physics {{
+          density -1
+          mass 0.12
+        }}
+      }}
+    }}
+    HingeJoint {{
+      jointParameters HingeJointParameters {{
+        axis 0 1 0
+        anchor 0 -0.11 0.055
+      }}
+      device [
+        RotationalMotor {{
+          name "front_right_motor"
+          maxVelocity 9
+          maxTorque 24
+        }}
+        PositionSensor {{
+          name "right_encoder"
+        }}
+      ]
+      endPoint Solid {{
+        translation 0 -0.11 0.055
+        name "front-right-drive-wheel"
+        children [
+          Pose {{
+            rotation -1 0 0 1.5708
+            children [
+              Shape {{
+                appearance PBRAppearance {{
+                  baseColor 0.05 0.05 0.05
+                  roughness 1
+                  metalness 0
+                }}
+                geometry Cylinder {{
+                  radius 0.055
+                  height 0.038
+                }}
+              }}
+            ]
+          }}
+        ]
+        boundingObject Pose {{
+          rotation -1 0 0 1.5708
+          children [
+            Cylinder {{
+              radius 0.055
+              height 0.038
+            }}
+          ]
+        }}
+        physics Physics {{
+          density -1
+          mass 0.12
+        }}
+      }}
+    }}
+    Transform {{
+      translation 0.1 0.11 0.055
+      children [
+        Shape {{
+          appearance PBRAppearance {{
+            baseColor 0.05 0.05 0.05
+            roughness 1
+            metalness 0
+          }}
+          geometry Cylinder {{
+            radius 0.055
+            height 0.038
+          }}
+        }}
+      ]
+    }}
+    Transform {{
+      translation -0.1 0.11 0.055
+      children [
+        Shape {{
+          appearance PBRAppearance {{
+            baseColor 0.05 0.05 0.05
+            roughness 1
+            metalness 0
+          }}
+          geometry Cylinder {{
+            radius 0.055
+            height 0.038
+          }}
+        }}
+      ]
+    }}
+    Transform {{
+      translation 0.1 -0.11 0.055
+      children [
+        Shape {{
+          appearance PBRAppearance {{
+            baseColor 0.05 0.05 0.05
+            roughness 1
+            metalness 0
+          }}
+          geometry Cylinder {{
+            radius 0.055
+            height 0.038
+          }}
+        }}
+      ]
+    }}
+    Transform {{
+      translation -0.1 -0.11 0.055
+      children [
+        Shape {{
+          appearance PBRAppearance {{
+            baseColor 0.05 0.05 0.05
+            roughness 1
+            metalness 0
+          }}
+          geometry Cylinder {{
+            radius 0.055
+            height 0.038
+          }}
+        }}
+      ]
+    }}
+    HingeJoint {{
+      jointParameters HingeJointParameters {{
+        axis 0 1 0
+        anchor -0.06 0.04 0.18
+      }}
+      device [
+        RotationalMotor {{
+          name "rear_left_motor"
+          maxVelocity 9
+        }}
+      ]
+      endPoint Solid {{
+        translation -0.06 0.04 0.18
+        name "rear-left-actuator"
+        children [
+          Shape {{
+            appearance PBRAppearance {{
+              baseColor 0.2 0.2 0.2
+              transparency 1
+            }}
+            geometry Sphere {{
+              radius 0.01
+            }}
+          }}
+        ]
+        boundingObject Sphere {{
+          radius 0.01
+        }}
+        physics Physics {{
+          density -1
+          mass 0.001
+        }}
+      }}
+    }}
+    HingeJoint {{
+      jointParameters HingeJointParameters {{
+        axis 0 1 0
+        anchor -0.06 -0.04 0.18
+      }}
+      device [
+        RotationalMotor {{
+          name "rear_right_motor"
+          maxVelocity 9
+        }}
+      ]
+      endPoint Solid {{
+        translation -0.06 -0.04 0.18
+        name "rear-right-actuator"
+        children [
+          Shape {{
+            appearance PBRAppearance {{
+              baseColor 0.2 0.2 0.2
+              transparency 1
+            }}
+            geometry Sphere {{
+              radius 0.01
+            }}
+          }}
+        ]
+        boundingObject Sphere {{
+          radius 0.01
+        }}
+        physics Physics {{
+          density -1
+          mass 0.001
+        }}
+      }}
+    }}
+    Solid {{
+      translation 0.13 0 0.02
+      name "front-caster"
+      children [
+        Shape {{
+          appearance PBRAppearance {{
+            baseColor 0.15 0.15 0.15
+            roughness 1
+            metalness 0
+          }}
+          geometry Sphere {{
+            radius 0.02
+          }}
+        }}
+      ]
+      boundingObject Sphere {{
+        radius 0.02
+      }}
+      physics Physics {{
+        density -1
+        mass 0.01
+      }}
+    }}
+    Solid {{
+      translation -0.13 0 0.02
+      name "rear-caster"
+      children [
+        Shape {{
+          appearance PBRAppearance {{
+            baseColor 0.15 0.15 0.15
+            roughness 1
+            metalness 0
+          }}
+          geometry Sphere {{
+            radius 0.02
+          }}
+        }}
+      ]
+      boundingObject Sphere {{
+        radius 0.02
+      }}
+      physics Physics {{
+        density -1
+        mass 0.01
+      }}
+    }}
+  ]
+  boundingObject Transform {{
+    translation 0 0 0.11
+    children [
+      Box {{
+        size 0.24 0.18 0.04
+      }}
+    ]
+  }}
+  physics Physics {{
+    density -1
+    mass 1.6
+  }}
+}}"""
     camera_settings = ""
     if camera_mode:
         camera_settings = "\n  camera_width 40\n  camera_height 1\n  camera_rotation 0 1 0 0.47"
@@ -1434,14 +1853,16 @@ def _line_track_segments(points: list[list[float]]) -> list[dict[str, float]]:
 
 def _default_spec(template: str, scenario_name: str, project_name: str) -> ScenarioSpec:
     default_kind = SUPPORTED_ENVIRONMENT_TEMPLATES[template]["default_kind"]
+    robot_profile = SUPPORTED_ENVIRONMENT_TEMPLATES[template]["robot_profile"]
     benchmark_name = SUPPORTED_TASKS[default_kind]
-    scenario = get_scenario(benchmark_name)
+    profile = get_robot_profile(robot_profile)
+    scenario = get_scenario(benchmark_name, robot_profile=robot_profile)
     defaults = _template_defaults(template)
     return ScenarioSpec(
         schema_version=1,
         project={"name": project_name},
         scenario={"name": scenario_name, "kind": default_kind},
-        robot={"template": "e-puck", "name": _default_robot_name(default_kind, scenario_name), "def": "EPUCK"},
+        robot={"template": profile.robot_profile, "name": _default_robot_name(default_kind, scenario_name, robot_profile=profile.robot_profile), "def": _default_robot_def(profile.robot_profile)},
         environment={"template": template, "arena": defaults["arena"]},
         layout=defaults["layout"],
         task={"kind": default_kind, "description": f"Generated {default_kind} task."},
@@ -1510,6 +1931,48 @@ def _template_defaults(template: str) -> dict[str, Any]:
                 "waypoints": [],
             },
         },
+        "monsterborg-line-track": {
+            "arena": {"dimensions": [3.2, 2.2], "floor": "light"},
+            "layout": {
+                "spawn": {"translation": [-1.1, 0.05, 0.0], "rotation_z": 0.0},
+                "line_track": {"width": 0.1, "points": [[-1.25, 0.05], [-0.45, 0.05], [-0.15, 0.6], [0.95, 0.6], [1.15, -0.4]]},
+                "obstacles": [],
+                "walls": [],
+                "landmarks": [],
+                "zones": [],
+                "props": [],
+                "waypoints": [],
+            },
+        },
+        "monsterborg-waypoint": {
+            "arena": {"dimensions": [3.4, 3.0], "floor": "plain"},
+            "layout": {
+                "spawn": {"translation": [-1.0, 0.0, 0.0], "rotation_z": 0.0},
+                "obstacles": [],
+                "walls": [],
+                "landmarks": [],
+                "zones": [],
+                "props": [],
+                "waypoints": [[1.35, 0.0]],
+                "goal_region": {"center": [1.35, 0.0], "radius": 0.3},
+            },
+        },
+        "monsterborg-obstacle-course": {
+            "arena": {"dimensions": [3.4, 3.0], "floor": "grid"},
+            "layout": {
+                "spawn": {"translation": [-0.9, 0.0, 0.0], "rotation_z": 0.0},
+                "obstacles": [
+                    {"shape": "box", "position": [-0.05, 0.42], "size": [0.16, 0.16, 0.14], "rotation_z": 0.0},
+                    {"shape": "box", "position": [0.62, -0.48], "size": [0.16, 0.16, 0.14], "rotation_z": 0.3},
+                    {"shape": "cylinder", "position": [0.95, 0.62], "radius": 0.08, "height": 0.16, "rotation_z": 0.0},
+                ],
+                "walls": [],
+                "landmarks": [],
+                "zones": [],
+                "props": [],
+                "waypoints": [],
+            },
+        },
     }[template]
     )
 
@@ -1517,12 +1980,16 @@ def _template_defaults(template: str) -> dict[str, Any]:
 def _apply_scenario_defaults(spec: ScenarioSpec) -> None:
     scenario_kind = _str_field(spec.scenario, "kind")
     environment_template = _str_field(spec.environment, "template")
+    robot_profile = robot_profile_from_template(_str_field(spec.robot, "template"))
     if not scenario_kind and environment_template in SUPPORTED_ENVIRONMENT_TEMPLATES:
         scenario_kind = SUPPORTED_ENVIRONMENT_TEMPLATES[environment_template]["default_kind"]
         spec.scenario["kind"] = scenario_kind
     benchmark_name = SUPPORTED_TASKS.get(scenario_kind or "")
-    scenario_def = get_scenario(benchmark_name) if benchmark_name else None
-    template = environment_template or (_default_template_for_kind(scenario_kind) if scenario_kind in SUPPORTED_TASKS else "epuck-waypoint")
+    if environment_template in SUPPORTED_ENVIRONMENT_TEMPLATES:
+        robot_profile = SUPPORTED_ENVIRONMENT_TEMPLATES[environment_template]["robot_profile"]
+        spec.robot.setdefault("template", robot_profile)
+    scenario_def = get_scenario(benchmark_name, robot_profile=robot_profile) if benchmark_name else None
+    template = environment_template or (_default_template_for_kind(scenario_kind, robot_profile=robot_profile) if scenario_kind in SUPPORTED_TASKS else "epuck-waypoint")
     defaults = _template_defaults(template)
 
     arena = spec.environment.setdefault("arena", {})
@@ -1578,6 +2045,7 @@ def _validate_layout_geometry(spec: ScenarioSpec) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     half_width = float(arena["dimensions"][0]) / 2
     half_height = float(arena["dimensions"][1]) / 2
+    clearance_radius = get_robot_profile(robot_profile_from_template(_str_field(spec.robot, "template"))).footprint_radius
     layout = spec.layout if isinstance(spec.layout, dict) else {}
     scenario_kind = _str_field(spec.scenario, "kind")
     spawn = layout.get("spawn") if isinstance(layout.get("spawn"), dict) else {}
@@ -1587,7 +2055,7 @@ def _validate_layout_geometry(spec: ScenarioSpec) -> list[ValidationIssue]:
     def point_in_bounds(point: list[float] | tuple[float, ...], *, padding: float = 0.0) -> bool:
         return abs(float(point[0])) <= half_width - padding and abs(float(point[1])) <= half_height - padding
 
-    if spawn_xy and not point_in_bounds(spawn_xy, padding=ROBOT_CLEARANCE_RADIUS):
+    if spawn_xy and not point_in_bounds(spawn_xy, padding=clearance_radius):
         issues.append(
             ValidationIssue(
                 "spawn-out-of-bounds",
@@ -1620,7 +2088,7 @@ def _validate_layout_geometry(spec: ScenarioSpec) -> list[ValidationIssue]:
                     "layout.goal_region",
                 )
             )
-        if spawn_xy and scenario_kind == "waypoint-nav" and _distance_2d(spawn_xy, goal_center) <= radius + ROBOT_CLEARANCE_RADIUS:
+        if spawn_xy and scenario_kind == "waypoint-nav" and _distance_2d(spawn_xy, goal_center) <= radius + clearance_radius:
             issues.append(
                 ValidationIssue(
                     "spawn-goal-overlap",
@@ -1787,7 +2255,7 @@ def _validate_layout_geometry(spec: ScenarioSpec) -> list[ValidationIssue]:
 
     if spawn_xy:
         for item in blocking_objects:
-            if _distance_2d(spawn_xy, item["center"]) < ROBOT_CLEARANCE_RADIUS + item["radius"]:
+            if _distance_2d(spawn_xy, item["center"]) < clearance_radius + item["radius"]:
                 issues.append(
                     ValidationIssue(
                         "spawn-blocked",
@@ -1798,7 +2266,7 @@ def _validate_layout_geometry(spec: ScenarioSpec) -> list[ValidationIssue]:
                 break
         else:
             for wall in wall_segments:
-                clearance = ROBOT_CLEARANCE_RADIUS + wall["thickness"] / 2
+                clearance = clearance_radius + wall["thickness"] / 2
                 if _distance_point_to_segment(spawn_xy, wall["start"], wall["end"]) < clearance:
                     issues.append(
                         ValidationIssue(
@@ -1917,16 +2385,24 @@ def _benchmark_mapping(spec: ScenarioSpec, benchmark_name: str, scenario_def: An
     }
 
 
-def _discover_world_robot_identity(world_path: Path, benchmark_name: str) -> tuple[str, str]:
+def _discover_world_robot_identity(world_path: Path, benchmark_name: str, *, robot_profile: str = "e-puck") -> tuple[str, str]:
     content = world_path.read_text(encoding="utf-8", errors="replace")
+    if "front_left_motor" in content and "front_camera" in content:
+        def_match = re.search(r"DEF\s+([A-Za-z0-9_]+)\s+Robot\s*{", content)
+        robot_def = def_match.group(1) if def_match else _default_robot_def("monsterborg-4wd")
+        name_match = re.search(r'name\s+"([^"]+)"', content[def_match.end() : def_match.end() + 600] if def_match else content)
+        if name_match:
+            return name_match.group(1), robot_def
+        scenario_def = get_scenario(benchmark_name, robot_profile="monsterborg-4wd")
+        return scenario_def.target_robot_name, robot_def
     def_match = re.search(r"DEF\s+([A-Za-z0-9_]+)\s+E-puck\s*{", content)
     if def_match:
         robot_def = def_match.group(1)
         name_match = re.search(r'name\s+"([^"]+)"', content[def_match.end() : def_match.end() + 400])
         if name_match:
             return name_match.group(1), robot_def
-        return get_scenario(benchmark_name).target_robot_name, robot_def
-    scenario_def = get_scenario(benchmark_name)
+        return get_scenario(benchmark_name, robot_profile=robot_profile).target_robot_name, robot_def
+    scenario_def = get_scenario(benchmark_name, robot_profile=robot_profile)
     return scenario_def.target_robot_name, scenario_def.target_robot_def
 
 
@@ -2054,16 +2530,24 @@ def _build_triage_recipe(failure_class: str) -> dict[str, Any]:
     return recipes.get(failure_class, recipes["runtime-failure"])
 
 
-def _default_robot_name(kind: str, scenario_name: str) -> str:
-    return f"epuck-{scenario_name}-{kind}"
+def _default_robot_def(robot_profile: str) -> str:
+    return "MONSTERBORG" if robot_profile == "monsterborg-4wd" else "EPUCK"
 
 
-def _default_template_for_kind(kind: str) -> str:
-    return {
-        "line-follow": "epuck-line-track",
-        "waypoint-nav": "epuck-waypoint",
-        "obstacle-avoidance": "epuck-obstacle-course",
-    }[kind]
+def _default_robot_name(kind: str, scenario_name: str, *, robot_profile: str = "e-puck") -> str:
+    prefix = "monsterborg" if robot_profile == "monsterborg-4wd" else "epuck"
+    return f"{prefix}-{scenario_name}-{kind}"
+
+
+def _default_template_for_kind(kind: str, *, robot_profile: str = "e-puck") -> str:
+    return get_robot_profile(robot_profile).default_templates[kind]
+
+
+def _discover_world_robot_profile(world_path: Path) -> str:
+    content = world_path.read_text(encoding="utf-8", errors="replace").lower()
+    if "front_left_motor" in content or "monsterborg" in content or "front_camera" in content:
+        return "monsterborg-4wd"
+    return "e-puck"
 
 
 def _discover_project_root(path: Path) -> Path:

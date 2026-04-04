@@ -1,0 +1,12 @@
+{
+  "name": "monsterborg-line-follower",
+  "title": "MonsterBorg line-follower starter workspace",
+  "flow": "evaluator",
+  "support_tier": "experimental-foundation",
+  "expected_green": "controller validate passes and the MonsterBorg line-follower benchmark reports pass.",
+  "recommended_commands": [
+    "webots-kit controller validate .\\controllers\\demo_agent.py --scenario line-follower --robot-profile monsterborg-4wd --strict --json",
+    "webots-kit benchmark run line-follower --controller .\\controllers\\demo_agent.py --robot-profile monsterborg-4wd --output .\\artifacts\\monsterborg-line-follower-report.json --duration-s 8",
+    "webots-kit benchmark report .\\artifacts\\monsterborg-line-follower-report.json"
+  ]
+}

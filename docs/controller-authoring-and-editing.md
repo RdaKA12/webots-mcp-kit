@@ -1,16 +1,22 @@
 # Controller Authoring and Editing
 
-This page documents the controller authoring surface in `v2.2.0`.
+This page documents the controller authoring surface in `v2.5.0-alpha.1`.
 
 ## Supported scope
 
 - Python controller scaffolds and edits
 - C++ controller scaffolds, inspect, validate, and compile smoke
 - `ControllerAgent`-style controllers
+- robot-aware scaffolds through `--robot-profile`
 - bundled task families:
   - `line-follower`
   - `obstacle-avoidance`
   - `waypoint-nav`
+
+Supported robot profiles:
+
+- `e-puck`
+- preview `monsterborg-4wd`
 
 The public controller-side contract stays:
 
@@ -24,6 +30,12 @@ Python scaffold:
 
 ```powershell
 webots-kit controller scaffold .\controllers\demo_agent.py --scenario line-follower --language python
+```
+
+Robot-aware scaffold:
+
+```powershell
+webots-kit controller scaffold .\controllers\monsterborg_agent.py --scenario line-follower --language python --robot-profile monsterborg-4wd
 ```
 
 C++ scaffold:
@@ -69,6 +81,8 @@ webots-kit controller inspect .\controllers\demo_agent.py --scenario line-follow
 - compile readiness
 - runtime readiness
 - controller fix hints
+- `robot_family`
+- `robot_profile`
 - explicit `status`, `summary`, `support_tier`, and `next_step`
 
 ## Edit
@@ -133,6 +147,7 @@ Validation checks:
 - benchmark contract gaps
 - runtime readiness
 - controller fix hints
+- robot-profile-specific device gaps
 - C++ compile smoke when the source language is `cpp`
 - explicit `status`, `summary`, `support_tier`, and `next_step`
 
@@ -148,6 +163,7 @@ Status note:
 
 - controller authoring and editing is supported on the stable release line
 - deeper plan/schema details remain `experimental-foundation` and additive
+- preview `monsterborg-4wd` support uses the same CLI and MCP surfaces with additive robot-profile metadata
 - a ready sample workspace is available under `examples/getting-started/controller-edit`
 
 Next: continue with [World authoring and editing](./world-authoring-and-editing.md) if you also need to inspect or patch the `.wbt` side.

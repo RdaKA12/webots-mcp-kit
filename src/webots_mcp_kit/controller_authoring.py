@@ -17,6 +17,7 @@ from tree_sitter import Language, Node, Parser
 from .benchmarks import get_scenario
 from .environment import build_process_env, current_python, get_webots_environment
 from .errors import KitError
+from .robot_profiles import get_robot_profile, robot_profile_from_template
 
 REGION_NAMES = ("DEVICE_INIT", "CONTROL_POLICY", "TELEMETRY_REPORT", "HELPERS")
 CPP_SOURCE_SUFFIXES = {".cpp", ".cc", ".cxx"}
@@ -29,8 +30,10 @@ class ControllerInspectionResult:
     path: str
     language: str
     scenario: str | None
-    integration_mode: str
-    valid_source: bool
+    robot_family: str = "e-puck"
+    robot_profile: str = "e-puck"
+    integration_mode: str = "unknown"
+    valid_source: bool = False
     editable_regions: list[str] = field(default_factory=list)
     markers_present: bool = False
     has_robot_init: bool = False
@@ -84,33 +87,41 @@ def inspect_controller(
     *,
     scenario: str | None = None,
     spec_path: Path | None = None,
+    robot_profile: str | None = None,
 ) -> ControllerInspectionResult:
     resolved = path if path.is_absolute() else (Path.cwd() / path).resolve()
     language = detect_controller_language(resolved)
     scenario_name = scenario or _scenario_from_spec(spec_path)
-    scenario_def = get_scenario(scenario_name) if scenario_name else None
+    effective_robot_profile = robot_profile or _robot_profile_from_spec(spec_path)
+    scenario_def = get_scenario(scenario_name, robot_profile=effective_robot_profile) if scenario_name else None
+    if scenario_def:
+        effective_robot_profile = scenario_def.robot_profile
 
     if not resolved.exists():
         return _finalize_inspection_result(
             ControllerInspectionResult(
-            path=str(resolved),
-            language=language,
-            scenario=scenario_name,
-            integration_mode="unknown",
-            valid_source=False,
-            issues=["Controller file does not exist."],
+                path=str(resolved),
+                language=language,
+                scenario=scenario_name,
+                robot_family=get_robot_profile(effective_robot_profile).robot_family,
+                robot_profile=get_robot_profile(effective_robot_profile).robot_profile,
+                integration_mode="unknown",
+                valid_source=False,
+                issues=["Controller file does not exist."],
             )
         )
 
     if language not in {"python", "cpp"}:
         return _finalize_inspection_result(
             ControllerInspectionResult(
-            path=str(resolved),
-            language=language,
-            scenario=scenario_name,
-            integration_mode="unknown",
-            valid_source=False,
-            issues=["Unsupported controller source type."],
+                path=str(resolved),
+                language=language,
+                scenario=scenario_name,
+                robot_family=get_robot_profile(effective_robot_profile).robot_family,
+                robot_profile=get_robot_profile(effective_robot_profile).robot_profile,
+                integration_mode="unknown",
+                valid_source=False,
+                issues=["Unsupported controller source type."],
             )
         )
 
@@ -119,19 +130,21 @@ def inspect_controller(
     except OSError as exc:
         return _finalize_inspection_result(
             ControllerInspectionResult(
-            path=str(resolved),
-            language=language,
-            scenario=scenario_name,
-            integration_mode="unknown",
-            valid_source=False,
-            issues=[f"Unable to read controller file: {exc}"],
+                path=str(resolved),
+                language=language,
+                scenario=scenario_name,
+                robot_family=get_robot_profile(effective_robot_profile).robot_family,
+                robot_profile=get_robot_profile(effective_robot_profile).robot_profile,
+                integration_mode="unknown",
+                valid_source=False,
+                issues=[f"Unable to read controller file: {exc}"],
             )
         )
 
     if language == "python":
-        inspection = _inspect_python_source(resolved, source, scenario_name)
+        inspection = _inspect_python_source(resolved, source, scenario_name, effective_robot_profile)
     else:
-        inspection = _inspect_cpp_source(resolved, source, scenario_name)
+        inspection = _inspect_cpp_source(resolved, source, scenario_name, effective_robot_profile)
 
     if scenario_def:
         benchmark_ready, benchmark_issues = _benchmark_readiness_from_sections(
@@ -180,20 +193,24 @@ def inspect_controller(
     return _finalize_inspection_result(inspection)
 
 
-def scaffold_source(*, scenario: str, language: str) -> tuple[str, dict[str, Any]]:
-    scenario_def = get_scenario(scenario)
+def scaffold_source(*, scenario: str, language: str, robot_profile: str = "e-puck") -> tuple[str, dict[str, Any]]:
+    scenario_def = get_scenario(scenario, robot_profile=robot_profile)
     if language == "python":
-        return _python_template_for_scenario(scenario), {
+        return _python_template_for_scenario(scenario, robot_profile=robot_profile), {
             "language": language,
             "scenario": scenario_def.name,
             "default_camera": scenario_def.default_camera,
+            "robot_family": scenario_def.robot_family,
+            "robot_profile": scenario_def.robot_profile,
         }
     if language == "cpp":
-        return _cpp_template_for_scenario(scenario), {
+        return _cpp_template_for_scenario(scenario, robot_profile=robot_profile), {
             "language": language,
             "scenario": scenario_def.name,
             "default_camera": scenario_def.default_camera,
             "sdk_header": str(controller_sdk_header()),
+            "robot_family": scenario_def.robot_family,
+            "robot_profile": scenario_def.robot_profile,
         }
     raise KitError(
         "unsupported-controller-language",
@@ -202,13 +219,13 @@ def scaffold_source(*, scenario: str, language: str) -> tuple[str, dict[str, Any
     )
 
 
-def scaffold_controller_artifacts(path: Path, *, scenario: str, language: str, force: bool = False) -> dict[str, Any]:
+def scaffold_controller_artifacts(path: Path, *, scenario: str, language: str, robot_profile: str = "e-puck", force: bool = False) -> dict[str, Any]:
     target = path if path.is_absolute() else (Path.cwd() / path).resolve()
     if target.exists() and not force:
         raise FileExistsError(f"Refusing to overwrite existing file: {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    source, metadata = scaffold_source(scenario=scenario, language=language)
+    source, metadata = scaffold_source(scenario=scenario, language=language, robot_profile=robot_profile)
     target.write_text(source, encoding="utf-8")
 
     copied_files: list[str] = []
@@ -222,12 +239,14 @@ def scaffold_controller_artifacts(path: Path, *, scenario: str, language: str, f
         "scenario": scenario,
         "language": language,
         "default_camera": metadata.get("default_camera"),
+        "robot_family": metadata.get("robot_family"),
+        "robot_profile": metadata.get("robot_profile"),
         "copied_files": copied_files,
         "editable_regions": list(REGION_NAMES),
     }
 
 
-def edit_controller(path: Path, *, plan_path: Path | None = None, plan: dict[str, Any] | None = None) -> dict[str, Any]:
+def edit_controller(path: Path, *, plan_path: Path | None = None, plan: dict[str, Any] | None = None, robot_profile: str | None = None) -> dict[str, Any]:
     target = path if path.is_absolute() else (Path.cwd() / path).resolve()
     if not target.exists():
         raise FileNotFoundError(f"Controller file does not exist: {target}")
@@ -256,10 +275,16 @@ def edit_controller(path: Path, *, plan_path: Path | None = None, plan: dict[str
         raise KitError("controller-edit-noop", "Controller edit plan did not produce any source changes.")
 
     target.write_text(updated, encoding="utf-8")
-    inspection = inspect_controller(target, scenario=plan_payload.get("scenario_context", {}).get("scenario"))
+    inspection = inspect_controller(
+        target,
+        scenario=plan_payload.get("scenario_context", {}).get("scenario"),
+        robot_profile=robot_profile or plan_payload.get("scenario_context", {}).get("robot_profile"),
+    )
     return {
         "path": str(target),
         "language": language,
+        "robot_family": inspection.robot_family,
+        "robot_profile": inspection.robot_profile,
         "applied_operations": applied,
         "editable_regions": inspection.editable_regions,
         "status": inspection.status,
@@ -375,6 +400,7 @@ def format_controller_inspection_report(result: ControllerInspectionResult) -> s
         f"path: {result.path}",
         f"language: {result.language}",
         f"scenario: {result.scenario}",
+        f"robot_profile: {result.robot_profile}",
         f"integration_mode: {result.integration_mode}",
         f"summary: {result.summary}",
         f"editable_regions: {result.editable_regions}",
@@ -405,6 +431,7 @@ def format_controller_edit_report(payload: dict[str, Any]) -> str:
         f"controller_edit: {payload.get('status')}",
         f"path: {payload.get('path')}",
         f"language: {payload.get('language')}",
+        f"robot_profile: {payload.get('robot_profile')}",
         f"summary: {payload.get('summary')}",
         f"editable_regions: {payload.get('editable_regions')}",
     ]
@@ -436,6 +463,15 @@ def _scenario_from_spec(spec_path: Path | None) -> str | None:
         "waypoint-nav": "waypoint-nav",
         "obstacle-avoidance": "obstacle-avoidance",
     }.get(kind)
+
+
+def _robot_profile_from_spec(spec_path: Path | None) -> str:
+    if spec_path is None:
+        return "e-puck"
+    from .scenario_ops import load_scenario_spec
+
+    spec = load_scenario_spec(spec_path)
+    return robot_profile_from_template(str(spec.robot.get("template") or "e-puck"))
 
 
 def _finalize_inspection_result(result: ControllerInspectionResult) -> ControllerInspectionResult:
@@ -473,11 +509,14 @@ def _benchmark_readiness_from_sections(
     telemetry_sections: dict[str, list[str]],
 ) -> tuple[bool, list[str]]:
     issues: list[str] = []
-    if sorted(expected_sensors) != sorted(telemetry_sections.get("sensors", [])):
+    reported_sensors = set(telemetry_sections.get("sensors", []))
+    reported_metrics = set(telemetry_sections.get("metrics", []))
+    reported_actuators = set(telemetry_sections.get("actuators", []))
+    if not set(expected_sensors).issubset(reported_sensors):
         issues.append("Sensor telemetry keys do not match benchmark expectations.")
-    if sorted(expected_metrics) != sorted(telemetry_sections.get("metrics", [])):
+    if not set(expected_metrics).issubset(reported_metrics):
         issues.append("Metric telemetry keys do not match benchmark expectations.")
-    if sorted(expected_actuators) != sorted(telemetry_sections.get("actuators", [])):
+    if not set(expected_actuators).issubset(reported_actuators):
         issues.append("Actuator telemetry keys do not match benchmark expectations.")
     return not issues, issues
 
@@ -576,11 +615,14 @@ def _controller_fix_hints(inspection: ControllerInspectionResult) -> list[str]:
     return sorted(dict.fromkeys(hints))
 
 
-def _inspect_python_source(path: Path, source: str, scenario_name: str | None) -> ControllerInspectionResult:
+def _inspect_python_source(path: Path, source: str, scenario_name: str | None, robot_profile: str) -> ControllerInspectionResult:
+    profile = get_robot_profile(robot_profile)
     result = ControllerInspectionResult(
         path=str(path),
         language="python",
         scenario=scenario_name,
+        robot_family=profile.robot_family,
+        robot_profile=profile.robot_profile,
         integration_mode="unknown",
         valid_source=True,
     )
@@ -668,11 +710,14 @@ def _inspect_python_source(path: Path, source: str, scenario_name: str | None) -
     return result
 
 
-def _inspect_cpp_source(path: Path, source: str, scenario_name: str | None) -> ControllerInspectionResult:
+def _inspect_cpp_source(path: Path, source: str, scenario_name: str | None, robot_profile: str) -> ControllerInspectionResult:
+    profile = get_robot_profile(robot_profile)
     result = ControllerInspectionResult(
         path=str(path),
         language="cpp",
         scenario=scenario_name,
+        robot_family=profile.robot_family,
+        robot_profile=profile.robot_profile,
         integration_mode="unknown",
         valid_source=True,
     )
@@ -1040,7 +1085,14 @@ def _cpp_map(entries: dict[str, Any]) -> str:
     return "{\n    " + body + "\n  }"
 
 
-def _python_template_for_scenario(scenario: str) -> str:
+def _python_template_for_scenario(scenario: str, *, robot_profile: str = "e-puck") -> str:
+    if robot_profile == "monsterborg-4wd":
+        templates = {
+            "line-follower": _python_monsterborg_line_follower_template,
+            "obstacle-avoidance": _python_monsterborg_obstacle_template,
+            "waypoint-nav": _python_monsterborg_waypoint_template,
+        }
+        return templates[scenario]()
     templates = {
         "line-follower": _python_line_follower_template,
         "obstacle-avoidance": _python_obstacle_template,
@@ -1049,7 +1101,14 @@ def _python_template_for_scenario(scenario: str) -> str:
     return templates[scenario]()
 
 
-def _cpp_template_for_scenario(scenario: str) -> str:
+def _cpp_template_for_scenario(scenario: str, *, robot_profile: str = "e-puck") -> str:
+    if robot_profile == "monsterborg-4wd":
+        templates = {
+            "line-follower": _cpp_monsterborg_line_follower_template,
+            "obstacle-avoidance": _cpp_monsterborg_obstacle_template,
+            "waypoint-nav": _cpp_monsterborg_waypoint_template,
+        }
+        return templates[scenario]()
     templates = {
         "line-follower": _cpp_line_follower_template,
         "obstacle-avoidance": _cpp_obstacle_template,
@@ -1339,6 +1398,363 @@ while robot.step(time_step) != -1:
         "right_velocity": round(right_speed, 6),
     }
     camera_frames={"camera": {"image": image, "width": camera.getWidth(), "height": camera.getHeight()}} if image else None
+    # webots-kit region TELEMETRY_REPORT end
+
+    agent.report_step(
+        sensors=sensors,
+        metrics=metrics,
+        actuators=actuators,
+        camera_frames=camera_frames,
+    )
+'''
+
+
+def _python_monsterborg_line_follower_template() -> str:
+    return '''from __future__ import annotations
+
+from controller import Camera, Robot
+
+from webots_mcp_kit.agent import ControllerAgent
+
+
+TIME_STEP = 32
+MAX_SPEED = 8.0
+CRUISE = 5.4
+TURN_GAIN = 5.2
+
+
+# webots-kit region HELPERS start
+def clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(value, maximum))
+
+
+def set_drive_velocity(left_velocity: float, right_velocity: float) -> None:
+    front_left_motor.setVelocity(left_velocity)
+    rear_left_motor.setVelocity(left_velocity)
+    front_right_motor.setVelocity(right_velocity)
+    rear_right_motor.setVelocity(right_velocity)
+
+
+def find_middle(values: list[int]) -> int:
+    size = len(values)
+    mean = sum(values) / max(size, 1)
+    strong = [(index, value) for index, value in enumerate(values) if value > mean]
+    if not strong:
+        return size // 2
+    strong.sort(key=lambda item: item[1], reverse=True)
+    sample = strong[: max(size // 10, 1)]
+    rough_center = sum(index for index, _ in sample) / len(sample)
+    filtered = [index for index, _ in sample if abs(index - rough_center) <= size / 8]
+    if not filtered:
+        return size // 2
+    return int(sum(filtered) / len(filtered))
+# webots-kit region HELPERS end
+
+
+robot = Robot()
+
+# webots-kit region DEVICE_INIT start
+front_left_motor = robot.getDevice("front_left_motor")
+rear_left_motor = robot.getDevice("rear_left_motor")
+front_right_motor = robot.getDevice("front_right_motor")
+rear_right_motor = robot.getDevice("rear_right_motor")
+for motor in (front_left_motor, rear_left_motor, front_right_motor, rear_right_motor):
+    motor.setPosition(float("inf"))
+    motor.setVelocity(0.0)
+
+left_encoder = robot.getDevice("left_encoder")
+right_encoder = robot.getDevice("right_encoder")
+left_encoder.enable(TIME_STEP)
+right_encoder.enable(TIME_STEP)
+
+front_camera = robot.getDevice("front_camera")
+front_camera.enable(TIME_STEP)
+camera_width = front_camera.getWidth()
+camera_height = front_camera.getHeight()
+
+front_range = robot.getDevice("front_range")
+front_range.enable(TIME_STEP)
+
+imu = robot.getDevice("imu")
+imu.enable(TIME_STEP)
+# webots-kit region DEVICE_INIT end
+
+agent = ControllerAgent.from_robot(robot, default_camera="front_camera")
+previous_heading = 0.0
+
+while robot.step(TIME_STEP) != -1:
+    image = front_camera.getImage()
+    blue = [255 - Camera.imageGetBlue(image, camera_width, x, 0) for x in range(camera_width)]
+    middle = find_middle(blue)
+    delta = middle - camera_width / 2.0
+    line_visible = any(value > 15 for value in blue)
+    camera_left = sum(blue[: camera_width // 3]) / max(camera_width // 3, 1)
+    camera_center = sum(blue[camera_width // 3 : 2 * camera_width // 3]) / max(camera_width // 3, 1)
+    camera_right = sum(blue[2 * camera_width // 3 :]) / max(camera_width - 2 * (camera_width // 3), 1)
+
+    heading = float(imu.getRollPitchYaw()[2])
+    yaw_rate = (heading - previous_heading) / max(TIME_STEP / 1000.0, 1e-6)
+    previous_heading = heading
+    front_range_value = float(front_range.getValue())
+    left_ticks = float(left_encoder.getValue())
+    right_ticks = float(right_encoder.getValue())
+
+    # webots-kit region CONTROL_POLICY start
+    left_speed = clamp(CRUISE - TURN_GAIN * (delta / max(camera_width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED)
+    right_speed = clamp(CRUISE + TURN_GAIN * (delta / max(camera_width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED)
+    # webots-kit region CONTROL_POLICY end
+
+    override = agent.begin_step()
+    if override is not None:
+        left_speed, right_speed = override
+
+    left_speed = clamp(left_speed, -MAX_SPEED, MAX_SPEED)
+    right_speed = clamp(right_speed, -MAX_SPEED, MAX_SPEED)
+    set_drive_velocity(left_speed, right_speed)
+
+    # webots-kit region TELEMETRY_REPORT start
+    sensors={
+        "camera_left_band": round(camera_left, 3),
+        "camera_center_band": round(camera_center, 3),
+        "camera_right_band": round(camera_right, 3),
+        "front_range": round(front_range_value, 6),
+        "heading": round(heading, 6),
+        "yaw_rate": round(yaw_rate, 6),
+        "left_encoder": round(left_ticks, 6),
+        "right_encoder": round(right_ticks, 6),
+    }
+    metrics={
+        "line_visible": 1.0 if line_visible else 0.0,
+        "center_error": round(delta / max(camera_width / 2.0, 1.0), 6),
+        "ir_balance_error": round((camera_left - camera_right) / 255.0, 6),
+        "mean_forward_speed": round((left_speed + right_speed) / 2.0, 6),
+    }
+    actuators={
+        "left_velocity": round(left_speed, 6),
+        "right_velocity": round(right_speed, 6),
+    }
+    camera_frames={"front_camera": {"image": image, "width": camera_width, "height": camera_height}}
+    # webots-kit region TELEMETRY_REPORT end
+
+    agent.report_step(
+        sensors=sensors,
+        metrics=metrics,
+        actuators=actuators,
+        camera_frames=camera_frames,
+    )
+'''
+
+
+def _python_monsterborg_obstacle_template() -> str:
+    return '''from __future__ import annotations
+
+from controller import Robot
+
+from webots_mcp_kit.agent import ControllerAgent
+
+
+MAX_SPEED = 8.0
+CRUISE = 5.2
+RANGE_LIMIT = 900.0
+HEADING_GAIN = 0.35
+
+
+# webots-kit region HELPERS start
+def clamp(value: float) -> float:
+    return max(-MAX_SPEED, min(MAX_SPEED, value))
+
+
+def set_drive_velocity(left_velocity: float, right_velocity: float) -> None:
+    front_left_motor.setVelocity(left_velocity)
+    rear_left_motor.setVelocity(left_velocity)
+    front_right_motor.setVelocity(right_velocity)
+    rear_right_motor.setVelocity(right_velocity)
+# webots-kit region HELPERS end
+
+
+robot = Robot()
+time_step = int(robot.getBasicTimeStep())
+
+# webots-kit region DEVICE_INIT start
+front_left_motor = robot.getDevice("front_left_motor")
+rear_left_motor = robot.getDevice("rear_left_motor")
+front_right_motor = robot.getDevice("front_right_motor")
+rear_right_motor = robot.getDevice("rear_right_motor")
+for motor in (front_left_motor, rear_left_motor, front_right_motor, rear_right_motor):
+    motor.setPosition(float("inf"))
+    motor.setVelocity(0.0)
+
+left_encoder = robot.getDevice("left_encoder")
+right_encoder = robot.getDevice("right_encoder")
+left_encoder.enable(time_step)
+right_encoder.enable(time_step)
+
+front_camera = robot.getDevice("front_camera")
+front_camera.enable(time_step)
+
+front_range = robot.getDevice("front_range")
+front_range.enable(time_step)
+
+imu = robot.getDevice("imu")
+imu.enable(time_step)
+# webots-kit region DEVICE_INIT end
+
+agent = ControllerAgent.from_robot(robot, default_camera="front_camera")
+previous_heading = 0.0
+
+while robot.step(time_step) != -1:
+    front_range_value = float(front_range.getValue())
+    normalized_range = min(max(front_range_value / RANGE_LIMIT, 0.0), 1.0)
+    heading = float(imu.getRollPitchYaw()[2])
+    yaw_rate = (heading - previous_heading) / max(time_step / 1000.0, 1e-6)
+    previous_heading = heading
+    left_ticks = float(left_encoder.getValue())
+    right_ticks = float(right_encoder.getValue())
+
+    # webots-kit region CONTROL_POLICY start
+    turn_bias = HEADING_GAIN * yaw_rate
+    pressure = normalized_range
+    left_speed = clamp(CRUISE - pressure * 6.0 - turn_bias)
+    right_speed = clamp(CRUISE - pressure * 2.5 + turn_bias)
+    # webots-kit region CONTROL_POLICY end
+
+    override = agent.begin_step()
+    if override is not None:
+        left_speed, right_speed = override
+
+    set_drive_velocity(left_speed, right_speed)
+    image = front_camera.getImage()
+
+    # webots-kit region TELEMETRY_REPORT start
+    sensors={
+        "front_range": round(front_range_value, 6),
+        "heading": round(heading, 6),
+        "yaw_rate": round(yaw_rate, 6),
+        "left_encoder": round(left_ticks, 6),
+        "right_encoder": round(right_ticks, 6),
+    }
+    metrics={
+        "obstacle_pressure": round(pressure, 6),
+        "mean_forward_speed": round((left_speed + right_speed) / 2.0, 6),
+        "line_visible": 0.0,
+        "center_error": 0.0,
+        "ir_balance_error": round((left_ticks - right_ticks) * 0.01, 6),
+    }
+    actuators={
+        "left_velocity": round(left_speed, 6),
+        "right_velocity": round(right_speed, 6),
+    }
+    camera_frames={"front_camera": {"image": image, "width": front_camera.getWidth(), "height": front_camera.getHeight()}}
+    # webots-kit region TELEMETRY_REPORT end
+
+    agent.report_step(
+        sensors=sensors,
+        metrics=metrics,
+        actuators=actuators,
+        camera_frames=camera_frames,
+    )
+'''
+
+
+def _python_monsterborg_waypoint_template() -> str:
+    return '''from __future__ import annotations
+
+from controller import Robot
+
+from webots_mcp_kit.agent import ControllerAgent
+
+
+MAX_SPEED = 8.0
+CRUISE = 5.8
+RANGE_LIMIT = 900.0
+HEADING_GAIN = 0.25
+
+
+# webots-kit region HELPERS start
+def clamp(value: float) -> float:
+    return max(-MAX_SPEED, min(MAX_SPEED, value))
+
+
+def set_drive_velocity(left_velocity: float, right_velocity: float) -> None:
+    front_left_motor.setVelocity(left_velocity)
+    rear_left_motor.setVelocity(left_velocity)
+    front_right_motor.setVelocity(right_velocity)
+    rear_right_motor.setVelocity(right_velocity)
+# webots-kit region HELPERS end
+
+
+robot = Robot()
+time_step = int(robot.getBasicTimeStep())
+
+# webots-kit region DEVICE_INIT start
+front_left_motor = robot.getDevice("front_left_motor")
+rear_left_motor = robot.getDevice("rear_left_motor")
+front_right_motor = robot.getDevice("front_right_motor")
+rear_right_motor = robot.getDevice("rear_right_motor")
+for motor in (front_left_motor, rear_left_motor, front_right_motor, rear_right_motor):
+    motor.setPosition(float("inf"))
+    motor.setVelocity(0.0)
+
+left_encoder = robot.getDevice("left_encoder")
+right_encoder = robot.getDevice("right_encoder")
+left_encoder.enable(time_step)
+right_encoder.enable(time_step)
+
+front_camera = robot.getDevice("front_camera")
+front_camera.enable(time_step)
+
+front_range = robot.getDevice("front_range")
+front_range.enable(time_step)
+
+imu = robot.getDevice("imu")
+imu.enable(time_step)
+# webots-kit region DEVICE_INIT end
+
+agent = ControllerAgent.from_robot(robot, default_camera="front_camera")
+previous_heading = 0.0
+
+while robot.step(time_step) != -1:
+    front_range_value = float(front_range.getValue())
+    normalized_range = min(max(front_range_value / RANGE_LIMIT, 0.0), 1.0)
+    heading = float(imu.getRollPitchYaw()[2])
+    yaw_rate = (heading - previous_heading) / max(time_step / 1000.0, 1e-6)
+    previous_heading = heading
+    left_ticks = float(left_encoder.getValue())
+    right_ticks = float(right_encoder.getValue())
+
+    # webots-kit region CONTROL_POLICY start
+    turn_bias = HEADING_GAIN * heading
+    left_speed = clamp(CRUISE - normalized_range * 2.5 - turn_bias)
+    right_speed = clamp(CRUISE - normalized_range * 2.5 + turn_bias)
+    # webots-kit region CONTROL_POLICY end
+
+    override = agent.begin_step()
+    if override is not None:
+        left_speed, right_speed = override
+
+    set_drive_velocity(left_speed, right_speed)
+    image = front_camera.getImage()
+
+    # webots-kit region TELEMETRY_REPORT start
+    sensors={
+        "front_range": round(front_range_value, 6),
+        "heading": round(heading, 6),
+        "yaw_rate": round(yaw_rate, 6),
+        "left_encoder": round(left_ticks, 6),
+        "right_encoder": round(right_ticks, 6),
+    }
+    metrics={
+        "obstacle_pressure": round(normalized_range, 6),
+        "mean_forward_speed": round((left_speed + right_speed) / 2.0, 6),
+        "line_visible": 0.0,
+        "center_error": 0.0,
+        "ir_balance_error": round((left_ticks - right_ticks) * 0.01, 6),
+    }
+    actuators={
+        "left_velocity": round(left_speed, 6),
+        "right_velocity": round(right_speed, 6),
+    }
+    camera_frames={"front_camera": {"image": image, "width": front_camera.getWidth(), "height": front_camera.getHeight()}}
     # webots-kit region TELEMETRY_REPORT end
 
     agent.report_step(
@@ -1740,6 +2156,467 @@ int main() {
     std::vector<CameraFrame> camera_frames;
     if (image != nullptr)
       camera_frames.push_back(CameraFrame{"camera", image, camera->getWidth(), camera->getHeight()});
+    // webots-kit region TELEMETRY_REPORT end
+
+    agent.report_step(sensors, metrics, actuators, camera_frames);
+  }
+  return 0;
+}
+'''
+
+
+def _cpp_monsterborg_line_follower_template() -> str:
+    return r'''#include "controller_agent.hpp"
+
+#include <webots/Camera.hpp>
+#include <webots/DistanceSensor.hpp>
+#include <webots/InertialUnit.hpp>
+#include <webots/Motor.hpp>
+#include <webots/PositionSensor.hpp>
+#include <webots/Robot.hpp>
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <map>
+#include <string>
+#include <vector>
+
+using webots::Camera;
+using webots::Robot;
+using webots_mcp_kit::CameraFrame;
+using webots_mcp_kit::ControllerAgent;
+
+const int TIME_STEP = 32;
+const double MAX_SPEED = 8.0;
+const double CRUISE = 5.4;
+const double TURN_GAIN = 5.2;
+
+// webots-kit region HELPERS start
+static double clamp_value(double value, double minimum, double maximum) {
+  return std::max(minimum, std::min(maximum, value));
+}
+
+static void set_drive_velocity(webots::Motor* front_left_motor,
+                               webots::Motor* rear_left_motor,
+                               webots::Motor* front_right_motor,
+                               webots::Motor* rear_right_motor,
+                               double left_velocity,
+                               double right_velocity) {
+  front_left_motor->setVelocity(left_velocity);
+  rear_left_motor->setVelocity(left_velocity);
+  front_right_motor->setVelocity(right_velocity);
+  rear_right_motor->setVelocity(right_velocity);
+}
+
+static int find_middle(const std::vector<int>& values) {
+  const int size = static_cast<int>(values.size());
+  if (size <= 0)
+    return 0;
+  double mean = 0.0;
+  for (int value : values)
+    mean += value;
+  mean /= size;
+  std::vector<std::pair<int, int>> strong;
+  for (int index = 0; index < size; ++index) {
+    if (values[index] > mean)
+      strong.emplace_back(index, values[index]);
+  }
+  if (strong.empty())
+    return size / 2;
+  std::sort(strong.begin(), strong.end(), [](const auto& left, const auto& right) { return left.second > right.second; });
+  const int sample_size = std::max(size / 10, 1);
+  strong.resize(std::min(sample_size, static_cast<int>(strong.size())));
+  double rough_center = 0.0;
+  for (const auto& entry : strong)
+    rough_center += entry.first;
+  rough_center /= strong.size();
+  std::vector<int> filtered;
+  for (const auto& entry : strong) {
+    if (std::fabs(entry.first - rough_center) <= size / 8.0)
+      filtered.push_back(entry.first);
+  }
+  if (filtered.empty())
+    return size / 2;
+  double middle = 0.0;
+  for (int index : filtered)
+    middle += index;
+  middle /= filtered.size();
+  return static_cast<int>(middle);
+}
+// webots-kit region HELPERS end
+
+int main() {
+  Robot robot;
+
+  // webots-kit region DEVICE_INIT start
+  auto* front_left_motor = robot.getMotor("front_left_motor");
+  auto* rear_left_motor = robot.getMotor("rear_left_motor");
+  auto* front_right_motor = robot.getMotor("front_right_motor");
+  auto* rear_right_motor = robot.getMotor("rear_right_motor");
+  for (auto* motor : {front_left_motor, rear_left_motor, front_right_motor, rear_right_motor}) {
+    motor->setPosition(std::numeric_limits<double>::infinity());
+    motor->setVelocity(0.0);
+  }
+
+  auto* left_encoder = robot.getPositionSensor("left_encoder");
+  auto* right_encoder = robot.getPositionSensor("right_encoder");
+  left_encoder->enable(TIME_STEP);
+  right_encoder->enable(TIME_STEP);
+
+  auto* front_camera = robot.getCamera("front_camera");
+  front_camera->enable(TIME_STEP);
+  const int width = front_camera->getWidth();
+  const int height = front_camera->getHeight();
+
+  auto* front_range = robot.getDistanceSensor("front_range");
+  front_range->enable(TIME_STEP);
+
+  auto* imu = robot.getInertialUnit("imu");
+  imu->enable(TIME_STEP);
+  // webots-kit region DEVICE_INIT end
+
+  auto agent = ControllerAgent::from_robot(&robot, "front_camera");
+  double previous_heading = 0.0;
+
+  while (robot.step(TIME_STEP) != -1) {
+    const unsigned char* image = front_camera->getImage();
+    std::vector<int> blue(width, 0);
+    for (int x = 0; x < width; ++x)
+      blue[x] = 255 - Camera::imageGetBlue(image, width, x, 0);
+    const int middle = find_middle(blue);
+    const double delta = middle - width / 2.0;
+    bool line_visible = false;
+    for (int value : blue) {
+      if (value > 15) {
+        line_visible = true;
+        break;
+      }
+    }
+    double camera_left = 0.0;
+    double camera_center = 0.0;
+    double camera_right = 0.0;
+    const int third = std::max(width / 3, 1);
+    for (int x = 0; x < width; ++x) {
+      if (x < third)
+        camera_left += blue[x];
+      else if (x < 2 * third)
+        camera_center += blue[x];
+      else
+        camera_right += blue[x];
+    }
+    camera_left /= third;
+    camera_center /= third;
+    camera_right /= std::max(width - 2 * third, 1);
+
+    const double* rpy = imu->getRollPitchYaw();
+    const double heading = rpy[2];
+    const double yaw_rate = (heading - previous_heading) / std::max(TIME_STEP / 1000.0, 1e-6);
+    previous_heading = heading;
+    const double front_range_value = front_range->getValue();
+    const double left_ticks = left_encoder->getValue();
+    const double right_ticks = right_encoder->getValue();
+
+    // webots-kit region CONTROL_POLICY start
+    double left_speed = clamp_value(CRUISE - TURN_GAIN * (delta / std::max(width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED);
+    double right_speed = clamp_value(CRUISE + TURN_GAIN * (delta / std::max(width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED);
+    // webots-kit region CONTROL_POLICY end
+
+    auto override = agent.begin_step();
+    if (override.has_value()) {
+      left_speed = override->first;
+      right_speed = override->second;
+    }
+
+    set_drive_velocity(front_left_motor, rear_left_motor, front_right_motor, rear_right_motor, left_speed, right_speed);
+
+    // webots-kit region TELEMETRY_REPORT start
+    std::map<std::string, double> sensors = {
+      {"camera_left_band", camera_left},
+      {"camera_center_band", camera_center},
+      {"camera_right_band", camera_right},
+      {"front_range", front_range_value},
+      {"heading", heading},
+      {"yaw_rate", yaw_rate},
+      {"left_encoder", left_ticks},
+      {"right_encoder", right_ticks}
+    };
+    std::map<std::string, double> metrics = {
+      {"line_visible", line_visible ? 1.0 : 0.0},
+      {"center_error", delta / std::max(width / 2.0, 1.0)},
+      {"ir_balance_error", (camera_left - camera_right) / 255.0},
+      {"mean_forward_speed", (left_speed + right_speed) / 2.0}
+    };
+    std::map<std::string, double> actuators = {
+      {"left_velocity", left_speed},
+      {"right_velocity", right_speed}
+    };
+    std::vector<CameraFrame> camera_frames = {
+      CameraFrame{"front_camera", image, width, height}
+    };
+    // webots-kit region TELEMETRY_REPORT end
+
+    agent.report_step(sensors, metrics, actuators, camera_frames);
+  }
+  return 0;
+}
+'''
+
+
+def _cpp_monsterborg_obstacle_template() -> str:
+    return r'''#include "controller_agent.hpp"
+
+#include <webots/Camera.hpp>
+#include <webots/DistanceSensor.hpp>
+#include <webots/InertialUnit.hpp>
+#include <webots/Motor.hpp>
+#include <webots/PositionSensor.hpp>
+#include <webots/Robot.hpp>
+
+#include <algorithm>
+#include <limits>
+#include <map>
+#include <string>
+#include <vector>
+
+using webots::Robot;
+using webots_mcp_kit::CameraFrame;
+using webots_mcp_kit::ControllerAgent;
+
+const double MAX_SPEED = 8.0;
+const double CRUISE = 5.2;
+const double RANGE_LIMIT = 900.0;
+const double HEADING_GAIN = 0.35;
+
+// webots-kit region HELPERS start
+static double clamp_value(double value) {
+  return std::max(-MAX_SPEED, std::min(MAX_SPEED, value));
+}
+
+static void set_drive_velocity(webots::Motor* front_left_motor,
+                               webots::Motor* rear_left_motor,
+                               webots::Motor* front_right_motor,
+                               webots::Motor* rear_right_motor,
+                               double left_velocity,
+                               double right_velocity) {
+  front_left_motor->setVelocity(left_velocity);
+  rear_left_motor->setVelocity(left_velocity);
+  front_right_motor->setVelocity(right_velocity);
+  rear_right_motor->setVelocity(right_velocity);
+}
+// webots-kit region HELPERS end
+
+int main() {
+  Robot robot;
+  const int time_step = static_cast<int>(robot.getBasicTimeStep());
+
+  // webots-kit region DEVICE_INIT start
+  auto* front_left_motor = robot.getMotor("front_left_motor");
+  auto* rear_left_motor = robot.getMotor("rear_left_motor");
+  auto* front_right_motor = robot.getMotor("front_right_motor");
+  auto* rear_right_motor = robot.getMotor("rear_right_motor");
+  for (auto* motor : {front_left_motor, rear_left_motor, front_right_motor, rear_right_motor}) {
+    motor->setPosition(std::numeric_limits<double>::infinity());
+    motor->setVelocity(0.0);
+  }
+
+  auto* left_encoder = robot.getPositionSensor("left_encoder");
+  auto* right_encoder = robot.getPositionSensor("right_encoder");
+  left_encoder->enable(time_step);
+  right_encoder->enable(time_step);
+
+  auto* front_camera = robot.getCamera("front_camera");
+  front_camera->enable(time_step);
+
+  auto* front_range = robot.getDistanceSensor("front_range");
+  front_range->enable(time_step);
+
+  auto* imu = robot.getInertialUnit("imu");
+  imu->enable(time_step);
+  // webots-kit region DEVICE_INIT end
+
+  auto agent = ControllerAgent::from_robot(&robot, "front_camera");
+  double previous_heading = 0.0;
+
+  while (robot.step(time_step) != -1) {
+    const double front_range_value = front_range->getValue();
+    const double normalized_range = std::min(std::max(front_range_value / RANGE_LIMIT, 0.0), 1.0);
+    const double* rpy = imu->getRollPitchYaw();
+    const double heading = rpy[2];
+    const double yaw_rate = (heading - previous_heading) / std::max(time_step / 1000.0, 1e-6);
+    previous_heading = heading;
+    const double left_ticks = left_encoder->getValue();
+    const double right_ticks = right_encoder->getValue();
+
+    // webots-kit region CONTROL_POLICY start
+    const double turn_bias = HEADING_GAIN * yaw_rate;
+    const double pressure = normalized_range;
+    double left_speed = clamp_value(CRUISE - pressure * 6.0 - turn_bias);
+    double right_speed = clamp_value(CRUISE - pressure * 2.5 + turn_bias);
+    // webots-kit region CONTROL_POLICY end
+
+    auto override = agent.begin_step();
+    if (override.has_value()) {
+      left_speed = override->first;
+      right_speed = override->second;
+    }
+
+    set_drive_velocity(front_left_motor, rear_left_motor, front_right_motor, rear_right_motor, left_speed, right_speed);
+    const unsigned char* image = front_camera->getImage();
+
+    // webots-kit region TELEMETRY_REPORT start
+    std::map<std::string, double> sensors = {
+      {"front_range", front_range_value},
+      {"heading", heading},
+      {"yaw_rate", yaw_rate},
+      {"left_encoder", left_ticks},
+      {"right_encoder", right_ticks}
+    };
+    std::map<std::string, double> metrics = {
+      {"obstacle_pressure", pressure},
+      {"mean_forward_speed", (left_speed + right_speed) / 2.0},
+      {"line_visible", 0.0},
+      {"center_error", 0.0},
+      {"ir_balance_error", (left_ticks - right_ticks) * 0.01}
+    };
+    std::map<std::string, double> actuators = {
+      {"left_velocity", left_speed},
+      {"right_velocity", right_speed}
+    };
+    std::vector<CameraFrame> camera_frames = {
+      CameraFrame{"front_camera", image, front_camera->getWidth(), front_camera->getHeight()}
+    };
+    // webots-kit region TELEMETRY_REPORT end
+
+    agent.report_step(sensors, metrics, actuators, camera_frames);
+  }
+  return 0;
+}
+'''
+
+
+def _cpp_monsterborg_waypoint_template() -> str:
+    return r'''#include "controller_agent.hpp"
+
+#include <webots/Camera.hpp>
+#include <webots/DistanceSensor.hpp>
+#include <webots/InertialUnit.hpp>
+#include <webots/Motor.hpp>
+#include <webots/PositionSensor.hpp>
+#include <webots/Robot.hpp>
+
+#include <algorithm>
+#include <limits>
+#include <map>
+#include <string>
+#include <vector>
+
+using webots::Robot;
+using webots_mcp_kit::CameraFrame;
+using webots_mcp_kit::ControllerAgent;
+
+const double MAX_SPEED = 8.0;
+const double CRUISE = 5.8;
+const double RANGE_LIMIT = 900.0;
+const double HEADING_GAIN = 0.25;
+
+// webots-kit region HELPERS start
+static double clamp_value(double value) {
+  return std::max(-MAX_SPEED, std::min(MAX_SPEED, value));
+}
+
+static void set_drive_velocity(webots::Motor* front_left_motor,
+                               webots::Motor* rear_left_motor,
+                               webots::Motor* front_right_motor,
+                               webots::Motor* rear_right_motor,
+                               double left_velocity,
+                               double right_velocity) {
+  front_left_motor->setVelocity(left_velocity);
+  rear_left_motor->setVelocity(left_velocity);
+  front_right_motor->setVelocity(right_velocity);
+  rear_right_motor->setVelocity(right_velocity);
+}
+// webots-kit region HELPERS end
+
+int main() {
+  Robot robot;
+  const int time_step = static_cast<int>(robot.getBasicTimeStep());
+
+  // webots-kit region DEVICE_INIT start
+  auto* front_left_motor = robot.getMotor("front_left_motor");
+  auto* rear_left_motor = robot.getMotor("rear_left_motor");
+  auto* front_right_motor = robot.getMotor("front_right_motor");
+  auto* rear_right_motor = robot.getMotor("rear_right_motor");
+  for (auto* motor : {front_left_motor, rear_left_motor, front_right_motor, rear_right_motor}) {
+    motor->setPosition(std::numeric_limits<double>::infinity());
+    motor->setVelocity(0.0);
+  }
+
+  auto* left_encoder = robot.getPositionSensor("left_encoder");
+  auto* right_encoder = robot.getPositionSensor("right_encoder");
+  left_encoder->enable(time_step);
+  right_encoder->enable(time_step);
+
+  auto* front_camera = robot.getCamera("front_camera");
+  front_camera->enable(time_step);
+
+  auto* front_range = robot.getDistanceSensor("front_range");
+  front_range->enable(time_step);
+
+  auto* imu = robot.getInertialUnit("imu");
+  imu->enable(time_step);
+  // webots-kit region DEVICE_INIT end
+
+  auto agent = ControllerAgent::from_robot(&robot, "front_camera");
+  double previous_heading = 0.0;
+
+  while (robot.step(time_step) != -1) {
+    const double front_range_value = front_range->getValue();
+    const double normalized_range = std::min(std::max(front_range_value / RANGE_LIMIT, 0.0), 1.0);
+    const double* rpy = imu->getRollPitchYaw();
+    const double heading = rpy[2];
+    const double yaw_rate = (heading - previous_heading) / std::max(time_step / 1000.0, 1e-6);
+    previous_heading = heading;
+    const double left_ticks = left_encoder->getValue();
+    const double right_ticks = right_encoder->getValue();
+
+    // webots-kit region CONTROL_POLICY start
+    const double turn_bias = HEADING_GAIN * heading;
+    double left_speed = clamp_value(CRUISE - normalized_range * 2.5 - turn_bias);
+    double right_speed = clamp_value(CRUISE - normalized_range * 2.5 + turn_bias);
+    // webots-kit region CONTROL_POLICY end
+
+    auto override = agent.begin_step();
+    if (override.has_value()) {
+      left_speed = override->first;
+      right_speed = override->second;
+    }
+
+    set_drive_velocity(front_left_motor, rear_left_motor, front_right_motor, rear_right_motor, left_speed, right_speed);
+    const unsigned char* image = front_camera->getImage();
+
+    // webots-kit region TELEMETRY_REPORT start
+    std::map<std::string, double> sensors = {
+      {"front_range", front_range_value},
+      {"heading", heading},
+      {"yaw_rate", yaw_rate},
+      {"left_encoder", left_ticks},
+      {"right_encoder", right_ticks}
+    };
+    std::map<std::string, double> metrics = {
+      {"obstacle_pressure", normalized_range},
+      {"mean_forward_speed", (left_speed + right_speed) / 2.0},
+      {"line_visible", 0.0},
+      {"center_error", 0.0},
+      {"ir_balance_error", (left_ticks - right_ticks) * 0.01}
+    };
+    std::map<std::string, double> actuators = {
+      {"left_velocity", left_speed},
+      {"right_velocity", right_speed}
+    };
+    std::vector<CameraFrame> camera_frames = {
+      CameraFrame{"front_camera", image, front_camera->getWidth(), front_camera->getHeight()}
+    };
     // webots-kit region TELEMETRY_REPORT end
 
     agent.report_step(sensors, metrics, actuators, camera_frames);

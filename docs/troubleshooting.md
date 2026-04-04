@@ -174,6 +174,38 @@ webots-kit controller validate .\controllers\my_agent.py --scenario line-followe
 webots-kit benchmark run line-follower --controller .\controllers\my_agent.py --output .\report.json --duration-s 3
 ```
 
+## MonsterBorg Physical Adapter Verification Failure
+
+Symptom:
+
+- `python .\scripts\monsterborg_physical_verify.py --json` reports `status: blocked`
+- the physical capture bundle cannot be created or replayed
+
+Likely cause:
+
+- the Raspberry Pi is missing the ThunderBorg or I2C Python dependencies
+- camera support is expected but `picamera2` is not installed
+- you are running the physical adapter commands on a non-Pi machine
+
+Exact commands to diagnose:
+
+```powershell
+python .\scripts\monsterborg_physical_verify.py --json
+python -c "import importlib.util; print(bool(importlib.util.find_spec('ThunderBorg3')))"
+python -c "import importlib.util; print(bool(importlib.util.find_spec('smbus2')))"
+python -c "import importlib.util; print(bool(importlib.util.find_spec('picamera2')))"
+```
+
+Exact next action:
+
+- install the missing Raspberry Pi dependencies, collect a capture JSON, then rerun:
+
+```powershell
+python .\scripts\monsterborg_physical_verify.py --json
+python .\scripts\monsterborg_capture_run.py --input .\capture.json --output .\artifacts\monsterborg-physical --scenario obstacle-avoidance
+webots-kit session replay .\artifacts\monsterborg-physical
+```
+
 Next: go back to [First hour guide](./first-hour-guide.md) once the blocking issue is cleared.
 
 For a repeatable team verification lane after install or upgrade, use [Upgrade guide](./upgrade-guide.md).

@@ -51,7 +51,7 @@ def inspect_world(path: Path) -> dict[str, Any]:
     world_path = _resolve_world_path(path)
     document = _load_document(world_path)
     lines = document.text.splitlines()
-    robots = [_node_summary(node) for node in document.nodes if node.node_type in {"E-puck", "Robot"} or node.controller is not None]
+    robots = [_node_summary(node) for node in document.nodes if _is_robot_node(node)]
     supported_targets = [_supported_target_summary(node) for node in document.nodes if _is_supported_edit_target(node)]
     inferred_task_cues = {
         "has_line_segments": any((node.name or "").startswith("line-segment-") for node in document.nodes),
@@ -60,7 +60,7 @@ def inspect_world(path: Path) -> dict[str, Any]:
         "has_walls": any(_classify_node_family(node) == "wall" for node in document.nodes),
     }
     spatial_summary = _spatial_summary(document.nodes)
-    target_robot = next((node for node in robots if node["node_type"] == "E-puck"), None)
+    target_robot = next((node for node in robots if (node.get("name") or "").lower() != "kit-supervisor"), None)
     summary = {
         "node_count": len(document.nodes),
         "target_robot_found": target_robot is not None,
@@ -103,12 +103,12 @@ def validate_world(path: Path) -> dict[str, Any]:
     for name in document.def_use_map.get("broken_uses", []):
         issues.append({"code": "broken-use", "message": f"USE '{name}' does not resolve to a defined DEF.", "field": "use_refs"})
 
-    robots = [node for node in document.nodes if node.node_type in {"E-puck", "Robot"} or node.controller is not None]
+    robots = [node for node in document.nodes if _is_robot_node(node)]
     if not robots:
         issues.append({"code": "missing-robot-node", "message": "World must contain a robot or controller-bearing node.", "field": "robots"})
-    target_robot = next((node for node in robots if node.node_type == "E-puck"), None)
+    target_robot = next((node for node in robots if (node.name or "").lower() != "kit-supervisor"), None)
     if target_robot is None:
-        issues.append({"code": "missing-target-robot", "message": "World does not expose an E-puck target robot.", "field": "robots"})
+        issues.append({"code": "missing-target-robot", "message": "World does not expose a non-supervisor target robot.", "field": "robots"})
     elif not target_robot.controller:
         issues.append({"code": "missing-controller", "message": "Target robot does not define a controller field.", "field": target_robot.selector_path()})
 
@@ -389,7 +389,7 @@ def _is_supported_edit_target(node: WbtNode) -> bool:
 def _classify_node_family(node: WbtNode) -> str:
     lowered_name = (node.name or "").lower()
     lowered_type = (node.node_type or "").lower()
-    if node.node_type == "E-puck":
+    if _is_robot_node(node) and lowered_name != "kit-supervisor":
         return "robot"
     if lowered_name == "kit-supervisor":
         return "supervisor"
@@ -414,9 +414,20 @@ def _classify_node_family(node: WbtNode) -> str:
     return "opaque"
 
 
+def _is_robot_node(node: WbtNode) -> bool:
+    lowered_name = (node.name or "").lower()
+    if lowered_name == "kit-supervisor":
+        return True
+    if node.controller is not None:
+        return True
+    if node.node_type in {"E-puck", "Robot", "MonsterBorg4WD"}:
+        return True
+    return False
+
+
 def _apply_world_operation(document: WbtDocument, op_type: str, operation: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     if op_type == "set_spawn":
-        selector = operation.get("selector") or {"by_def": "EPUCK"}
+        selector = operation.get("selector") or _default_robot_selector(document)
         target = _select_node(document.nodes, selector)
         updated = _replace_transform(target.raw, translation=operation.get("translation"), rotation_z=operation.get("rotation_z"))
         return _replace_node_text(document.text, target, updated), {"type": op_type, "target": target.selector_path()}
@@ -426,7 +437,7 @@ def _apply_world_operation(document: WbtDocument, op_type: str, operation: dict[
         updated = _replace_transform(target.raw, translation=operation.get("translation"), rotation_z=operation.get("rotation_z"))
         return _replace_node_text(document.text, target, updated), {"type": op_type, "target": target.selector_path()}
     if op_type == "set_robot_controller":
-        selector = operation.get("selector") or {"by_def": "EPUCK"}
+        selector = operation.get("selector") or _default_robot_selector(document)
         target = _select_node(document.nodes, selector)
         updated = _replace_string_field(target.raw, "controller", str(operation.get("controller") or "<extern>"))
         return _replace_node_text(document.text, target, updated), {"type": op_type, "target": target.selector_path()}
@@ -610,6 +621,17 @@ def _select_node(nodes: list[WbtNode], selector: Any) -> WbtNode:
     if len(matches) > 1:
         raise KitError("world-selector-ambiguous", "Selector matched more than one world node.", details={"selector": selector})
     return matches[0]
+
+
+def _default_robot_selector(document: WbtDocument) -> dict[str, Any]:
+    target_robot = next((node for node in document.nodes if _is_robot_node(node) and (node.name or "").lower() != "kit-supervisor"), None)
+    if target_robot is None:
+        raise KitError("world-selector-not-found", "World does not expose a non-supervisor target robot.")
+    if target_robot.def_name:
+        return {"by_def": target_robot.def_name}
+    if target_robot.name:
+        return {"by_name": target_robot.name}
+    return {"by_path": target_robot.selector_path()}
 
 
 def _replace_node_text(text: str, node: WbtNode, replacement: str) -> str:

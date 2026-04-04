@@ -54,6 +54,9 @@ def _normalize_session_start_payload(payload: Any) -> dict[str, Any]:
     normalized["scenario"] = payload.get("scenario")
     normalized["target_robot_name"] = payload.get("target_robot_name")
     normalized["target_robot_def"] = payload.get("target_robot_def")
+    normalized["robot_family"] = payload.get("robot_family")
+    normalized["robot_profile"] = payload.get("robot_profile")
+    normalized["runtime_target"] = payload.get("runtime_target")
     normalized["host"] = payload.get("host")
     normalized["port"] = payload.get("port")
     normalized["environment"] = payload.get("environment") if isinstance(payload.get("environment"), dict) else {}
@@ -87,6 +90,9 @@ def _normalize_benchmark_payload(payload: Any) -> dict[str, Any]:
     normalized["world"] = payload.get("world")
     normalized["controller"] = payload.get("controller")
     normalized["session_mode"] = payload.get("session_mode")
+    normalized["robot_family"] = payload.get("robot_family")
+    normalized["robot_profile"] = payload.get("robot_profile")
+    normalized["runtime_target"] = payload.get("runtime_target")
     normalized["sim_time_s"] = payload.get("sim_time_s")
     normalized["steps"] = payload.get("steps")
     normalized["line_loss_events"] = payload.get("line_loss_events")
@@ -97,19 +103,23 @@ def _normalize_benchmark_payload(payload: Any) -> dict[str, Any]:
     normalized["artifacts"] = payload.get("artifacts") if isinstance(payload.get("artifacts"), dict) else {}
     normalized["notes"] = payload.get("notes") if isinstance(payload.get("notes"), list) else []
     normalized["extra_metrics"] = payload.get("extra_metrics") if isinstance(payload.get("extra_metrics"), dict) else {}
+    normalized["physical_adapter_summary"] = payload.get("physical_adapter_summary") if isinstance(payload.get("physical_adapter_summary"), dict) else {}
     return normalized
 
 
 def _normalize_validation_payload(payload: Any) -> dict[str, Any]:
     payload = payload if isinstance(payload, dict) else {}
     normalized = dict(payload)
+    details = payload.get("details") if isinstance(payload.get("details"), dict) else {}
     normalized["path"] = payload.get("path")
     normalized["valid"] = bool(payload.get("valid", False))
     normalized["status"] = payload.get("status")
+    normalized["robot_family"] = payload.get("robot_family") or details.get("robot_family")
+    normalized["robot_profile"] = payload.get("robot_profile") or details.get("robot_profile")
     normalized["integration_mode"] = payload.get("integration_mode")
     normalized["errors"] = payload.get("errors") if isinstance(payload.get("errors"), list) else []
     normalized["warnings"] = payload.get("warnings") if isinstance(payload.get("warnings"), list) else []
-    normalized["details"] = payload.get("details") if isinstance(payload.get("details"), dict) else {}
+    normalized["details"] = details
     normalized["summary"] = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
     normalized["support_tier"] = payload.get("support_tier")
     normalized["next_step"] = payload.get("next_step")
@@ -189,6 +199,8 @@ def _normalize_controller_inspect_payload(payload: Any) -> dict[str, Any]:
     normalized["path"] = payload.get("path")
     normalized["language"] = payload.get("language")
     normalized["scenario"] = payload.get("scenario")
+    normalized["robot_family"] = payload.get("robot_family")
+    normalized["robot_profile"] = payload.get("robot_profile")
     normalized["integration_mode"] = payload.get("integration_mode")
     normalized["valid_source"] = bool(payload.get("valid_source", False))
     normalized["editable_regions"] = payload.get("editable_regions") if isinstance(payload.get("editable_regions"), list) else []
@@ -219,6 +231,8 @@ def _normalize_controller_scaffold_payload(payload: Any) -> dict[str, Any]:
     normalized["path"] = payload.get("path")
     normalized["scenario"] = payload.get("scenario")
     normalized["language"] = payload.get("language")
+    normalized["robot_family"] = payload.get("robot_family")
+    normalized["robot_profile"] = payload.get("robot_profile")
     normalized["default_camera"] = payload.get("default_camera")
     normalized["copied_files"] = payload.get("copied_files") if isinstance(payload.get("copied_files"), list) else []
     normalized["editable_regions"] = payload.get("editable_regions") if isinstance(payload.get("editable_regions"), list) else []
@@ -237,6 +251,8 @@ def _normalize_controller_edit_payload(payload: Any) -> dict[str, Any]:
     normalized = dict(payload)
     normalized["path"] = payload.get("path")
     normalized["language"] = payload.get("language")
+    normalized["robot_family"] = payload.get("robot_family")
+    normalized["robot_profile"] = payload.get("robot_profile")
     normalized["applied_operations"] = payload.get("applied_operations") if isinstance(payload.get("applied_operations"), list) else []
     normalized["editable_regions"] = payload.get("editable_regions") if isinstance(payload.get("editable_regions"), list) else []
     normalized["status"] = payload.get("status")
@@ -260,6 +276,7 @@ def webots_session_start(
     scenario: str = "line-follower",
     world: str | None = None,
     controller: str | None = "example",
+    robot_profile: str | None = None,
     robot_name: str | None = None,
     robot_def: str | None = None,
     mode: str = "fast",
@@ -272,6 +289,7 @@ def webots_session_start(
             mode=mode,
             render=render,
             scenario=scenario,
+            robot_profile=robot_profile,
             robot_name=robot_name,
             robot_def=robot_def,
         )
@@ -367,12 +385,13 @@ def webots_reset(session: str | None = None) -> Any:
 def webots_run_benchmark(
     scenario: str = "line-follower",
     controller: str | None = "example",
+    robot_profile: str | None = None,
     duration_s: float = 20.0,
     output: str | None = None,
 ) -> dict[str, Any]:
     try:
         output_path = Path(output or f"{scenario}-report.json")
-        report = run_benchmark(scenario=scenario, controller=controller, output=output_path, duration_s=duration_s)
+        report = run_benchmark(scenario=scenario, controller=controller, robot_profile=robot_profile, output=output_path, duration_s=duration_s)
         return _normalize_benchmark_payload(report.to_dict())
     except Exception as exc:
         return _tool_error(exc)
@@ -403,10 +422,10 @@ def webots_world_edit(path: str, plan: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def webots_controller_inspect(path: str, scenario: str | None = None, spec: str | None = None) -> dict[str, Any]:
+def webots_controller_inspect(path: str, scenario: str | None = None, spec: str | None = None, robot_profile: str | None = None) -> dict[str, Any]:
     try:
         return _normalize_controller_inspect_payload(
-            inspect_controller(Path(path), scenario=scenario, spec_path=Path(spec) if spec else None).to_dict()
+            inspect_controller(Path(path), scenario=scenario, spec_path=Path(spec) if spec else None, robot_profile=robot_profile).to_dict()
         )
     except Exception as exc:
         return _tool_error(exc)
@@ -419,6 +438,7 @@ def webots_controller_scaffold(
     language: str = "python",
     spec: str | None = None,
     world: str | None = None,
+    robot_profile: str | None = None,
     robot_name: str | None = None,
     robot_def: str | None = None,
 ) -> dict[str, Any]:
@@ -430,6 +450,7 @@ def webots_controller_scaffold(
                 language=language,
                 spec_path=Path(spec) if spec else None,
                 world=Path(world) if world else None,
+                robot_profile=robot_profile,
                 robot_name=robot_name,
                 robot_def=robot_def,
             )
@@ -439,19 +460,19 @@ def webots_controller_scaffold(
 
 
 @mcp.tool()
-def webots_controller_validate(path: str, scenario: str | None = None, strict: bool = False, spec: str | None = None) -> dict[str, Any]:
+def webots_controller_validate(path: str, scenario: str | None = None, strict: bool = False, spec: str | None = None, robot_profile: str | None = None) -> dict[str, Any]:
     try:
         return _normalize_validation_payload(
-            validate_controller(Path(path), scenario=scenario, strict=strict, spec_path=Path(spec) if spec else None).to_dict()
+            validate_controller(Path(path), scenario=scenario, strict=strict, spec_path=Path(spec) if spec else None, robot_profile=robot_profile).to_dict()
         )
     except Exception as exc:
         return _tool_error(exc)
 
 
 @mcp.tool()
-def webots_controller_edit(path: str, plan: str) -> dict[str, Any]:
+def webots_controller_edit(path: str, plan: str, robot_profile: str | None = None) -> dict[str, Any]:
     try:
-        return _normalize_controller_edit_payload(edit_controller(Path(path), plan_path=Path(plan)))
+        return _normalize_controller_edit_payload(edit_controller(Path(path), plan_path=Path(plan), robot_profile=robot_profile))
     except Exception as exc:
         return _tool_error(exc)
 

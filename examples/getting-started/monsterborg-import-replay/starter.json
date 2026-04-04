@@ -1,0 +1,13 @@
+{
+  "name": "monsterborg-import-replay",
+  "title": "MonsterBorg import-and-replay starter workspace",
+  "flow": "importer-triage",
+  "support_tier": "experimental-foundation",
+  "expected_green": "project import writes metadata and session replay can summarize the exported run.",
+  "recommended_commands": [
+    "webots-kit project import --world .\\worlds\\import_world.wbt --controller .\\controllers\\import_agent.py --project-root .\\imported-project",
+    "webots-kit session start --scenario line-follower --world .\\worlds\\import_world.wbt --controller .\\controllers\\import_agent.py --robot-profile monsterborg-4wd --mode fast --render off",
+    "webots-kit session export <session-id> --output .\\artifacts\\exports\\<session-id>",
+    "webots-kit session replay .\\artifacts\\exports\\<session-id>"
+  ]
+}

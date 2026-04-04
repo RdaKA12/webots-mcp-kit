@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .benchmarks import get_scenario
+from .robot_profiles import get_robot_profile
 from .client import SessionClient
 from .errors import KitError, error_dict
 from .environment import build_process_env, describe_launch_environment, get_webots_environment, repo_root, software_opengl_requested
@@ -16,16 +17,16 @@ from .session_store import SessionStore
 from .utils import choose_free_port, utc_now_iso
 
 
-def resolve_world_path(world: str | None, scenario: str) -> Path:
+def resolve_world_path(world: str | None, scenario: str, *, robot_profile: str = "e-puck") -> Path:
     if not world:
-        return get_scenario(scenario).world
+        return get_scenario(scenario, robot_profile=robot_profile).world
     path = Path(world)
     return path if path.is_absolute() else (Path.cwd() / path).resolve()
 
 
-def resolve_controller_path(controller: str | None, scenario: str) -> Path:
+def resolve_controller_path(controller: str | None, scenario: str, *, robot_profile: str = "e-puck") -> Path:
     if not controller or controller == "example":
-        return get_scenario(scenario).controller
+        return get_scenario(scenario, robot_profile=robot_profile).controller
     path = Path(controller)
     return path if path.is_absolute() else (Path.cwd() / path).resolve()
 
@@ -37,6 +38,7 @@ def start_session(
     mode: str,
     render: bool,
     scenario: str = "line-follower",
+    robot_profile: str | None = None,
     robot_name: str | None = None,
     robot_def: str | None = None,
     timeout: float = 30.0,
@@ -47,10 +49,18 @@ def start_session(
     artifacts_dir = session_dir / "artifacts"
     host = "127.0.0.1"
     port = choose_free_port(host)
-    scenario_def = get_scenario(scenario)
-    world_path = resolve_world_path(world, scenario)
-    controller_path = resolve_controller_path(controller, scenario)
-    environment = build_environment_snapshot(world_path=world_path, controller_path=controller_path, scenario=scenario, mode=mode, render=render)
+    scenario_def = get_scenario(scenario, robot_profile=robot_profile)
+    profile = get_robot_profile(scenario_def.robot_profile)
+    world_path = resolve_world_path(world, scenario, robot_profile=scenario_def.robot_profile)
+    controller_path = resolve_controller_path(controller, scenario, robot_profile=scenario_def.robot_profile)
+    environment = build_environment_snapshot(
+        world_path=world_path,
+        controller_path=controller_path,
+        scenario=scenario,
+        mode=mode,
+        render=render,
+        robot_profile=profile.robot_profile,
+    )
     manifest = SessionManifest(
         session_id=session_id,
         host=host,
@@ -67,6 +77,9 @@ def start_session(
         created_at=utc_now_iso(),
         session_dir=str(session_dir),
         artifacts_dir=str(artifacts_dir),
+        robot_family=profile.robot_family,
+        robot_profile=profile.robot_profile,
+        runtime_target="interactive-webots",
         environment=environment,
     )
     manifest_path = store.write_manifest(manifest)
@@ -270,6 +283,7 @@ def build_environment_snapshot(
     scenario: str,
     mode: str,
     render: bool,
+    robot_profile: str,
 ) -> dict[str, Any]:
     webots = get_webots_environment()
     return {
@@ -279,6 +293,7 @@ def build_environment_snapshot(
         "webots_version": webots.version,
         "controller_python_path": str(webots.controller_python_path),
         "scenario": scenario,
+        "robot_profile": robot_profile,
         "world_path": str(world_path),
         "controller_path": str(controller_path),
         "mode": mode,

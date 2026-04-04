@@ -13,8 +13,12 @@ def main() -> None:
     target_def = os.environ.get("WEBOTS_TARGET_DEF", "EPUCK")
     robot_node = supervisor.getFromDef(target_def)
     if robot_node is not None:
-        robot_node.saveState("mcp_initial_state")
         robot_node.enableContactPointsTracking(time_step, True)
+    for _ in range(6):
+        if supervisor.step(time_step) == -1:
+            return
+    if robot_node is not None:
+        robot_node.saveState("mcp_initial_state")
 
     client = connect_runtime(
         os.environ["WEBOTS_MCP_HOST"],
@@ -36,6 +40,10 @@ def main() -> None:
                         raise RuntimeError("Target robot node is not available for reset.")
                     robot_node.loadState("mcp_initial_state")
                     robot_node.resetPhysics()
+                    robot_node = supervisor.getFromDef(target_def)
+                    if robot_node is None:
+                        raise RuntimeError("Target robot node is not available after reset.")
+                    robot_node.enableContactPointsTracking(time_step, True)
                     result = {"reset": True}
                 else:
                     raise ValueError(f"Unsupported supervisor command: {message['action']}")
@@ -49,6 +57,10 @@ def main() -> None:
             "mode": int(supervisor.simulationGetMode()),
             "world_path": supervisor.getWorldPath(),
         }
+        if robot_node is None:
+            robot_node = supervisor.getFromDef(target_def)
+            if robot_node is not None:
+                robot_node.enableContactPointsTracking(time_step, True)
         if robot_node is not None:
             state["robot_position"] = [round(value, 6) for value in robot_node.getPosition()]
             state["robot_velocity"] = [round(value, 6) for value in robot_node.getVelocity()]

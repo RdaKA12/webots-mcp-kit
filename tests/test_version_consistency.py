@@ -28,3 +28,23 @@ def test_cli_version_matches_module_version() -> None:
         cwd=root,
     )
     assert result.stdout.strip() == f"webots-mcp-kit {webots_mcp_kit.__version__}"
+
+
+def test_preview_docs_do_not_mix_old_monsterborg_versions() -> None:
+    root = Path(__file__).resolve().parents[1]
+    current_preview = "v2.5.0-alpha.1"
+    preview_docs = [
+        root / "README.md",
+        root / "docs" / "controller-authoring-and-editing.md",
+        root / "docs" / "world-authoring-and-editing.md",
+        root / "docs" / "mcp-contracts.md",
+        root / "docs" / "project-import-and-replay.md",
+        root / "docs" / "zero-to-sim.md",
+    ]
+    for path in preview_docs:
+        content = path.read_text(encoding="utf-8")
+        if "monsterborg" not in content.lower():
+            continue
+        assert "v2.2.0" not in content, path
+        assert "v2.3.0-alpha.1" not in content, path
+        assert current_preview in content or "preview" in content.lower(), path
