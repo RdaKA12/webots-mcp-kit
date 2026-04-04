@@ -1,12 +1,12 @@
 # Zero-to-Sim Guide
 
-`webots-mcp-kit` supports a template-driven path from an empty folder to a runnable Webots scenario for both `e-puck` and preview `MonsterBorg 4WD` robot profiles.
+`webots-mcp-kit` supports a template-driven path from an empty folder to a runnable Webots scenario for both `e-puck` and `MonsterBorg 4WD` robot profiles.
 
 Status:
 
 - the CLI command names are stable
 - the documented core `ScenarioSpec` subset is stable
-- richer authoring, robot-profile metadata, and MonsterBorg physical-adapter metadata remain `experimental-foundation` and additive on the `v2.5.0-alpha.1` preview line
+- richer authoring, robot-profile metadata, and MonsterBorg physical-adapter metadata remain `experimental-foundation` and additive on the `v2.5.0` release line
 
 ## Supported templates
 
@@ -173,7 +173,7 @@ webots-kit benchmark run waypoint-nav --controller .\scenarios\warehouse-demo\co
 ## Current limits
 
 - This is template-driven, not free-form natural language to `.wbt`.
-- Official robot profiles are `e-puck` and preview `monsterborg-4wd`.
+- Official robot profiles are `e-puck` and `monsterborg-4wd`.
 - Arena generation is currently rectangle-based.
 - Richer generated task-world authoring currently targets supported task primitives like walls, landmarks, zones, props, obstacles, lines, and goal regions rather than arbitrary full-scene composition.
 - Runtime smoke still requires an interactive self-hosted runner labeled `interactive-webots`.

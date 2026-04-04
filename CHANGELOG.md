@@ -1,8 +1,8 @@
 # Changelog
 
-## v2.5.0-alpha.1
+## v2.5.0
 
-- Added a robot-profile registry and expanded the toolkit beyond `e-puck` to preview `monsterborg-4wd` support across scenario generation, bundled benchmarks, controller scaffolds, import metadata, session manifests, benchmark reports, replay summaries, and MCP payloads.
+- Added a robot-profile registry and expanded the toolkit beyond `e-puck` to stable `monsterborg-4wd` support across scenario generation, bundled benchmarks, controller scaffolds, import metadata, session manifests, benchmark reports, replay summaries, and MCP payloads.
 - Added bundled MonsterBorg Webots examples, MonsterBorg starter workspaces, robot-aware verify/upgrade scripts, and cross-robot workflow coverage so both `e-puck` and MonsterBorg lanes are exercised through controller/world/import/replay onboarding paths.
 - Added a MonsterBorg physical adapter parity lane with Raspberry Pi verification, capture-to-export bundling, and replay-compatible artifacts using the existing export/replay contract without introducing live MCP physical control.
 

@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the controller authoring surface in `v2.5.0-alpha.1`.
+This page documents the controller authoring surface in `v2.5.0`.
 
 ## Supported scope
 
@@ -16,7 +16,7 @@ This page documents the controller authoring surface in `v2.5.0-alpha.1`.
 Supported robot profiles:
 
 - `e-puck`
-- preview `monsterborg-4wd`
+- `monsterborg-4wd`
 
 The public controller-side contract stays:
 
@@ -163,7 +163,7 @@ Status note:
 
 - controller authoring and editing is supported on the stable release line
 - deeper plan/schema details remain `experimental-foundation` and additive
-- preview `monsterborg-4wd` support uses the same CLI and MCP surfaces with additive robot-profile metadata
+- `monsterborg-4wd` support uses the same CLI and MCP surfaces with additive robot-profile metadata
 - a ready sample workspace is available under `examples/getting-started/controller-edit`
 
 Next: continue with [World authoring and editing](./world-authoring-and-editing.md) if you also need to inspect or patch the `.wbt` side.

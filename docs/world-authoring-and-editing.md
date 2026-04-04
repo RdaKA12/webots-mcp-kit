@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the world authoring/editing surface in `v2.5.0-alpha.1`.
+This page documents the world authoring/editing surface in `v2.5.0`.
 
 ## Supported scope
 
@@ -26,7 +26,7 @@ Current first-class edit surface is task-world oriented:
 Supported robot profiles:
 
 - `e-puck`
-- preview `monsterborg-4wd`
+- `monsterborg-4wd`
 
 The current release line keeps the general-scene inspection layer and mutation support:
 

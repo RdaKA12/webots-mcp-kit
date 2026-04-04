@@ -5,7 +5,7 @@ Use this page when the toolkit is being repeated by more than one developer and 
 Robot profiles:
 
 - `e-puck`: stable baseline
-- `monsterborg-4wd`: preview Webots and physical-adapter lane
+- `monsterborg-4wd`: Webots and physical-adapter lane
 
 ## Evaluator Flow
 
@@ -32,7 +32,7 @@ Green condition:
 - strict controller validate passes
 - benchmark report shows pass
 
-MonsterBorg preview variant:
+MonsterBorg variant:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter monsterborg-line-follower -Destination .\workspaces\monsterborg-line-follower

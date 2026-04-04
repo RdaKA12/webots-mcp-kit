@@ -1,6 +1,6 @@
 # webots-mcp-kit
 
-`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows. The `v2.5.0-alpha.1` preview branch expands the product from `e-puck`-only task worlds to a second robot family, `MonsterBorg 4WD`, and adds a replay-compatible Raspberry Pi physical-adapter lane while preserving the existing runtime and authoring surfaces.
+`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows. `v2.5.0` expands the product from an `e-puck`-only baseline to a second supported robot family, `MonsterBorg 4WD`, and adds a replay-compatible Raspberry Pi physical-adapter lane while preserving the existing runtime and authoring surfaces.
 
 ## Support Matrix
 
@@ -10,16 +10,16 @@
 | Webots | `R2025a` |
 | Python | `3.11+` |
 | Runtime model | `interactive-webots` |
-| Robot family | `e-puck`, `MonsterBorg 4WD` preview |
+| Robot family | `e-puck`, `MonsterBorg 4WD` |
 | Package distribution | PyPI + GitHub |
 | Runtime workflows | `doctor`, `session`, `benchmark`, `import/export/replay` |
 | Authoring workflows | `controller scaffold/inspect/edit/validate`, `world inspect/validate/edit`, `scenario init/validate/build/doctor` |
 
-Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots`, `e-puck`, plus preview `MonsterBorg 4WD` Webots and physical-adapter support on the `feature/monsterborg-support` release line.
+Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots`, `e-puck`, plus `MonsterBorg 4WD` Webots support and the Raspberry Pi physical-adapter lane on the current release line.
 
 ## Unsupported Matrix
 
-| Area | Not supported on `v2.5.0-alpha.1` |
+| Area | Not supported on `v2.5.0` |
 | --- | --- |
 | Runtime | Windows service runner, Linux, macOS, live MCP control of physical robots |
 | Robotics stack | ROS2, multi-robot orchestration |
@@ -44,7 +44,7 @@ That path verifies:
 - bundled world inspect
 - a short real `line-follower` benchmark
 
-MonsterBorg preview verification uses the same public script:
+MonsterBorg verification uses the same public script:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime
@@ -73,7 +73,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Star
 powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\upgrade-check -Runtime
 ```
 
-MonsterBorg preview starter workspaces:
+MonsterBorg starter workspaces:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter monsterborg-line-follower -Destination .\workspaces\monsterborg-line-follower
@@ -132,7 +132,7 @@ If install or runtime verification fails, start with [Troubleshooting](./docs/tr
 Robot profiles:
 
 - `e-puck`: stable bundled task-world baseline
-- `monsterborg-4wd`: preview bundled support with generated templates, bundled Webots examples, and robot-aware controller/world/import flows
+- `monsterborg-4wd`: bundled support with generated templates, bundled Webots examples, and robot-aware controller/world/import flows
 
 ## CLI And MCP Overview
 
@@ -156,7 +156,7 @@ Core MCP tools:
 - world authoring: `webots_world_inspect`, `webots_world_validate`, `webots_world_edit`
 - controller authoring: `webots_controller_scaffold`, `webots_controller_inspect`, `webots_controller_validate`, `webots_controller_edit`
 
-Authoring workflows are supported on the stable release line, but the deeper schema surfaces remain `experimental-foundation` and additive. The MonsterBorg Webots and physical-adapter lanes are preview-scoped on `v2.5.0-alpha.1`.
+Authoring workflows are supported on the stable release line, but the deeper schema surfaces remain `experimental-foundation` and additive. The MonsterBorg Webots runtime and Raspberry Pi physical-adapter lane are supported on `v2.5.0`.
 
 ## Docs Map
 

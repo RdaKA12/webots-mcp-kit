@@ -30,7 +30,7 @@ Runtime verification:
 powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime
 ```
 
-MonsterBorg preview verification:
+MonsterBorg verification:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime
@@ -84,6 +84,6 @@ webots-kit benchmark report .\report.json
 - Webots runtime smoke is not supported from a Windows service session.
 - If Webots is not found or the benchmark fails, go straight to [Troubleshooting](./troubleshooting.md).
 - If you want a ready workspace instead of starting from a blank folder, run `powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter line-follower`.
-- For the MonsterBorg preview lane, replace the starter with `monsterborg-line-follower`.
+- For the MonsterBorg lane, replace the starter with `monsterborg-line-follower`.
 
 Next: continue with [Onboarding flows](./onboarding-flows.md).
