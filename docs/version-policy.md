@@ -12,6 +12,7 @@ The following are treated as stable:
 - `begin_step()`
 - `report_step(...)`
 - runtime/session/benchmark command families
+- benchmark names: `line-follower`, `obstacle-avoidance`, `waypoint-nav`
 
 ## Additive Surface
 
@@ -22,6 +23,8 @@ The following remain additive and `experimental-foundation`:
 - richer `ScenarioSpec` authoring fields
 - import metadata enrichment
 - replay summary enrichment
+- robot-profile-aware authoring metadata such as `robot_family`, `robot_profile`, and `runtime_target`
+- physical adapter parity metadata for future `monsterborg-physical` flows
 
 Policy:
 
@@ -42,5 +45,6 @@ When a team automates against this toolkit:
 - automate against stable CLI names and documented top-level JSON keys
 - do not assume additive `experimental-foundation` schemas are frozen
 - pin a version when building internal team automation around starter workspaces or authoring plans
+- treat robot-profile-aware payload fields as additive unless they are explicitly called out as frozen in release notes
 
 Next: use [Release checklist](./release-checklist.md) before tagging or [Upgrade guide](./upgrade-guide.md) after upgrading.

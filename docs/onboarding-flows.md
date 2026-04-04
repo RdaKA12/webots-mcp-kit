@@ -6,6 +6,7 @@ Team route map:
 
 - use [Team flows](./team-flows.md) when you want the same workflow repeated across multiple developers
 - use `bootstrap_workspace.ps1` when you want a ready starter workspace instead of a blank folder
+- use `--robot-profile monsterborg-4wd` when you want the MonsterBorg preview lane instead of the default `e-puck` lane
 
 ## 1. Connect An Agent
 

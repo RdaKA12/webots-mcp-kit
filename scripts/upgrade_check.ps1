@@ -3,7 +3,9 @@ param(
     [switch]$Runtime,
     [switch]$Json,
     [string]$Output,
-    [string]$Workspace
+    [string]$Workspace,
+    [ValidateSet("e-puck", "monsterborg-4wd")]
+    [string]$RobotProfile = "e-puck"
 )
 
 $ErrorActionPreference = "Stop"
@@ -144,6 +146,7 @@ New-Item -ItemType Directory -Force -Path $workspacePath | Out-Null
 $summary = [ordered]@{
     status = "running"
     support_tier = "experimental-foundation"
+    robot_profile = $RobotProfile
     workspace = $workspacePath
     runtime_requested = [bool]$Runtime
     checks = [ordered]@{
@@ -169,6 +172,7 @@ try {
     if ($Runtime) {
         $verifyArgs += "-Runtime"
     }
+    $verifyArgs += @("-RobotProfile", $RobotProfile)
     $verifyRaw = & powershell @verifyArgs 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw ($verifyRaw -join [Environment]::NewLine)
@@ -191,7 +195,8 @@ try {
 }
 
 try {
-    $lineWorkspaceRaw = & powershell -ExecutionPolicy Bypass -File $bootstrapScript -Starter "line-follower" -Destination (Join-Path $workspacePath "line-follower") -Force -Json
+    $lineStarter = if ($RobotProfile -eq "monsterborg-4wd") { "monsterborg-line-follower" } else { "line-follower" }
+    $lineWorkspaceRaw = & powershell -ExecutionPolicy Bypass -File $bootstrapScript -Starter $lineStarter -Destination (Join-Path $workspacePath "line-follower") -Force -Json
     if ($LASTEXITCODE -ne 0) { throw ($lineWorkspaceRaw -join [Environment]::NewLine) }
     $lineWorkspace = ($lineWorkspaceRaw -join [Environment]::NewLine) | ConvertFrom-Json
     $summary.starter_workspaces.line_follower = $lineWorkspace
@@ -203,7 +208,7 @@ try {
 
 try {
     $controllerPath = Join-Path $summary.starter_workspaces.line_follower.destination "controllers\demo_agent.py"
-    $null = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "validate", $controllerPath, "--scenario", "line-follower", "--strict", "--json") -StepName "Validating starter line-follower controller"
+    $null = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "validate", $controllerPath, "--scenario", "line-follower", "--robot-profile", $RobotProfile, "--strict", "--json") -StepName "Validating starter line-follower controller"
     $summary.checks.starter_controller_validate = "passed"
 } catch {
     $summary.checks.starter_controller_validate = "failed"
@@ -211,7 +216,8 @@ try {
 }
 
 try {
-    $controllerEditRaw = & powershell -ExecutionPolicy Bypass -File $bootstrapScript -Starter "controller-edit" -Destination (Join-Path $workspacePath "controller-edit") -Force -Json
+    $controllerStarter = if ($RobotProfile -eq "monsterborg-4wd") { "monsterborg-controller-edit" } else { "controller-edit" }
+    $controllerEditRaw = & powershell -ExecutionPolicy Bypass -File $bootstrapScript -Starter $controllerStarter -Destination (Join-Path $workspacePath "controller-edit") -Force -Json
     if ($LASTEXITCODE -ne 0) { throw ($controllerEditRaw -join [Environment]::NewLine) }
     $controllerEditWorkspace = ($controllerEditRaw -join [Environment]::NewLine) | ConvertFrom-Json
     $summary.starter_workspaces.controller_edit = $controllerEditWorkspace
@@ -224,8 +230,8 @@ try {
 try {
     $controllerEditPath = Join-Path $summary.starter_workspaces.controller_edit.destination "controllers\demo_agent.py"
     $controllerEditPlan = Join-Path $summary.starter_workspaces.controller_edit.destination "plans\controller-edit.json"
-    $null = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "edit", $controllerEditPath, "--plan", $controllerEditPlan, "--json") -StepName "Applying starter controller edit plan"
-    $null = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "validate", $controllerEditPath, "--scenario", "line-follower", "--strict", "--json") -StepName "Validating edited starter controller"
+    $null = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "edit", $controllerEditPath, "--plan", $controllerEditPlan, "--robot-profile", $RobotProfile, "--json") -StepName "Applying starter controller edit plan"
+    $null = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "validate", $controllerEditPath, "--scenario", "line-follower", "--robot-profile", $RobotProfile, "--strict", "--json") -StepName "Validating edited starter controller"
     $summary.checks.starter_controller_edit = "passed"
 } catch {
     $summary.checks.starter_controller_edit = "failed"
@@ -233,7 +239,8 @@ try {
 }
 
 try {
-    $worldEditRaw = & powershell -ExecutionPolicy Bypass -File $bootstrapScript -Starter "world-edit" -Destination (Join-Path $workspacePath "world-edit") -Force -Json
+    $worldStarter = if ($RobotProfile -eq "monsterborg-4wd") { "monsterborg-world-edit" } else { "world-edit" }
+    $worldEditRaw = & powershell -ExecutionPolicy Bypass -File $bootstrapScript -Starter $worldStarter -Destination (Join-Path $workspacePath "world-edit") -Force -Json
     if ($LASTEXITCODE -ne 0) { throw ($worldEditRaw -join [Environment]::NewLine) }
     $worldEditWorkspace = ($worldEditRaw -join [Environment]::NewLine) | ConvertFrom-Json
     $summary.starter_workspaces.world_edit = $worldEditWorkspace
@@ -260,7 +267,8 @@ try {
 }
 
 try {
-    $importRaw = & powershell -ExecutionPolicy Bypass -File $bootstrapScript -Starter "import-replay" -Destination (Join-Path $workspacePath "import-replay") -Force -Json
+    $importStarter = if ($RobotProfile -eq "monsterborg-4wd") { "monsterborg-import-replay" } else { "import-replay" }
+    $importRaw = & powershell -ExecutionPolicy Bypass -File $bootstrapScript -Starter $importStarter -Destination (Join-Path $workspacePath "import-replay") -Force -Json
     if ($LASTEXITCODE -ne 0) { throw ($importRaw -join [Environment]::NewLine) }
     $importWorkspace = ($importRaw -join [Environment]::NewLine) | ConvertFrom-Json
     $summary.starter_workspaces.import_replay = $importWorkspace

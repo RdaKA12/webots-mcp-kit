@@ -34,6 +34,9 @@ class SessionManifest:
     created_at: str
     session_dir: str
     artifacts_dir: str
+    robot_family: str = "e-puck"
+    robot_profile: str = "e-puck"
+    runtime_target: str = "interactive-webots"
     stopped_at: str | None = None
     last_error: str | None = None
     last_error_code: str | None = None
@@ -67,6 +70,9 @@ class BenchmarkReport:
     world: str
     controller: str
     session_mode: str
+    robot_family: str
+    robot_profile: str
+    runtime_target: str
     sim_time_s: float
     steps: int
     line_loss_events: int
@@ -77,6 +83,7 @@ class BenchmarkReport:
     artifacts: dict[str, str]
     notes: list[str]
     extra_metrics: dict[str, Any] = field(default_factory=dict)
+    physical_adapter_summary: dict[str, Any] = field(default_factory=dict)
     controller_fix_hints: list[str] = field(default_factory=list)
     missing_telemetry_keys: list[str] = field(default_factory=list)
     device_binding_hints: list[str] = field(default_factory=list)
@@ -95,6 +102,8 @@ class ScenarioDefinition:
     controller: Path
     target_robot_name: str
     target_robot_def: str
+    robot_family: str
+    robot_profile: str
     benchmark_kind: str
     default_camera: str | None = None
     required_sensor_keys: tuple[str, ...] = ()
@@ -171,6 +180,9 @@ class GeneratedScenario:
     default_camera: str | None
     suggested_session_command: str
     suggested_benchmark_command: str
+    robot_family: str = "e-puck"
+    robot_profile: str = "e-puck"
+    runtime_target: str = "interactive-webots"
     world_inventory_summary: dict[str, Any] = field(default_factory=dict)
     world_authoring_context: dict[str, Any] = field(default_factory=dict)
     benchmark_mapping: dict[str, Any] = field(default_factory=dict)

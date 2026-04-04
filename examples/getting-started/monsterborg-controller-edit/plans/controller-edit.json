@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "operations": [
+    {
+      "type": "update_control_constants",
+      "constants": {
+        "TURN_GAIN": 4.6
+      }
+    }
+  ],
+  "scenario_context": {
+    "scenario": "line-follower",
+    "robot_profile": "monsterborg-4wd"
+  }
+}

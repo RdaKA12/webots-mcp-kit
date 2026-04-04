@@ -76,4 +76,4 @@ def test_benchmark_report_formatting_waypoint_fields(tmp_path: Path) -> None:
 
 def test_cpp_benchmark_timeout_includes_compile_buffer() -> None:
     assert _benchmark_request_timeout("demo_agent.cpp", 5.0) >= 85.0
-    assert _benchmark_request_timeout("demo_agent.py", 5.0) == 45.0
+    assert _benchmark_request_timeout("demo_agent.py", 5.0) == 90.0

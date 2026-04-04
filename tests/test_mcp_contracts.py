@@ -224,6 +224,8 @@ def test_controller_authoring_payloads_are_stable(tmp_path: Path) -> None:
     assert validate_payload["path"] == str(controller_path)
     assert isinstance(validate_payload["valid"], bool)
     assert validate_payload["status"] in {"ready", "misconfigured"}
+    assert validate_payload["robot_family"] == "e-puck"
+    assert validate_payload["robot_profile"] == "e-puck"
     assert isinstance(validate_payload["errors"], list)
     assert isinstance(validate_payload["warnings"], list)
     assert isinstance(validate_payload["details"], dict)

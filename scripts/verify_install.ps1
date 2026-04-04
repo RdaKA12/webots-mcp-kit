@@ -2,7 +2,9 @@
 param(
     [switch]$Runtime,
     [switch]$Json,
-    [string]$Output
+    [string]$Output,
+    [ValidateSet("e-puck", "monsterborg-4wd")]
+    [string]$RobotProfile = "e-puck"
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,6 +15,7 @@ $script:Summary = [ordered]@{
     status = "running"
     support_tier = "stable"
     version = $null
+    robot_profile = $RobotProfile
     workspace = $null
     report_path = $null
     runtime_requested = [bool]$Runtime
@@ -228,10 +231,10 @@ try {
 
 try {
     $benchmarks = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("benchmark", "list") -StepName "Listing bundled benchmarks"
-    $lineFollower = $benchmarks | Where-Object { $_.name -eq "line-follower" } | Select-Object -First 1
+    $lineFollower = $benchmarks | Where-Object { $_.name -eq "line-follower" -and $_.robot_profile -eq $RobotProfile } | Select-Object -First 1
     if (-not $lineFollower) {
         Set-CheckState -Name "benchmark_list" -State "failed"
-        Fail-Verification -Step "benchmark list" -LikelyCause "Bundled package assets are missing from the install." -NextAction "Reinstall the package, then rerun this script."
+        Fail-Verification -Step "benchmark list" -LikelyCause "Bundled package assets for the selected robot profile are missing from the install." -NextAction "Reinstall the package, then rerun this script."
     }
     $worldPath = [string]$lineFollower.world
     Set-CheckState -Name "benchmark_list" -State "passed"
@@ -244,21 +247,21 @@ try {
 }
 
 try {
-    $null = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "scaffold", $controllerPath, "--scenario", "line-follower", "--force") -StepName "Scaffolding a demo controller"
+    $null = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "scaffold", $controllerPath, "--scenario", "line-follower", "--robot-profile", $RobotProfile, "--force") -StepName "Scaffolding a demo controller"
     Set-CheckState -Name "controller_scaffold" -State "passed"
 } catch {
     Set-CheckState -Name "controller_scaffold" -State "failed"
     Fail-Verification -Step "controller scaffold" `
         -LikelyCause "The package install is incomplete or the current user cannot write to the temporary workspace." `
-        -NextAction "Run `webots-kit controller scaffold `"$controllerPath`" --scenario line-follower --force` manually and inspect the error." `
+        -NextAction "Run `webots-kit controller scaffold `"$controllerPath`" --scenario line-follower --robot-profile $RobotProfile --force` manually and inspect the error." `
         -RawError $_.Exception.Message
 }
 
 try {
-    $validation = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "validate", $controllerPath, "--scenario", "line-follower", "--strict", "--json") -StepName "Validating the demo controller"
+    $validation = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("controller", "validate", $controllerPath, "--scenario", "line-follower", "--robot-profile", $RobotProfile, "--strict", "--json") -StepName "Validating the demo controller"
     if (-not $validation.valid) {
         Set-CheckState -Name "controller_validate" -State "failed"
-        Fail-Verification -Step "controller validate" -LikelyCause "The generated scaffold did not validate cleanly in this environment." -NextAction "Run `webots-kit controller validate `"$controllerPath`" --scenario line-follower --strict --json` and inspect $troubleshootingDoc"
+        Fail-Verification -Step "controller validate" -LikelyCause "The generated scaffold did not validate cleanly in this environment." -NextAction "Run `webots-kit controller validate `"$controllerPath`" --scenario line-follower --robot-profile $RobotProfile --strict --json` and inspect $troubleshootingDoc"
     }
     Set-CheckState -Name "controller_validate" -State "passed"
 } catch {
@@ -296,7 +299,7 @@ if ($Runtime) {
         }
     } else {
         try {
-            $benchmark = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("benchmark", "run", "line-follower", "--controller", "example", "--output", $reportPath, "--duration-s", "3") -StepName "Running a real line-follower benchmark"
+            $benchmark = Invoke-WebotsKitJson -Command $webotsKit -Arguments @("benchmark", "run", "line-follower", "--controller", "example", "--robot-profile", $RobotProfile, "--output", $reportPath, "--duration-s", "3") -StepName "Running a real line-follower benchmark"
             if (-not $benchmark.pass) {
                 Set-CheckState -Name "runtime_benchmark" -State "failed"
                 $script:Summary.runtime_benchmark_passed = $false
@@ -309,7 +312,7 @@ if ($Runtime) {
             $script:Summary.runtime_benchmark_passed = $false
             Fail-Verification -Step "benchmark run" `
                 -LikelyCause "The interactive runtime is not actually usable in this shell or machine session." `
-                -NextAction "Run `webots-kit benchmark run line-follower --controller example --output `"$reportPath`" --duration-s 3` manually, then inspect $troubleshootingDoc" `
+                -NextAction "Run `webots-kit benchmark run line-follower --controller example --robot-profile $RobotProfile --output `"$reportPath`" --duration-s 3` manually, then inspect $troubleshootingDoc" `
                 -RawError $_.Exception.Message
         }
     }
@@ -320,7 +323,7 @@ if ($Runtime) {
     if ($runtimeBenchmarkSkipped) {
         $script:Summary.next_step = "Rerun this script with -Runtime on a local Windows machine or self-hosted interactive-webots runner when you need a real benchmark."
     } else {
-        $script:Summary.next_step = "Try `webots-kit session start --scenario line-follower --controller example --mode fast --render off`."
+        $script:Summary.next_step = "Try `webots-kit session start --scenario line-follower --controller example --robot-profile $RobotProfile --mode fast --render off`."
     }
 } else {
     $script:Summary.next_step = "Rerun this script with -Runtime when you want a full real-benchmark check."

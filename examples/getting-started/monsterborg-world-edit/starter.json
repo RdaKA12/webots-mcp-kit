@@ -1,0 +1,13 @@
+{
+  "name": "monsterborg-world-edit",
+  "title": "MonsterBorg world-edit starter workspace",
+  "flow": "world-author",
+  "support_tier": "experimental-foundation",
+  "expected_green": "world inspect and validate stay green before and after the MonsterBorg edit plan.",
+  "recommended_commands": [
+    "webots-kit world inspect .\\worlds\\editable_world.wbt --json",
+    "webots-kit world validate .\\worlds\\editable_world.wbt --json",
+    "webots-kit world edit .\\worlds\\editable_world.wbt --plan .\\plans\\world-edit.json --json",
+    "webots-kit world validate .\\worlds\\editable_world.wbt --json"
+  ]
+}

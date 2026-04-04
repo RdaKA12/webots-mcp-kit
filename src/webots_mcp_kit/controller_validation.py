@@ -32,6 +32,7 @@ def validate_controller(
     scenario: str | None = None,
     strict: bool = False,
     spec_path: Path | None = None,
+    robot_profile: str | None = None,
 ) -> ControllerValidationResult:
     result = ControllerValidationResult(path=str(path), valid=False, integration_mode="unknown")
     resolved = path if path.is_absolute() else (Path.cwd() / path).resolve()
@@ -44,14 +45,16 @@ def validate_controller(
         result.errors.append("Only Python and C++ controllers are supported by the validator.")
         return _finalize_validation_result(result)
 
-    inspection = inspect_controller(resolved, scenario=scenario, spec_path=spec_path)
-    scenario_def = get_scenario(inspection.scenario) if inspection.scenario else None
+    inspection = inspect_controller(resolved, scenario=scenario, spec_path=spec_path, robot_profile=robot_profile)
+    scenario_def = get_scenario(inspection.scenario, robot_profile=inspection.robot_profile) if inspection.scenario else None
 
     result.integration_mode = inspection.integration_mode
     result.details = {
         "language": inspection.language,
         "strict": strict,
         "scenario": inspection.scenario,
+        "robot_family": inspection.robot_family,
+        "robot_profile": inspection.robot_profile,
         "editable_regions": inspection.editable_regions,
         "markers_present": inspection.markers_present,
         "has_robot_init": inspection.has_robot_init,

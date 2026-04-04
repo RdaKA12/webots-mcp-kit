@@ -66,6 +66,9 @@ def test_runtime_workflow_uses_interactive_runner_label() -> None:
     assert '"src/webots_mcp_kit/scenario_ops.py"' in content
     assert '"src/webots_mcp_kit/world_ops.py"' in content
     assert '"src/webots_mcp_kit/controller_authoring.py"' in content
+    assert '"src/webots_mcp_kit/robot_profiles.py"' in content
+    assert '"src/webots_mcp_kit/monsterborg_adapter.py"' in content
+    assert '"examples/monsterborg/**"' in content
 
 
 def test_runtime_workflow_includes_generated_scenario_smoke() -> None:
@@ -100,6 +103,8 @@ def test_release_and_package_workflows_use_public_verify_path() -> None:
     assert "python scripts/clean_user_acceptance.py --workspace package-smoke --profile hosted-safe" in package_content
     assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\verify_install.ps1 -Runtime -Output .\\verify-install.json" in release_content
     assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\upgrade_check.ps1 -Workspace .\\upgrade-check -Runtime -Output .\\upgrade-check.json" in release_content
+    assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime -Output .\\verify-install-monsterborg.json" in release_content
+    assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\upgrade_check.ps1 -Workspace .\\monsterborg-upgrade-check -RobotProfile monsterborg-4wd -Runtime -Output .\\monsterborg-upgrade-check.json" in release_content
     assert release_content.count("verify_install.ps1 -Runtime -Output") >= 2
     assert release_content.count("upgrade_check.ps1 -Workspace .\\upgrade-check -Runtime -Output") >= 2
 
@@ -117,5 +122,9 @@ def test_windows_ci_includes_team_upgrade_smoke() -> None:
     content = (root / ".github/workflows/windows-ci.yml").read_text(encoding="utf-8")
     assert "Public verify JSON smoke" in content
     assert "verify_install.ps1 -Json -Output .\\verify-install.json" in content
+    assert "MonsterBorg verify JSON smoke" in content
+    assert "verify_install.ps1 -RobotProfile monsterborg-4wd -Json -Output .\\verify-install-monsterborg.json" in content
     assert "Team upgrade smoke" in content
     assert "upgrade_check.ps1 -Workspace .\\upgrade-check -Runtime -Output .\\upgrade-check.json" in content
+    assert "MonsterBorg team upgrade smoke" in content
+    assert "upgrade_check.ps1 -Workspace .\\monsterborg-upgrade-check -RobotProfile monsterborg-4wd -Runtime -Output .\\monsterborg-upgrade-check.json" in content

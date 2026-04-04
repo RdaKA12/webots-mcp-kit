@@ -45,6 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument("--scenario", choices=scenario_names(), default="line-follower")
     start.add_argument("--world")
     start.add_argument("--controller", default="example")
+    start.add_argument("--robot-profile")
     start.add_argument("--robot-name")
     start.add_argument("--robot-def")
     start.add_argument("--mode", choices=["fast", "realtime", "pause"], default="fast")
@@ -71,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_run.add_argument("benchmark_name", choices=scenario_names())
     benchmark_run.add_argument("--controller", default="example")
     benchmark_run.add_argument("--output", required=True)
+    benchmark_run.add_argument("--robot-profile")
     benchmark_run.add_argument("--duration-s", type=float, default=20.0)
     benchmark_run.add_argument("--world")
     benchmark_run.add_argument("--robot-name")
@@ -84,6 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("path")
     validate.add_argument("--scenario", choices=scenario_names())
     validate.add_argument("--spec")
+    validate.add_argument("--robot-profile")
     validate.add_argument("--strict", action="store_true")
     validate.add_argument("--json", action="store_true")
     scaffold = controller_sub.add_parser("scaffold")
@@ -92,6 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
     scaffold.add_argument("--language", choices=["python", "cpp"], default="python")
     scaffold.add_argument("--spec")
     scaffold.add_argument("--world")
+    scaffold.add_argument("--robot-profile")
     scaffold.add_argument("--robot-name")
     scaffold.add_argument("--robot-def")
     scaffold.add_argument("--force", action="store_true")
@@ -99,10 +103,12 @@ def build_parser() -> argparse.ArgumentParser:
     inspect_controller_parser.add_argument("path")
     inspect_controller_parser.add_argument("--scenario", choices=scenario_names())
     inspect_controller_parser.add_argument("--spec")
+    inspect_controller_parser.add_argument("--robot-profile")
     inspect_controller_parser.add_argument("--json", action="store_true")
     edit_controller_parser = controller_sub.add_parser("edit")
     edit_controller_parser.add_argument("path")
     edit_controller_parser.add_argument("--plan", required=True)
+    edit_controller_parser.add_argument("--robot-profile")
     edit_controller_parser.add_argument("--json", action="store_true")
 
     project = subparsers.add_parser("project")
@@ -173,6 +179,7 @@ def main(argv: list[str] | None = None) -> None:
                 mode=args.mode,
                 render=args.render == "on",
                 scenario=args.scenario,
+                robot_profile=args.robot_profile,
                 robot_name=args.robot_name,
                 robot_def=args.robot_def,
             )
@@ -210,6 +217,7 @@ def main(argv: list[str] | None = None) -> None:
                 scenario=args.benchmark_name,
                 controller=args.controller,
                 output=Path(args.output),
+                robot_profile=args.robot_profile,
                 duration_s=args.duration_s,
                 world=args.world,
                 robot_name=args.robot_name,
@@ -227,6 +235,7 @@ def main(argv: list[str] | None = None) -> None:
             scenario=args.scenario,
             strict=args.strict,
             spec_path=Path(args.spec) if getattr(args, "spec", None) else None,
+            robot_profile=getattr(args, "robot_profile", None),
         )
         if args.json:
             print(json.dumps(result.to_dict(), indent=2))
@@ -243,6 +252,7 @@ def main(argv: list[str] | None = None) -> None:
                     language=args.language,
                     spec_path=Path(args.spec) if args.spec else None,
                     world=Path(args.world) if args.world else None,
+                    robot_profile=args.robot_profile,
                     robot_name=args.robot_name,
                     robot_def=args.robot_def,
                 ),
@@ -255,6 +265,7 @@ def main(argv: list[str] | None = None) -> None:
             Path(args.path),
             scenario=args.scenario,
             spec_path=Path(args.spec) if getattr(args, "spec", None) else None,
+            robot_profile=getattr(args, "robot_profile", None),
         )
         if args.json:
             print(json.dumps(payload.to_dict(), indent=2))
@@ -262,7 +273,7 @@ def main(argv: list[str] | None = None) -> None:
             print(format_controller_inspection_report(payload))
         return
     if args.command == "controller" and args.controller_command == "edit":
-        payload = edit_controller(Path(args.path), plan_path=Path(args.plan))
+        payload = edit_controller(Path(args.path), plan_path=Path(args.plan), robot_profile=getattr(args, "robot_profile", None))
         if args.json:
             print(json.dumps(payload, indent=2))
         else:

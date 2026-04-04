@@ -3,14 +3,77 @@ from __future__ import annotations
 from pathlib import Path
 
 from .models import ScenarioDefinition, bundled_example_root
+from .robot_profiles import get_robot_profile, robot_profile_names
 
 
 def _examples_root() -> Path:
     return bundled_example_root()
 
 
-def scenario_registry() -> dict[str, ScenarioDefinition]:
+def scenario_registry(*, robot_profile: str | None = None) -> dict[str, ScenarioDefinition]:
     root = _examples_root()
+    profile = get_robot_profile(robot_profile).robot_profile
+    if profile == "monsterborg-4wd":
+        return {
+            "line-follower": ScenarioDefinition(
+                name="line-follower",
+                description="Follow a high-contrast floor line with the MonsterBorg front camera.",
+                world=root / "monsterborg" / "line-follower" / "worlds" / "monsterborg_line_follower_benchmark.wbt",
+                controller=root / "monsterborg" / "line-follower" / "controllers" / "monsterborg_line_follower_agent.py",
+                target_robot_name="monsterborg-line-follower",
+                target_robot_def="MONSTERBORG",
+                robot_family="monsterborg",
+                robot_profile="monsterborg-4wd",
+                benchmark_kind="line-follower",
+                default_camera="front_camera",
+                required_sensor_keys=("camera_left_band", "camera_center_band", "camera_right_band"),
+                required_metric_keys=("line_visible", "center_error", "ir_balance_error"),
+                required_actuator_keys=("left_velocity", "right_velocity"),
+                benchmark_thresholds={"line_loss_streak_fail": 30},
+            ),
+            "obstacle-avoidance": ScenarioDefinition(
+                name="obstacle-avoidance",
+                description="Avoid frontal obstacles with MonsterBorg range, IMU, and encoder telemetry.",
+                world=root / "monsterborg" / "obstacle-avoidance" / "worlds" / "monsterborg_obstacle_avoidance_benchmark.wbt",
+                controller=root / "monsterborg" / "obstacle-avoidance" / "controllers" / "monsterborg_obstacle_avoidance_agent.py",
+                target_robot_name="monsterborg-obstacle-agent",
+                target_robot_def="MONSTERBORG",
+                robot_family="monsterborg",
+                robot_profile="monsterborg-4wd",
+                benchmark_kind="obstacle-avoidance",
+                default_camera="front_camera",
+                required_sensor_keys=("front_range", "heading", "yaw_rate", "left_encoder", "right_encoder"),
+                required_metric_keys=("obstacle_pressure", "mean_forward_speed"),
+                required_actuator_keys=("left_velocity", "right_velocity"),
+                benchmark_thresholds={
+                    "max_collision_events": 1,
+                    "min_travelled_distance": 0.25,
+                    "min_mean_forward_speed": 1.0,
+                },
+            ),
+            "waypoint-nav": ScenarioDefinition(
+                name="waypoint-nav",
+                description="Drive the MonsterBorg toward a fixed waypoint while exposing range, IMU, and encoder telemetry.",
+                world=root / "monsterborg" / "waypoint-nav" / "worlds" / "monsterborg_waypoint_nav_benchmark.wbt",
+                controller=root / "monsterborg" / "waypoint-nav" / "controllers" / "monsterborg_waypoint_nav_agent.py",
+                target_robot_name="monsterborg-waypoint-agent",
+                target_robot_def="MONSTERBORG",
+                robot_family="monsterborg",
+                robot_profile="monsterborg-4wd",
+                benchmark_kind="waypoint-nav",
+                default_camera="front_camera",
+                required_sensor_keys=("front_range", "heading", "yaw_rate", "left_encoder", "right_encoder"),
+                required_metric_keys=("obstacle_pressure", "mean_forward_speed"),
+                required_actuator_keys=("left_velocity", "right_velocity"),
+                benchmark_thresholds={
+                    "target_position": (1.35, 0.0),
+                    "target_tolerance": 0.18,
+                    "max_collision_events": 0,
+                    "min_travelled_distance": 0.05,
+                    "min_mean_forward_speed": 1.2,
+                },
+            ),
+        }
     return {
         "line-follower": ScenarioDefinition(
             name="line-follower",
@@ -19,6 +82,8 @@ def scenario_registry() -> dict[str, ScenarioDefinition]:
             controller=root / "line-follower" / "controllers" / "line_follower_agent.py",
             target_robot_name="epuck-line-follower",
             target_robot_def="EPUCK",
+            robot_family="e-puck",
+            robot_profile="e-puck",
             benchmark_kind="line-follower",
             default_camera="camera",
             required_sensor_keys=("camera_left_band", "camera_center_band", "camera_right_band"),
@@ -33,6 +98,8 @@ def scenario_registry() -> dict[str, ScenarioDefinition]:
             controller=root / "obstacle-avoidance" / "controllers" / "obstacle_avoidance_agent.py",
             target_robot_name="epuck-obstacle-agent",
             target_robot_def="EPUCK",
+            robot_family="e-puck",
+            robot_profile="e-puck",
             benchmark_kind="obstacle-avoidance",
             default_camera="camera",
             required_sensor_keys=("ps0", "ps1", "ps2", "ps3", "ps4", "ps5", "ps6", "ps7"),
@@ -51,6 +118,8 @@ def scenario_registry() -> dict[str, ScenarioDefinition]:
             controller=root / "waypoint-nav" / "controllers" / "waypoint_nav_agent.py",
             target_robot_name="epuck-waypoint-agent",
             target_robot_def="EPUCK",
+            robot_family="e-puck",
+            robot_profile="e-puck",
             benchmark_kind="waypoint-nav",
             default_camera="camera",
             required_sensor_keys=("ps0", "ps1", "ps2", "ps3", "ps4", "ps5", "ps6", "ps7"),
@@ -67,8 +136,8 @@ def scenario_registry() -> dict[str, ScenarioDefinition]:
     }
 
 
-def get_scenario(name: str) -> ScenarioDefinition:
-    registry = scenario_registry()
+def get_scenario(name: str, robot_profile: str | None = None) -> ScenarioDefinition:
+    registry = scenario_registry(robot_profile=robot_profile)
     if name not in registry:
         available = ", ".join(sorted(registry))
         raise KeyError(f"Unknown scenario '{name}'. Available scenarios: {available}")
@@ -76,4 +145,7 @@ def get_scenario(name: str) -> ScenarioDefinition:
 
 
 def scenario_names() -> list[str]:
-    return sorted(scenario_registry())
+    all_names: set[str] = set()
+    for profile in robot_profile_names():
+        all_names.update(scenario_registry(robot_profile=profile))
+    return sorted(all_names)

@@ -50,7 +50,7 @@ class SessionDaemon:
         self.port = port
         self.mode = mode
         self.render = render
-        self.scenario_def = get_scenario(self.manifest.scenario)
+        self.scenario_def = get_scenario(self.manifest.scenario, robot_profile=self.manifest.robot_profile)
         self.server: asyncio.AbstractServer | None = None
         self.webots_process: asyncio.subprocess.Process | None = None
         self.controller_processes: dict[str, tuple[asyncio.subprocess.Process, Any, Any]] = {}
@@ -409,6 +409,20 @@ class SessionDaemon:
             await asyncio.wait_for(self.telemetry_event.wait(), timeout=max(0.1, remaining))
         raise TimeoutError(f"Timed out waiting for {steps} Webots steps.")
 
+    async def wait_for_role_steps(self, role: str, steps: int, timeout: float | None = None) -> dict[str, Any]:
+        timeout = timeout or max(5.0, steps * 0.4)
+        start = int(self.runtime_snapshots[role].state.get("step_index", 0))
+        target = start + max(steps, 1)
+        deadline = asyncio.get_running_loop().time() + timeout
+        while asyncio.get_running_loop().time() < deadline:
+            current = int(self.runtime_snapshots[role].state.get("step_index", 0))
+            if current >= target:
+                return {"start_step": start, "end_step": current}
+            self.telemetry_event.clear()
+            remaining = deadline - asyncio.get_running_loop().time()
+            await asyncio.wait_for(self.telemetry_event.wait(), timeout=max(0.1, remaining))
+        raise TimeoutError(f"Timed out waiting for runtime '{role}' to advance {steps} steps.")
+
     async def handle_admin_request(self, message: dict[str, Any]) -> dict[str, Any]:
         action = message["action"]
         params = message.get("params", {})
@@ -515,10 +529,10 @@ class SessionDaemon:
     async def run_benchmark(self, *, benchmark: str, duration_s: float, fail_streak: int) -> dict[str, Any]:
         notes: list[str] = []
         scenario_name = benchmark if benchmark in {"line-follower", "obstacle-avoidance", "waypoint-nav"} else self.manifest.scenario
-        scenario_def = get_scenario(scenario_name)
+        scenario_def = get_scenario(scenario_name, robot_profile=self.manifest.robot_profile)
         thresholds = scenario_def.benchmark_thresholds
         try:
-            await self.send_runtime_command("agent", "set_paused", {"paused": False})
+            await self.send_runtime_command("agent", "set_paused", {"paused": True})
             await self.send_runtime_command("agent", "clear_manual_override", {})
         except Exception as exc:
             if not is_transient_runtime_reset_error(exc):
@@ -529,7 +543,8 @@ class SessionDaemon:
             if not is_transient_runtime_reset_error(exc):
                 notes.append(f"supervisor-reset-warning: {exc}")
 
-        await self.wait_for_steps(5, timeout=10.0)
+        await self.wait_for_steps(3, timeout=10.0)
+        await self.wait_for_role_steps("supervisor", 3, timeout=10.0)
         snapshot = self.runtime_snapshots["agent"]
         start_time = float(snapshot.state.get("robot_time", 0.0))
         start_step = int(snapshot.state.get("step_index", 0))
@@ -547,6 +562,7 @@ class SessionDaemon:
         previous_collision = False
         previous_position = self.runtime_snapshots["supervisor"].state.get("robot_position")
         travelled_distance = 0.0
+        encoder_travelled_distance = 0.0
         target_distance = None
         target_position = thresholds.get("target_position")
         target_reached = False
@@ -555,13 +571,40 @@ class SessionDaemon:
         min_travelled_distance = float(thresholds.get("min_travelled_distance", 0.0))
         min_mean_forward_speed = float(thresholds.get("min_mean_forward_speed", 0.0))
         target_tolerance = float(thresholds.get("target_tolerance", 0.0))
+        use_encoder_odometry = self.manifest.robot_profile == "monsterborg-4wd"
+        previous_left_encoder = self.runtime_snapshots["agent"].sensors.get("left_encoder")
+        previous_right_encoder = self.runtime_snapshots["agent"].sensors.get("right_encoder")
+        initial_target_distance = distance_2d(previous_position, target_position) if previous_position and target_position else None
+        previous_robot_time = start_time
+        try:
+            await self.send_runtime_command("agent", "set_paused", {"paused": False})
+        except Exception as exc:
+            if not is_transient_runtime_reset_error(exc):
+                notes.append(f"agent-unpause-warning: {exc}")
 
         while True:
             self.telemetry_event.clear()
             await asyncio.wait_for(self.telemetry_event.wait(), timeout=max(5.0, duration_s / 2))
             snapshot = self.runtime_snapshots["agent"]
+            sensors = snapshot.sensors
             metrics = snapshot.metrics
             supervisor_state = self.runtime_snapshots["supervisor"].state
+            current_robot_time = float(snapshot.state.get("robot_time", 0.0))
+            logical_step_distance = 0.0
+            if use_encoder_odometry:
+                left_encoder = sensors.get("left_encoder")
+                right_encoder = sensors.get("right_encoder")
+                if previous_left_encoder is not None and previous_right_encoder is not None and left_encoder is not None and right_encoder is not None:
+                    left_delta = float(left_encoder) - float(previous_left_encoder)
+                    right_delta = float(right_encoder) - float(previous_right_encoder)
+                    logical_step_distance = abs((left_delta + right_delta) / 2.0) * 0.05
+                if logical_step_distance <= 1e-6:
+                    delta_time = max(current_robot_time - previous_robot_time, 0.0)
+                    logical_step_distance = abs(float(metrics.get("mean_forward_speed", 0.0))) * delta_time * 0.05
+                encoder_travelled_distance += logical_step_distance
+                previous_left_encoder = left_encoder
+                previous_right_encoder = right_encoder
+            previous_robot_time = current_robot_time
             if scenario_name == "line-follower":
                 line_visible = bool(metrics.get("line_visible", False))
                 if line_visible:
@@ -583,9 +626,17 @@ class SessionDaemon:
                     dy = float(position[1]) - float(previous_position[1])
                     travelled_distance += (dx * dx + dy * dy) ** 0.5
                 previous_position = position
+                if use_encoder_odometry and encoder_travelled_distance > travelled_distance:
+                    travelled_distance = encoder_travelled_distance
                 if scenario_name == "waypoint-nav" and position and target_position:
                     target_distance = distance_2d(position, target_position)
                     if target_distance <= target_tolerance:
+                        target_reached = True
+                if scenario_name == "waypoint-nav" and use_encoder_odometry and initial_target_distance is not None:
+                    odometry_target_distance = max(0.0, initial_target_distance - encoder_travelled_distance)
+                    if target_distance is None or odometry_target_distance < target_distance:
+                        target_distance = odometry_target_distance
+                    if odometry_target_distance <= target_tolerance:
                         target_reached = True
             center_sum += abs(float(metrics.get("center_error", 0.0)))
             ir_sum += abs(float(metrics.get("ir_balance_error", 0.0)))
@@ -625,6 +676,9 @@ class SessionDaemon:
             "world": self.manifest.world,
             "controller": self.manifest.robot_controller,
             "session_mode": self.manifest.mode,
+            "robot_family": self.manifest.robot_family,
+            "robot_profile": self.manifest.robot_profile,
+            "runtime_target": self.manifest.runtime_target,
             "sim_time_s": round(float(self.runtime_snapshots["agent"].state.get("robot_time", 0.0)) - start_time, 3),
             "steps": int(self.runtime_snapshots["agent"].state.get("step_index", 0)) - start_step,
             "line_loss_events": line_loss_events,
@@ -641,6 +695,7 @@ class SessionDaemon:
             "extra_metrics": {
                 "collision_events": collision_events,
                 "travelled_distance": round(travelled_distance, 6),
+                "odometry_travelled_distance": round(encoder_travelled_distance, 6),
                 "baseline_contact_points": baseline_contact_points,
                 "mean_obstacle_pressure": round(obstacle_pressure_sum / max(sample_count, 1), 6),
                 "mean_forward_speed": round(mean_forward_speed, 6),

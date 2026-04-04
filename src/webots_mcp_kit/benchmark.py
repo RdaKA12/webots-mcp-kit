@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from .benchmarks import get_scenario, scenario_registry
+from .robot_profiles import get_robot_profile, robot_profile_names
 from .client import SessionClient
 from .controller_authoring import detect_controller_language
 from .launcher import start_session
@@ -11,16 +12,21 @@ from .models import BenchmarkReport
 
 
 def list_benchmarks() -> list[dict[str, str]]:
-    return [
-        {
-            "name": scenario.name,
-            "description": scenario.description,
-            "benchmark_kind": scenario.benchmark_kind,
-            "world": str(scenario.world),
-            "controller": str(scenario.controller),
-        }
-        for scenario in scenario_registry().values()
-    ]
+    payload: list[dict[str, str]] = []
+    for robot_profile in robot_profile_names():
+        for scenario in scenario_registry(robot_profile=robot_profile).values():
+            payload.append(
+                {
+                    "name": scenario.name,
+                    "description": scenario.description,
+                    "benchmark_kind": scenario.benchmark_kind,
+                    "robot_family": scenario.robot_family,
+                    "robot_profile": scenario.robot_profile,
+                    "world": str(scenario.world),
+                    "controller": str(scenario.controller),
+                }
+            )
+    return payload
 
 
 def run_benchmark(
@@ -28,18 +34,21 @@ def run_benchmark(
     scenario: str,
     controller: str | None,
     output: Path,
+    robot_profile: str | None = None,
     duration_s: float = 20.0,
     world: str | None = None,
     robot_name: str | None = None,
     robot_def: str | None = None,
 ) -> BenchmarkReport:
-    scenario_def = get_scenario(scenario)
+    scenario_def = get_scenario(scenario, robot_profile=robot_profile)
+    profile = get_robot_profile(scenario_def.robot_profile)
     session = start_session(
         world=world,
         controller=controller,
         mode="fast",
         render=False,
         scenario=scenario,
+        robot_profile=scenario_def.robot_profile,
         robot_name=robot_name,
         robot_def=robot_def,
     )
@@ -52,6 +61,9 @@ def run_benchmark(
             world=result["world"],
             controller=result["controller"],
             session_mode=result["session_mode"],
+            robot_family=result.get("robot_family") or scenario_def.robot_family,
+            robot_profile=result.get("robot_profile") or scenario_def.robot_profile,
+            runtime_target=result.get("runtime_target") or "interactive-webots",
             sim_time_s=result["sim_time_s"],
             steps=result["steps"],
             line_loss_events=result["line_loss_events"],
@@ -62,9 +74,18 @@ def run_benchmark(
             artifacts=result["artifacts"],
             notes=result["notes"],
             extra_metrics=result.get("extra_metrics", {}),
-            controller_fix_hints=controller_fix_hints(scenario, result["notes"][0] if result.get("notes") else "completed"),
+            physical_adapter_summary=result.get("physical_adapter_summary", {}),
+            controller_fix_hints=controller_fix_hints(
+                scenario,
+                result["notes"][0] if result.get("notes") else "completed",
+                robot_profile=profile.robot_profile,
+            ),
             missing_telemetry_keys=[],
-            device_binding_hints=device_binding_hints(scenario, result["notes"][0] if result.get("notes") else "completed"),
+            device_binding_hints=device_binding_hints(
+                scenario,
+                result["notes"][0] if result.get("notes") else "completed",
+                robot_profile=profile.robot_profile,
+            ),
         )
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
@@ -89,6 +110,7 @@ def run_line_follower_benchmark(
         scenario="line-follower",
         controller=controller,
         output=output,
+        robot_profile="e-puck",
         duration_s=duration_s,
         world=world,
         robot_name=robot_name,
@@ -107,6 +129,9 @@ def format_benchmark_report(path: Path) -> str:
     lines = [
         f"benchmark: {data['benchmark']}",
         f"result: {'pass' if data['pass'] else 'fail'} ({result_reason})",
+        f"robot_family: {data.get('robot_family')}",
+        f"robot_profile: {data.get('robot_profile')}",
+        f"runtime_target: {data.get('runtime_target')}",
         f"world: {data['world']}",
         f"controller: {data['controller']}",
         f"session_mode: {data['session_mode']}",
@@ -153,15 +178,15 @@ def benchmark_next_step(benchmark: str, result_reason: str) -> str:
 
 
 def _benchmark_request_timeout(controller: str | None, duration_s: float) -> float:
-    timeout = max(duration_s + 20.0, 45.0)
+    timeout = max(duration_s * 6.0 + 30.0, 90.0)
     if controller:
         controller_path = Path(controller)
         if detect_controller_language(controller_path) == "cpp":
-            timeout = max(timeout, duration_s + 80.0, 90.0)
+            timeout = max(timeout, duration_s * 8.0 + 45.0, 120.0)
     return timeout
 
 
-def controller_fix_hints(benchmark: str, result_reason: str) -> list[str]:
+def controller_fix_hints(benchmark: str, result_reason: str, *, robot_profile: str = "e-puck") -> list[str]:
     hints: list[str] = []
     if result_reason == "line-loss-threshold-reached":
         hints.append("Tune the control policy around camera-based line reacquisition.")
@@ -173,16 +198,24 @@ def controller_fix_hints(benchmark: str, result_reason: str) -> list[str]:
     if result_reason == "insufficient-forward-speed":
         hints.append("Check actuator outputs and symbol constants that cap wheel speed.")
     if benchmark in {"obstacle-avoidance", "waypoint-nav"}:
-        hints.append("Ensure all ps0-ps7 readings are exposed in report_step sensors.")
+        if robot_profile == "monsterborg-4wd":
+            hints.append("Ensure front_range, heading, yaw_rate, left_encoder, and right_encoder are exposed in report_step sensors.")
+        else:
+            hints.append("Ensure all ps0-ps7 readings are exposed in report_step sensors.")
     return sorted(dict.fromkeys(hints))
 
 
-def device_binding_hints(benchmark: str, result_reason: str) -> list[str]:
-    hints = ["Bind the benchmark default camera through ControllerAgent.from_robot(...)."]
+def device_binding_hints(benchmark: str, result_reason: str, *, robot_profile: str = "e-puck") -> list[str]:
+    camera_name = get_robot_profile(robot_profile).default_camera or "camera"
+    hints = [f"Bind the benchmark default camera '{camera_name}' through ControllerAgent.from_robot(...)."]
     if benchmark in {"obstacle-avoidance", "waypoint-nav"}:
-        hints.append("Bind ps0-ps7 through getDevice(...) in the controller setup block.")
+        if robot_profile == "monsterborg-4wd":
+            hints.append("Bind front_range, imu, left_encoder, and right_encoder in the controller setup block.")
+            hints.append("Map all four drive motors onto logical left/right drive channels in the control policy.")
+        else:
+            hints.append("Bind ps0-ps7 through getDevice(...) in the controller setup block.")
     return sorted(dict.fromkeys(hints if result_reason != "completed" else []))
 
 
-def resolve_example_controller(scenario: str) -> str:
-    return str(get_scenario(scenario).controller)
+def resolve_example_controller(scenario: str, *, robot_profile: str = "e-puck") -> str:
+    return str(get_scenario(scenario, robot_profile=robot_profile).controller)
