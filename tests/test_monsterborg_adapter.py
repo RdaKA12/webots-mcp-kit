@@ -39,7 +39,7 @@ def test_build_monsterborg_physical_bundle_is_replay_compatible(tmp_path: Path) 
         robot_name="monsterborg-physical",
         samples=samples,
         benchmark_name="obstacle-avoidance",
-        benchmark_report={"benchmark": "obstacle-avoidance", "pass": True, "controller_fix_hints": []},
+        benchmark_report={"benchmark": "obstacle-avoidance", "pass": True, "controller_fix_hints": [], "task_variant": "baseline"},
     )
     assert bundle["runtime_target"] == "monsterborg-physical"
     assert (tmp_path / "physical-export" / "export.json").exists()
@@ -47,3 +47,5 @@ def test_build_monsterborg_physical_bundle_is_replay_compatible(tmp_path: Path) 
     replay = replay_session(tmp_path / "physical-export")
     assert replay["runtime_environment"]["runtime_target"] == "monsterborg-physical"
     assert replay["benchmark_summary"]["benchmark_name"] == "obstacle-avoidance"
+    assert replay["task_variant"] == "baseline"
+    assert replay["task_quality_summary"]

@@ -97,17 +97,45 @@ def _runtime_summary_from_samples(samples: list[dict[str, Any]]) -> dict[str, An
     }
 
 
-def _physical_line_follow_metrics(samples: list[dict[str, Any]]) -> dict[str, Any]:
+def _physical_task_metrics(samples: list[dict[str, Any]], *, benchmark_name: str, task_variant: str) -> dict[str, Any]:
     if not samples:
-        return {
+        base = {
             "mean_forward_speed": 0.0,
             "encoder_distance": 0.0,
             "heading_drift": 0.0,
-            "line_reacquisition_events": 0,
-            "max_line_reacquisition_steps": 0,
             "collision_count": 0,
-            "track_variant": "baseline",
+            "task_variant": task_variant,
         }
+        if benchmark_name == "line-follower":
+            base.update(
+                {
+                    "line_reacquisition_events": 0,
+                    "max_line_reacquisition_steps": 0,
+                    "camera_signal_strength_mean": 0.0,
+                }
+            )
+        elif benchmark_name == "obstacle-avoidance":
+            base.update(
+                {
+                    "min_front_range": 0.0,
+                    "obstacle_clearance_violations": 0,
+                    "heading_recovery_events": 0,
+                    "stalled_steps": 0,
+                    "speed_envelope_violations": 0,
+                }
+            )
+        else:
+            base.update(
+                {
+                    "progress_ratio": 0.0,
+                    "distance_to_goal_final": 0.0,
+                    "heading_alignment_error": 0.0,
+                    "path_deviation_score": 0.0,
+                    "waypoint_recovery_events": 0,
+                    "stalled_steps": 0,
+                }
+            )
+        return base
     mean_forward_speed_sum = 0.0
     signal_strength_sum = 0.0
     line_reacquisition_events = 0
@@ -119,6 +147,17 @@ def _physical_line_follow_metrics(samples: list[dict[str, Any]]) -> dict[str, An
     encoder_distance = 0.0
     first_heading = None
     last_heading = None
+    min_front_range = float("inf")
+    obstacle_clearance_violations = 0
+    heading_recovery_events = 0
+    stalled_steps = 0
+    speed_envelope_violations = 0
+    progress_ratio = 0.0
+    distance_to_goal_final = None
+    heading_alignment_error = 0.0
+    path_deviation_sum = 0.0
+    path_deviation_samples = 0
+    waypoint_recovery_events = 0
     for sample in samples:
         sensors = sample.get("sensors", {}) if isinstance(sample.get("sensors"), dict) else {}
         metrics = sample.get("metrics", {}) if isinstance(sample.get("metrics"), dict) else {}
@@ -146,17 +185,59 @@ def _physical_line_follow_metrics(samples: list[dict[str, Any]]) -> dict[str, An
             encoder_distance += abs((left_delta + right_delta) / 2.0) * 0.05
         previous_left = left
         previous_right = right
+        front_range = sensors.get("front_range")
+        if front_range is not None:
+            min_front_range = min(min_front_range, float(front_range))
+        obstacle_clearance_violations += int(metrics.get("clearance_violation", 0) or 0)
+        heading_recovery_events = max(heading_recovery_events, int(metrics.get("heading_recovery_events", 0) or 0))
+        stalled_steps = max(stalled_steps, int(metrics.get("stalled_steps", 0) or 0))
+        speed_envelope_violations += int(metrics.get("speed_saturation", 0) or 0)
+        progress_ratio = max(progress_ratio, float(metrics.get("progress_ratio", 0.0) or 0.0))
+        if metrics.get("distance_to_goal_estimate") is not None:
+            distance_to_goal_final = float(metrics.get("distance_to_goal_estimate"))
+        heading_alignment_error = max(heading_alignment_error, float(metrics.get("heading_alignment_error", 0.0) or 0.0))
+        path_deviation_sum += float(metrics.get("path_deviation_score", 0.0) or 0.0)
+        path_deviation_samples += 1
+        waypoint_recovery_events = max(waypoint_recovery_events, int(metrics.get("waypoint_recovery_events", 0) or 0))
     max_line_reacquisition_steps = max(max_line_reacquisition_steps, current_loss_steps)
-    return {
+    payload = {
         "mean_forward_speed": round(mean_forward_speed_sum / max(len(samples), 1), 6),
-        "camera_signal_strength_mean": round(signal_strength_sum / max(len(samples), 1), 6),
         "encoder_distance": round(encoder_distance, 6),
         "heading_drift": round(abs(float(last_heading or 0.0) - float(first_heading or 0.0)), 6),
-        "line_reacquisition_events": line_reacquisition_events,
-        "max_line_reacquisition_steps": max_line_reacquisition_steps,
         "collision_count": collision_count,
-        "track_variant": "baseline",
+        "task_variant": task_variant,
     }
+    if benchmark_name == "line-follower":
+        payload.update(
+            {
+                "camera_signal_strength_mean": round(signal_strength_sum / max(len(samples), 1), 6),
+                "line_reacquisition_events": line_reacquisition_events,
+                "max_line_reacquisition_steps": max_line_reacquisition_steps,
+                "track_variant": task_variant,
+            }
+        )
+    elif benchmark_name == "obstacle-avoidance":
+        payload.update(
+            {
+                "min_front_range": round(0.0 if min_front_range == float("inf") else min_front_range, 6),
+                "obstacle_clearance_violations": obstacle_clearance_violations,
+                "heading_recovery_events": heading_recovery_events,
+                "stalled_steps": stalled_steps,
+                "speed_envelope_violations": speed_envelope_violations,
+            }
+        )
+    else:
+        payload.update(
+            {
+                "progress_ratio": round(progress_ratio, 6),
+                "distance_to_goal_final": round(float(distance_to_goal_final or 0.0), 6),
+                "heading_alignment_error": round(heading_alignment_error, 6),
+                "path_deviation_score": round(path_deviation_sum / max(path_deviation_samples, 1), 6),
+                "waypoint_recovery_events": waypoint_recovery_events,
+                "stalled_steps": stalled_steps,
+            }
+        )
+    return payload
 
 
 def build_monsterborg_physical_bundle(
@@ -187,7 +268,13 @@ def build_monsterborg_physical_bundle(
     standard_artifacts = {name: str(export_dir / filename) for name, filename in SESSION_EXPORT_STANDARD_ARTIFACTS}
     samples_path = artifacts_dir / "monsterborg_physical_samples.json"
     atomic_write_text(samples_path, json.dumps(samples, indent=2), encoding="utf-8")
-    derived_line_follow_metrics = _physical_line_follow_metrics(samples)
+    resolved_benchmark_name = benchmark_name or scenario
+    resolved_variant = "baseline"
+    if isinstance(benchmark_report, dict):
+        resolved_variant = str(benchmark_report.get("task_variant") or benchmark_report.get("track_variant") or resolved_variant)
+    if isinstance(physical_adapter_summary, dict):
+        resolved_variant = str(physical_adapter_summary.get("task_variant") or resolved_variant)
+    derived_task_metrics = _physical_task_metrics(samples, benchmark_name=resolved_benchmark_name, task_variant=resolved_variant)
 
     runtime_summary = _runtime_summary_from_samples(samples)
     session_payload = {
@@ -257,26 +344,34 @@ def build_monsterborg_physical_bundle(
         },
     }
 
-    benchmark_payload = benchmark_report or {
-        "benchmark": benchmark_name or scenario,
-        "pass": True,
-        "session_mode": "physical",
-        "robot_family": "monsterborg",
-        "robot_profile": "monsterborg-4wd",
-        "runtime_target": "monsterborg-physical",
-        "notes": [],
-        "track_variant": derived_line_follow_metrics["track_variant"],
-        "line_reacquisition_events": derived_line_follow_metrics["line_reacquisition_events"],
-        "max_line_reacquisition_steps": derived_line_follow_metrics["max_line_reacquisition_steps"],
-        "camera_signal_strength_mean": derived_line_follow_metrics["camera_signal_strength_mean"],
-        "extra_metrics": {
-            "mean_forward_speed": derived_line_follow_metrics["mean_forward_speed"],
-            "encoder_distance": derived_line_follow_metrics["encoder_distance"],
-            "heading_drift": derived_line_follow_metrics["heading_drift"],
-            "collision_count": derived_line_follow_metrics["collision_count"],
-        },
-        "physical_adapter_summary": physical_summary,
-    }
+    benchmark_payload = dict(benchmark_report) if isinstance(benchmark_report, dict) else {}
+    benchmark_payload.setdefault("benchmark", resolved_benchmark_name)
+    benchmark_payload.setdefault("pass", True)
+    benchmark_payload.setdefault("session_mode", "physical")
+    benchmark_payload.setdefault("robot_family", "monsterborg")
+    benchmark_payload.setdefault("robot_profile", "monsterborg-4wd")
+    benchmark_payload.setdefault("runtime_target", "monsterborg-physical")
+    benchmark_payload.setdefault("notes", [])
+    benchmark_payload["task_variant"] = str(benchmark_payload.get("task_variant") or derived_task_metrics["task_variant"])
+    task_quality_summary = benchmark_payload.get("task_quality_summary") if isinstance(benchmark_payload.get("task_quality_summary"), dict) else {}
+    benchmark_payload["task_quality_summary"] = {**derived_task_metrics, **task_quality_summary}
+    if derived_task_metrics.get("track_variant") is not None:
+        benchmark_payload["track_variant"] = str(benchmark_payload.get("track_variant") or derived_task_metrics["track_variant"])
+    if "line_reacquisition_events" in derived_task_metrics:
+        benchmark_payload["line_reacquisition_events"] = int(
+            benchmark_payload.get("line_reacquisition_events", derived_task_metrics.get("line_reacquisition_events", 0)) or 0
+        )
+    if "max_line_reacquisition_steps" in derived_task_metrics:
+        benchmark_payload["max_line_reacquisition_steps"] = int(
+            benchmark_payload.get("max_line_reacquisition_steps", derived_task_metrics.get("max_line_reacquisition_steps", 0)) or 0
+        )
+    if "camera_signal_strength_mean" in derived_task_metrics:
+        benchmark_payload["camera_signal_strength_mean"] = float(
+            benchmark_payload.get("camera_signal_strength_mean", derived_task_metrics.get("camera_signal_strength_mean", 0.0)) or 0.0
+        )
+    extra_metrics = benchmark_payload.get("extra_metrics") if isinstance(benchmark_payload.get("extra_metrics"), dict) else {}
+    benchmark_payload["extra_metrics"] = {**derived_task_metrics, **extra_metrics}
+    benchmark_payload.setdefault("physical_adapter_summary", physical_summary)
     summary_payload = {
         "session_state": inspect_payload["session_state"],
         "runtime_summary": runtime_summary,
@@ -292,6 +387,8 @@ def build_monsterborg_physical_bundle(
             "robot_profile": "monsterborg-4wd",
             "runtime_target": "monsterborg-physical",
             "physical_adapter_summary": physical_summary,
+            "task_variant": benchmark_payload.get("task_variant"),
+            "task_quality_summary": benchmark_payload.get("task_quality_summary", {}),
             "track_variant": benchmark_payload.get("track_variant"),
             "line_reacquisition_events": benchmark_payload.get("line_reacquisition_events"),
             "max_line_reacquisition_steps": benchmark_payload.get("max_line_reacquisition_steps"),

@@ -131,6 +131,150 @@ MONSTERBORG_LINE_TRACK_VARIANTS = {
     },
 }
 
+MONSTERBORG_OBSTACLE_VARIANTS = {
+    "baseline": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "grid"},
+        "layout": {
+            "spawn": {"translation": [-0.9, 0.0, 0.0], "rotation_z": 0.0},
+            "obstacles": [
+                {"shape": "box", "position": [-0.05, 0.42], "size": [0.16, 0.16, 0.14], "rotation_z": 0.0},
+                {"shape": "box", "position": [0.62, -0.48], "size": [0.16, 0.16, 0.14], "rotation_z": 0.3},
+                {"shape": "cylinder", "position": [0.95, 0.62], "radius": 0.08, "height": 0.16, "rotation_z": 0.0},
+            ],
+            "walls": [],
+        },
+    },
+    "narrow-corridor": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "grid"},
+        "layout": {
+            "spawn": {"translation": [-1.05, 0.0, 0.0], "rotation_z": 0.0},
+            "obstacles": [
+                {"shape": "box", "position": [0.45, 0.0], "size": [0.18, 0.18, 0.14], "rotation_z": 0.0},
+            ],
+            "walls": [
+                {"name": "corridor-top", "start": [-1.0, 0.62], "end": [1.15, 0.62], "thickness": 0.04, "height": 0.16},
+                {"name": "corridor-bottom", "start": [-1.0, -0.62], "end": [1.15, -0.62], "thickness": 0.04, "height": 0.16},
+            ],
+        },
+    },
+    "late-obstacle": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "plain"},
+        "layout": {
+            "spawn": {"translation": [-1.15, -0.1, 0.0], "rotation_z": 0.0},
+            "obstacles": [
+                {"shape": "box", "position": [0.9, 0.0], "size": [0.18, 0.18, 0.14], "rotation_z": 0.0},
+                {"shape": "cylinder", "position": [0.55, 0.5], "radius": 0.08, "height": 0.16, "rotation_z": 0.0},
+            ],
+            "walls": [],
+        },
+    },
+    "cluttered": {
+        "arena": {"dimensions": [3.6, 3.2], "floor": "grid"},
+        "layout": {
+            "spawn": {"translation": [-1.05, 0.0, 0.0], "rotation_z": 0.0},
+            "obstacles": [
+                {"shape": "box", "position": [-0.2, 0.55], "size": [0.14, 0.14, 0.14], "rotation_z": 0.0},
+                {"shape": "box", "position": [0.22, -0.38], "size": [0.14, 0.18, 0.14], "rotation_z": 0.4},
+                {"shape": "cylinder", "position": [0.72, 0.2], "radius": 0.08, "height": 0.16, "rotation_z": 0.0},
+                {"shape": "cylinder", "position": [1.08, -0.5], "radius": 0.08, "height": 0.16, "rotation_z": 0.0},
+            ],
+            "walls": [],
+        },
+    },
+    "range-noise": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "dark"},
+        "layout": {
+            "spawn": {"translation": [-0.95, 0.05, 0.0], "rotation_z": 0.05},
+            "obstacles": [
+                {"shape": "box", "position": [0.05, 0.35], "size": [0.16, 0.16, 0.14], "rotation_z": 0.0},
+                {"shape": "cylinder", "position": [0.86, -0.18], "radius": 0.08, "height": 0.16, "rotation_z": 0.0},
+            ],
+            "walls": [],
+        },
+    },
+    "friction-perturbation": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "grid"},
+        "layout": {
+            "spawn": {"translation": [-0.95, -0.12, 0.0], "rotation_z": 0.04},
+            "obstacles": [
+                {"shape": "box", "position": [0.18, 0.42], "size": [0.18, 0.18, 0.14], "rotation_z": 0.2},
+                {"shape": "box", "position": [0.88, -0.3], "size": [0.16, 0.16, 0.14], "rotation_z": 0.0},
+            ],
+            "walls": [],
+        },
+    },
+}
+
+MONSTERBORG_WAYPOINT_VARIANTS = {
+    "baseline": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "plain"},
+        "layout": {
+            "spawn": {"translation": [-1.0, 0.0, 0.0], "rotation_z": 0.0},
+            "waypoints": [[1.35, 0.0]],
+            "goal_region": {"center": [1.35, 0.0], "radius": 0.3},
+            "walls": [],
+            "obstacles": [],
+        },
+    },
+    "offset-start": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "plain"},
+        "layout": {
+            "spawn": {"translation": [-1.05, -0.35, 0.0], "rotation_z": 0.0},
+            "waypoints": [[0.25, -0.15], [1.35, 0.0]],
+            "goal_region": {"center": [1.35, 0.0], "radius": 0.28},
+            "walls": [],
+            "obstacles": [],
+        },
+    },
+    "tight-waypoints": {
+        "arena": {"dimensions": [3.6, 3.0], "floor": "plain"},
+        "layout": {
+            "spawn": {"translation": [-1.1, 0.0, 0.0], "rotation_z": 0.0},
+            "waypoints": [[-0.15, 0.2], [0.55, 0.18], [1.2, 0.0]],
+            "goal_region": {"center": [1.2, 0.0], "radius": 0.25},
+            "walls": [],
+            "obstacles": [],
+        },
+    },
+    "low-clearance": {
+        "arena": {"dimensions": [3.5, 3.0], "floor": "grid"},
+        "layout": {
+            "spawn": {"translation": [-1.0, 0.0, 0.0], "rotation_z": 0.0},
+            "waypoints": [[1.25, 0.0]],
+            "goal_region": {"center": [1.25, 0.0], "radius": 0.24},
+            "walls": [
+                {"name": "waypoint-top", "start": [-0.7, 0.55], "end": [1.25, 0.55], "thickness": 0.04, "height": 0.16},
+                {"name": "waypoint-bottom", "start": [-0.7, -0.55], "end": [1.25, -0.55], "thickness": 0.04, "height": 0.16},
+            ],
+            "obstacles": [
+                {"shape": "box", "position": [0.35, 0.0], "size": [0.14, 0.14, 0.14], "rotation_z": 0.0},
+            ],
+        },
+    },
+    "imu-drift": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "plain"},
+        "layout": {
+            "spawn": {"translation": [-1.0, -0.08, 0.0], "rotation_z": 0.16},
+            "waypoints": [[1.3, 0.08]],
+            "goal_region": {"center": [1.3, 0.08], "radius": 0.28},
+            "walls": [],
+            "obstacles": [],
+        },
+    },
+    "friction-perturbation": {
+        "arena": {"dimensions": [3.4, 3.0], "floor": "grid"},
+        "layout": {
+            "spawn": {"translation": [-1.0, 0.0, 0.0], "rotation_z": 0.05},
+            "waypoints": [[1.3, -0.05]],
+            "goal_region": {"center": [1.3, -0.05], "radius": 0.28},
+            "walls": [],
+            "obstacles": [
+                {"shape": "cylinder", "position": [0.52, 0.38], "radius": 0.08, "height": 0.16, "rotation_z": 0.0},
+            ],
+        },
+    },
+}
+
 ROBOT_CLEARANCE_RADIUS = 0.045
 
 
@@ -314,6 +458,20 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
                 "environment.template",
             )
         )
+    if robot_profile == "monsterborg-4wd" and scenario_kind in {"obstacle-avoidance", "waypoint-nav"}:
+        variant = _task_variant(spec) or "baseline"
+        supported_variants = (
+            MONSTERBORG_OBSTACLE_VARIANTS if scenario_kind == "obstacle-avoidance" else MONSTERBORG_WAYPOINT_VARIANTS
+        )
+        if variant not in supported_variants:
+            issues.append(
+                ValidationIssue(
+                    "unsupported-task-variant",
+                    f"MonsterBorg {scenario_kind} variants must be one of {sorted(supported_variants)}.",
+                    "task.variant",
+                    level="warning",
+                )
+            )
 
     arena = spec.environment.get("arena") if isinstance(spec.environment.get("arena"), dict) else {}
     if not _is_positive_pair(arena.get("dimensions")):
@@ -631,6 +789,7 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         "scenario_name": spec.scenario["name"],
         "scenario_kind": spec.scenario["kind"],
         "benchmark_name": benchmark_name,
+        "task_variant": _task_variant(spec) or _str_field(spec.layout.get("line_track") if isinstance(spec.layout.get("line_track"), dict) else {}, "variant"),
         "world_path": str(world_path),
         "controller_path": str(controller_path),
         "target_robot_name": spec.robot["name"],
@@ -707,6 +866,7 @@ def describe_scenario(path: Path) -> str:
         f"landmarks: {len(layout.get('landmarks', [])) if isinstance(layout.get('landmarks'), list) else 0}",
         f"zones: {len(layout.get('zones', [])) if isinstance(layout.get('zones'), list) else 0}",
         f"props: {len(layout.get('props', [])) if isinstance(layout.get('props'), list) else 0}",
+        f"task_variant: {_task_variant(spec) or 'baseline'}",
         f"default_camera: {spec.controller.get('default_camera')}",
         f"benchmark_profile: {report.benchmark_name}",
         f"status: {'valid' if report.valid else 'invalid'}",
@@ -814,6 +974,78 @@ def _line_follow_readiness(
     }
 
 
+def _obstacle_readiness(spec: ScenarioSpec, report: ScenarioValidationResult) -> dict[str, Any]:
+    if spec.scenario.get("kind") != "obstacle-avoidance":
+        return {"ready": True, "task_variant": None, "issues": []}
+    obstacles = spec.layout.get("obstacles") if isinstance(spec.layout.get("obstacles"), list) else []
+    issues = [issue.code for issue in report.issues if issue.field and issue.field.startswith("layout.obstacles")]
+    return {
+        "ready": report.valid and bool(obstacles) and not issues,
+        "task_variant": _task_variant(spec) or "baseline",
+        "obstacle_count": len(obstacles),
+        "issues": issues,
+    }
+
+
+def _clearance_layout_readiness(spec: ScenarioSpec, report: ScenarioValidationResult) -> dict[str, Any]:
+    if spec.scenario.get("kind") != "obstacle-avoidance":
+        return {"ready": True, "issues": []}
+    spawn = spec.layout.get("spawn") if isinstance(spec.layout.get("spawn"), dict) else {}
+    translation = spawn.get("translation")
+    spawn_xy = [float(translation[0]), float(translation[1])] if _is_numeric_list(translation, 3) else None
+    near_spawn = 0
+    if spawn_xy:
+        for obstacle in spec.layout.get("obstacles", []):
+            if not isinstance(obstacle, dict) or not _is_numeric_list(obstacle.get("position"), 2):
+                continue
+            if _distance_2d(spawn_xy, obstacle["position"]) < _obstacle_footprint_radius(obstacle) + 0.42:
+                near_spawn += 1
+    issues = [issue.code for issue in report.issues if issue.code in {"spawn-blocked", "obstacle-out-of-bounds"}]
+    return {
+        "ready": near_spawn == 0 and not issues,
+        "spawn_clearance_conflicts": near_spawn,
+        "issues": issues,
+    }
+
+
+def _waypoint_readiness(spec: ScenarioSpec, report: ScenarioValidationResult) -> dict[str, Any]:
+    if spec.scenario.get("kind") != "waypoint-nav":
+        return {"ready": True, "task_variant": None, "issues": []}
+    waypoints = spec.layout.get("waypoints") if isinstance(spec.layout.get("waypoints"), list) else []
+    issues = [issue.code for issue in report.issues if issue.field and issue.field.startswith("layout.waypoints")]
+    return {
+        "ready": report.valid and bool(waypoints) and not issues,
+        "task_variant": _task_variant(spec) or "baseline",
+        "waypoint_count": len(waypoints),
+        "issues": issues,
+    }
+
+
+def _goal_alignment_readiness(spec: ScenarioSpec, report: ScenarioValidationResult) -> dict[str, Any]:
+    if spec.scenario.get("kind") != "waypoint-nav":
+        return {"ready": True, "issues": []}
+    spawn = spec.layout.get("spawn") if isinstance(spec.layout.get("spawn"), dict) else {}
+    translation = spawn.get("translation")
+    goal_region = spec.layout.get("goal_region") if isinstance(spec.layout.get("goal_region"), dict) else {}
+    goal_center = goal_region.get("center")
+    if not (_is_numeric_list(translation, 3) and _is_numeric_list(goal_center, 2)):
+        return {"ready": False, "issues": ["missing_goal_or_spawn"]}
+    delta_x = float(goal_center[0]) - float(translation[0])
+    delta_y = float(goal_center[1]) - float(translation[1])
+    expected_heading = math.atan2(delta_y, delta_x)
+    rotation_z = float(spawn.get("rotation_z", 0.0)) if isinstance(spawn.get("rotation_z"), (int, float)) else 0.0
+    heading_error = abs(expected_heading - rotation_z)
+    while heading_error > math.pi:
+        heading_error -= 2 * math.pi
+    heading_error = abs(heading_error)
+    issues = [issue.code for issue in report.issues if issue.code in {"spawn-goal-overlap", "goal-region-out-of-bounds"}]
+    return {
+        "ready": heading_error <= 0.4 and not issues,
+        "heading_error": round(heading_error, 6),
+        "issues": issues,
+    }
+
+
 def scenario_doctor(path: Path) -> dict[str, Any]:
     spec_path = scenario_spec_path(path)
     report = validate_scenario(spec_path)
@@ -841,6 +1073,10 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
             "camera_visibility_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
             "spawn_alignment_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
             "track_clearance_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
+            "obstacle_readiness": {"ready": False, "task_variant": None, "issues": [issue.code for issue in report.issues]},
+            "clearance_layout_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
+            "waypoint_readiness": {"ready": False, "task_variant": None, "issues": [issue.code for issue in report.issues]},
+            "goal_alignment_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
             "issues": [issue.to_dict() for issue in report.issues],
             "support_tier": "experimental-foundation",
             "next_step": "Create a spec with `webots-kit scenario init <path> --template <template>`.",
@@ -929,6 +1165,10 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         spawn_alignment_readiness=spawn_alignment_readiness,
         track_clearance_readiness=track_clearance_readiness,
     )
+    obstacle_readiness = _obstacle_readiness(spec, report)
+    clearance_layout_readiness = _clearance_layout_readiness(spec, report)
+    waypoint_readiness = _waypoint_readiness(spec, report)
+    goal_alignment_readiness = _goal_alignment_readiness(spec, report)
     next_step = f"Run `webots-kit scenario build \"{spec_path}\"` once the validation issues are fixed."
     if report.valid and benchmark_name:
         next_step = (
@@ -957,6 +1197,10 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "camera_visibility_readiness": camera_visibility_readiness,
         "spawn_alignment_readiness": spawn_alignment_readiness,
         "track_clearance_readiness": track_clearance_readiness,
+        "obstacle_readiness": obstacle_readiness,
+        "clearance_layout_readiness": clearance_layout_readiness,
+        "waypoint_readiness": waypoint_readiness,
+        "goal_alignment_readiness": goal_alignment_readiness,
         "issues": [issue.to_dict() for issue in report.issues],
         "support_tier": "experimental-foundation",
         "next_step": next_step,
@@ -1196,6 +1440,8 @@ def replay_session(export_path: Path) -> dict[str, Any]:
         "runtime_failure_class": runtime_failure_class,
         "triage_recipe": triage_recipe,
         "controller_fix_hints": fix_hints,
+        "task_variant": benchmark_artifact.get("task_variant") or benchmark_artifact.get("track_variant"),
+        "task_quality_summary": benchmark_artifact.get("task_quality_summary", {}),
         "track_variant": benchmark_artifact.get("track_variant"),
         "line_reacquisition_events": benchmark_artifact.get("line_reacquisition_events"),
         "max_line_reacquisition_steps": benchmark_artifact.get("max_line_reacquisition_steps"),
@@ -1208,7 +1454,7 @@ def replay_session(export_path: Path) -> dict[str, Any]:
             if copied_artifacts is not None
             else sorted(path.name for path in (export_root / "artifacts").glob("*"))
         ),
-        "team_handoff_summary": f"Replay indicates {runtime_failure_class} focus; start with {triage_recipe.get('primary_artifacts', [])} before handing the session back for a rerun.",
+        "team_handoff_summary": f"Replay indicates {runtime_failure_class} focus for task variant {benchmark_artifact.get('task_variant') or benchmark_artifact.get('track_variant') or 'baseline'}; start with {triage_recipe.get('primary_artifacts', [])} before handing the session back for a rerun.",
         "next_step": benchmark_next_step(benchmark_name, result_reason),
         "support_tier": "experimental-foundation",
     }
@@ -1283,6 +1529,10 @@ def format_scenario_doctor_report(payload: dict[str, Any]) -> str:
         f"camera_visibility_readiness: {payload.get('camera_visibility_readiness', {}).get('ready')}",
         f"spawn_alignment_readiness: {payload.get('spawn_alignment_readiness', {}).get('ready')}",
         f"track_clearance_readiness: {payload.get('track_clearance_readiness', {}).get('ready')}",
+        f"obstacle_readiness: {payload.get('obstacle_readiness', {}).get('ready')}",
+        f"clearance_layout_readiness: {payload.get('clearance_layout_readiness', {}).get('ready')}",
+        f"waypoint_readiness: {payload.get('waypoint_readiness', {}).get('ready')}",
+        f"goal_alignment_readiness: {payload.get('goal_alignment_readiness', {}).get('ready')}",
         f"unsupported_combinations: {len(payload.get('unsupported_combinations', []))}",
         f"summary: {len(payload.get('issues', []))} issues",
         "support_tier: experimental-foundation",
@@ -1318,6 +1568,8 @@ def format_session_replay(payload: dict[str, Any]) -> str:
         f"last_error: {payload['last_error']}",
         f"runtime_failure_class: {payload.get('runtime_failure_class')}",
         f"benchmark_summary: {benchmark_summary.get('benchmark_name')} ({benchmark_summary.get('result_reason')})",
+        f"task_variant: {payload.get('task_variant')}",
+        f"task_quality_summary: {payload.get('task_quality_summary')}",
         f"track_variant: {payload.get('track_variant')}",
         f"line_reacquisition_events: {payload.get('line_reacquisition_events')}",
         f"max_line_reacquisition_steps: {payload.get('max_line_reacquisition_steps')}",
@@ -1406,6 +1658,9 @@ def _build_arena_world(spec: ScenarioSpec) -> str:
     arena_dimensions = spec.environment["arena"]["dimensions"]
     floor_style = str(spec.environment.get("arena", {}).get("floor", "plain"))
     spawn = spec.layout["spawn"]
+    info_lines = ["Generated by webots-kit scenario build.", f"Template-driven {spec.scenario['kind']} scenario."]
+    if _task_variant(spec):
+        info_lines.append(f"Task variant: {_task_variant(spec)}")
     body_nodes: list[str] = []
     for index, obstacle in enumerate(spec.layout.get("obstacles", []), start=1):
         body_nodes.append(_obstacle_block(index, obstacle))
@@ -1422,7 +1677,7 @@ def _build_arena_world(spec: ScenarioSpec) -> str:
         body_nodes.append(_goal_block(goal))
     return _world_shell(
         title=f"{spec.project['name']} {spec.scenario['name']}",
-        info_lines=["Generated by webots-kit scenario build.", f"Template-driven {spec.scenario['kind']} scenario."],
+        info_lines=info_lines,
         arena_size=arena_dimensions,
         floor_style=floor_style,
         body="\n".join(body_nodes),
@@ -2280,6 +2535,18 @@ def _template_defaults(template: str) -> dict[str, Any]:
     )
 
 
+def _monsterborg_task_variant_defaults(scenario_kind: str, variant: str) -> dict[str, Any] | None:
+    if scenario_kind == "obstacle-avoidance":
+        return _clone_json_like(MONSTERBORG_OBSTACLE_VARIANTS.get(variant))
+    if scenario_kind == "waypoint-nav":
+        return _clone_json_like(MONSTERBORG_WAYPOINT_VARIANTS.get(variant))
+    return None
+
+
+def _task_variant(spec: ScenarioSpec) -> str | None:
+    return _str_field(spec.task, "variant")
+
+
 def _apply_scenario_defaults(spec: ScenarioSpec) -> None:
     scenario_kind = _str_field(spec.scenario, "kind")
     environment_template = _str_field(spec.environment, "template")
@@ -2294,6 +2561,15 @@ def _apply_scenario_defaults(spec: ScenarioSpec) -> None:
     scenario_def = get_scenario(benchmark_name, robot_profile=robot_profile) if benchmark_name else None
     template = environment_template or (_default_template_for_kind(scenario_kind, robot_profile=robot_profile) if scenario_kind in SUPPORTED_TASKS else "epuck-waypoint")
     defaults = _template_defaults(template)
+    if robot_profile == "monsterborg-4wd" and scenario_kind in {"obstacle-avoidance", "waypoint-nav"}:
+        spec.task.setdefault("variant", "baseline")
+        variant_defaults = _monsterborg_task_variant_defaults(scenario_kind, _task_variant(spec) or "baseline")
+        if isinstance(variant_defaults, dict):
+            defaults["arena"] = variant_defaults.get("arena", defaults.get("arena", {}))
+            defaults["layout"] = {
+                **defaults.get("layout", {}),
+                **variant_defaults.get("layout", {}),
+            }
 
     arena = spec.environment.setdefault("arena", {})
     arena.setdefault("dimensions", defaults["arena"]["dimensions"])
@@ -2788,6 +3064,8 @@ def _build_benchmark_summary(
         "last_error_code": last_error_code,
         "rerun_supported": benchmark_name in scenario_registry(),
         "next_step": benchmark_next_step(benchmark_name, result_reason or "completed"),
+        "task_variant": artifact.get("task_variant") or artifact.get("track_variant"),
+        "task_quality_summary": artifact.get("task_quality_summary", {}),
         "track_variant": artifact.get("track_variant"),
         "line_reacquisition_events": artifact.get("line_reacquisition_events"),
         "max_line_reacquisition_steps": artifact.get("max_line_reacquisition_steps"),

@@ -1,6 +1,10 @@
 # MonsterBorg Physical Adapter
 
-Use this lane when you want Raspberry Pi MonsterBorg telemetry to land in the same export and replay format as the Webots runtime.
+Use this lane when you want Raspberry Pi MonsterBorg telemetry to land in the same export and replay format as the Webots runtime, now across all three bundled MonsterBorg tasks:
+
+- `line-follower`
+- `obstacle-avoidance`
+- `waypoint-nav`
 
 Supported scope:
 
@@ -8,12 +12,17 @@ Supported scope:
 - Raspberry Pi host
 - shared benchmark and replay artifacts
 - export and replay parity
+- task-aware calibration for line-follow, obstacle, and waypoint
 
 Not supported here:
 
 - live MCP control of the physical robot
 - generic Linux runtime support
 - non-MonsterBorg hardware adapters
+
+Recommended runner label for automated smoke:
+
+- `monsterborg-physical`
 
 ## Verify The Pi Environment
 
@@ -37,7 +46,7 @@ Prepare a JSON file with either:
 Then run:
 
 ```powershell
-python .\scripts\monsterborg_capture_run.py --input .\capture.json --output .\artifacts\monsterborg-physical --scenario obstacle-avoidance --benchmark obstacle-avoidance --robot-name monsterborg-physical
+python .\scripts\monsterborg_capture_run.py --input .\capture.json --output .\artifacts\monsterborg-physical --scenario obstacle-avoidance --benchmark obstacle-avoidance --variant baseline --robot-name monsterborg-physical
 webots-kit session replay .\artifacts\monsterborg-physical
 ```
 
@@ -54,6 +63,7 @@ The physical adapter bundle preserves:
 - `runtime_target = monsterborg-physical`
 - `robot_family = monsterborg`
 - `robot_profile = monsterborg-4wd`
+- task-aware `benchmark`, `task_variant`, and `task_quality_summary` metadata in the exported benchmark summary
 
 The replay path stays additive. Existing Webots exports remain unchanged.
 
@@ -73,11 +83,24 @@ The calibration report compares:
 - `line_reacquisition_events`
 - `max_line_reacquisition_steps`
 - `collision_count`
+- `min_front_range`
+- `stalled_steps`
+- `progress_ratio`
+- `distance_to_goal_final`
+- `heading_alignment_error`
 
 Green condition:
 
 - `pass: true`
 - `next_step` is either a no-op summary or a small tuning action
+
+Task-aware operator flow:
+
+1. `python .\scripts\monsterborg_physical_verify.py --json`
+2. `python .\scripts\monsterborg_capture_run.py --input <capture.json> --output <export-dir> --scenario <task> --benchmark <task> --variant <variant>`
+3. `webots-kit session replay <export-dir>`
+4. `python .\scripts\monsterborg_calibration_report.py --sim-export <sim-export-dir> --physical-export <export-dir> --output <report.json>`
+5. `python .\scripts\monsterborg_benchmark_matrix.py <export-dir>... --output <matrix.json>`
 
 Next:
 

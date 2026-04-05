@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "project": { "name": "monsterborg-obstacle" },
+  "scenario": { "name": "monsterborg-obstacle-narrow-corridor", "kind": "obstacle-avoidance" },
+  "robot": { "template": "monsterborg-4wd", "name": "monsterborg-obstacle-agent", "def": "MONSTERBORG" },
+  "environment": { "template": "monsterborg-obstacle-course" },
+  "layout": {},
+  "task": { "kind": "obstacle-avoidance", "variant": "narrow-corridor", "description": "MonsterBorg narrow corridor obstacle variant." },
+  "controller": { "path": "controllers/monsterborg_obstacle_avoidance_agent.py", "default_camera": "front_camera" },
+  "benchmark": { "profile": "obstacle-avoidance", "duration_s": 8.0, "threshold_overrides": {} }
+}

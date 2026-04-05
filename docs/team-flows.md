@@ -39,6 +39,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Star
 powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime
 webots-kit controller validate .\workspaces\monsterborg-line-follower\controllers\demo_agent.py --scenario line-follower --robot-profile monsterborg-4wd --strict --json
 webots-kit benchmark run line-follower --controller .\workspaces\monsterborg-line-follower\controllers\demo_agent.py --robot-profile monsterborg-4wd --output .\workspaces\monsterborg-line-follower\artifacts\report.json --duration-s 8
+python .\scripts\monsterborg_benchmark_matrix.py .\workspaces\monsterborg-line-follower\artifacts\report.json --output .\workspaces\monsterborg-line-follower\artifacts\matrix.json
 ```
 
 ## Controller Author Flow
@@ -66,6 +67,7 @@ Green condition:
 - edit applies with `status: ready`
 - strict validate passes
 - benchmark still passes
+- MonsterBorg obstacle and waypoint tuning should also use `monsterborg_benchmark_matrix.py` after repeated benchmark runs
 
 ## World Author Flow
 

@@ -32,12 +32,13 @@ def test_cli_version_matches_module_version() -> None:
 
 def test_monsterborg_docs_use_current_release_language() -> None:
     root = Path(__file__).resolve().parents[1]
-    current_release = "v2.8.0"
+    current_release = "v2.9.0-alpha.1"
     release_docs = [
         root / "README.md",
         root / "docs" / "controller-authoring-and-editing.md",
         root / "docs" / "world-authoring-and-editing.md",
         root / "docs" / "mcp-contracts.md",
+        root / "docs" / "monsterborg-physical-adapter.md",
         root / "docs" / "project-import-and-replay.md",
         root / "docs" / "zero-to-sim.md",
     ]
@@ -48,5 +49,6 @@ def test_monsterborg_docs_use_current_release_language() -> None:
         assert "v2.2.0" not in content, path
         assert "v2.3.0-alpha.1" not in content, path
         assert "v2.5.0" not in content, path
+        assert "v2.8.0" not in content, path
         assert "feature/monsterborg-support" not in content, path
         assert current_release in content or "monsterborg" in content.lower(), path

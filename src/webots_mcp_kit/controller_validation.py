@@ -72,6 +72,12 @@ def validate_controller(
         "line_follow_contract_gaps": inspection.line_follow_contract_gaps,
         "camera_processing_readiness": inspection.camera_processing_readiness,
         "reacquisition_readiness": inspection.reacquisition_readiness,
+        "obstacle_contract_gaps": inspection.obstacle_contract_gaps,
+        "obstacle_readiness": inspection.obstacle_readiness,
+        "clearance_recovery_readiness": inspection.clearance_recovery_readiness,
+        "waypoint_contract_gaps": inspection.waypoint_contract_gaps,
+        "waypoint_progress_readiness": inspection.waypoint_progress_readiness,
+        "waypoint_recovery_readiness": inspection.waypoint_recovery_readiness,
         "function_inventory": inspection.function_inventory,
         "editable_symbols": inspection.editable_symbols,
         "compile_readiness": inspection.compile_readiness,
@@ -178,6 +184,18 @@ def format_validation_report(result: ControllerValidationResult) -> str:
         lines.append(f"camera_processing_readiness: {details.get('camera_processing_readiness')}")
     if details.get("reacquisition_readiness"):
         lines.append(f"reacquisition_readiness: {details.get('reacquisition_readiness')}")
+    if details.get("obstacle_contract_gaps"):
+        lines.append(f"obstacle_contract_gaps: {details.get('obstacle_contract_gaps')}")
+    if details.get("obstacle_readiness"):
+        lines.append(f"obstacle_readiness: {details.get('obstacle_readiness')}")
+    if details.get("clearance_recovery_readiness"):
+        lines.append(f"clearance_recovery_readiness: {details.get('clearance_recovery_readiness')}")
+    if details.get("waypoint_contract_gaps"):
+        lines.append(f"waypoint_contract_gaps: {details.get('waypoint_contract_gaps')}")
+    if details.get("waypoint_progress_readiness"):
+        lines.append(f"waypoint_progress_readiness: {details.get('waypoint_progress_readiness')}")
+    if details.get("waypoint_recovery_readiness"):
+        lines.append(f"waypoint_recovery_readiness: {details.get('waypoint_recovery_readiness')}")
     if result.errors:
         lines.append("errors:")
         lines.extend(f"- {error}" for error in result.errors)

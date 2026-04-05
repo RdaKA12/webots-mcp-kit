@@ -51,6 +51,45 @@ def infer_line_follow_track_variant(world_path: Path) -> str:
     return "baseline"
 
 
+def infer_task_variant(world_path: Path, scenario_name: str) -> str:
+    if scenario_name == "line-follower":
+        return infer_line_follow_track_variant(world_path)
+    variants = {
+        "obstacle-avoidance": (
+            "narrow-corridor",
+            "late-obstacle",
+            "cluttered",
+            "range-noise",
+            "friction-perturbation",
+            "baseline",
+        ),
+        "waypoint-nav": (
+            "offset-start",
+            "tight-waypoints",
+            "low-clearance",
+            "imu-drift",
+            "friction-perturbation",
+            "baseline",
+        ),
+    }.get(scenario_name, ("baseline",))
+    stem = world_path.stem.lower()
+    for variant in variants:
+        normalized = variant.replace("-", "_")
+        if variant in stem or normalized in stem:
+            return variant
+    try:
+        content = world_path.read_text(encoding="utf-8", errors="replace").lower()
+    except OSError:
+        return "baseline"
+    marker = "task variant:"
+    if marker in content:
+        tail = content.split(marker, 1)[1].split('"', 1)[0]
+        candidate = tail.splitlines()[0].strip(" ]")
+        if candidate:
+            return candidate
+    return "baseline"
+
+
 def is_transient_runtime_reset_error(exc: Exception) -> bool:
     return "Connection lost" in str(exc)
 
@@ -587,6 +626,17 @@ class SessionDaemon:
         obstacle_pressure_sum = 0.0
         mean_forward_speed_sum = 0.0
         speed_envelope_violations = 0
+        min_front_range = float("inf")
+        obstacle_clearance_violations = 0
+        heading_recovery_events = 0
+        stalled_steps = 0
+        waypoint_recovery_events = 0
+        max_progress_ratio = 0.0
+        last_progress_ratio = 0.0
+        last_distance_to_goal_estimate = None
+        last_heading_alignment_error = None
+        path_deviation_sum = 0.0
+        path_deviation_samples = 0
         collision_events = 0
         sample_count = 0
         passed = True
@@ -610,7 +660,8 @@ class SessionDaemon:
         final_heading = initial_heading
         initial_target_distance = distance_2d(previous_position, target_position) if previous_position and target_position else None
         previous_robot_time = start_time
-        track_variant = infer_line_follow_track_variant(Path(self.manifest.world))
+        task_variant = infer_task_variant(Path(self.manifest.world), scenario_name)
+        track_variant = task_variant if scenario_name == "line-follower" else None
         try:
             await self.send_runtime_command("agent", "set_paused", {"paused": False})
         except Exception as exc:
@@ -695,10 +746,33 @@ class SessionDaemon:
                         target_distance = odometry_target_distance
                     if odometry_target_distance <= target_tolerance:
                         target_reached = True
+                front_range_value = float(sensors.get("front_range", 0.0) or 0.0)
+                min_front_range = min(min_front_range, front_range_value)
+                if float(metrics.get("clearance_violation", 0.0) or 0.0) > 0.0:
+                    obstacle_clearance_violations += 1
+                elif scenario_name == "obstacle-avoidance" and front_range_value > 0.0 and front_range_value < float(thresholds.get("task_clearance_limit", 280.0)):
+                    obstacle_clearance_violations += 1
+                heading_recovery_events = max(heading_recovery_events, int(metrics.get("heading_recovery_events", 0) or 0))
+                waypoint_recovery_events = max(waypoint_recovery_events, int(metrics.get("waypoint_recovery_events", 0) or 0))
+                stalled_steps = max(stalled_steps, int(metrics.get("stalled_steps", 0) or 0))
+                if scenario_name == "waypoint-nav":
+                    last_progress_ratio = float(metrics.get("progress_ratio", 0.0) or 0.0)
+                    max_progress_ratio = max(max_progress_ratio, last_progress_ratio)
+                    if metrics.get("distance_to_goal_estimate") is not None:
+                        last_distance_to_goal_estimate = float(metrics.get("distance_to_goal_estimate"))
+                    if metrics.get("heading_alignment_error") is not None:
+                        last_heading_alignment_error = float(metrics.get("heading_alignment_error"))
+                    path_deviation_sum += float(metrics.get("path_deviation_score", 0.0) or 0.0)
+                    path_deviation_samples += 1
             center_sum += abs(float(metrics.get("center_error", 0.0)))
             ir_sum += abs(float(metrics.get("ir_balance_error", 0.0)))
             obstacle_pressure_sum += float(metrics.get("obstacle_pressure", 0.0))
             mean_forward_speed_sum += abs(float(metrics.get("mean_forward_speed", 0.0)))
+            if scenario_name in {"obstacle-avoidance", "waypoint-nav"}:
+                left_velocity = abs(float(snapshot.actuators.get("left_velocity", 0.0)))
+                right_velocity = abs(float(snapshot.actuators.get("right_velocity", 0.0)))
+                if max(left_velocity, right_velocity) >= 7.84 or float(metrics.get("speed_saturation", 0.0)) > 0.0:
+                    speed_envelope_violations += 1
             sample_count += 1
 
             sim_time = float(snapshot.state.get("robot_time", 0.0))
@@ -729,6 +803,36 @@ class SessionDaemon:
         if scenario_name == "waypoint-nav" and not target_reached:
             passed = False
             notes.append("target-not-reached")
+        if min_front_range == float("inf"):
+            min_front_range = 0.0
+
+        if scenario_name == "line-follower":
+            task_quality_summary: dict[str, Any] = {
+                "track_variant": task_variant,
+                "line_reacquisition_events": line_reacquisition_events,
+                "max_line_reacquisition_steps": max_line_reacquisition_steps,
+                "camera_signal_strength_mean": round(camera_signal_strength_sum / max(sample_count, 1), 6),
+                "oscillation_score": round(oscillation_delta_sum / max(sample_count, 1), 6),
+                "speed_envelope_violations": speed_envelope_violations,
+            }
+        elif scenario_name == "obstacle-avoidance":
+            task_quality_summary = {
+                "min_front_range": round(min_front_range, 6),
+                "obstacle_clearance_violations": obstacle_clearance_violations,
+                "heading_recovery_events": heading_recovery_events,
+                "stalled_steps": stalled_steps,
+                "collision_events": collision_events,
+                "speed_envelope_violations": speed_envelope_violations,
+            }
+        else:
+            task_quality_summary = {
+                "progress_ratio": round(max_progress_ratio if max_progress_ratio > 0.0 else last_progress_ratio, 6),
+                "distance_to_goal_final": round(float(target_distance if target_distance is not None else (last_distance_to_goal_estimate or 0.0)), 6),
+                "heading_alignment_error": round(float(last_heading_alignment_error or 0.0), 6),
+                "path_deviation_score": round(path_deviation_sum / max(path_deviation_samples, 1), 6),
+                "waypoint_recovery_events": waypoint_recovery_events,
+                "stalled_steps": stalled_steps,
+            }
 
         result = {
             "benchmark": scenario_name,
@@ -744,6 +848,8 @@ class SessionDaemon:
             "max_line_loss_streak": max_streak,
             "mean_center_error": round(center_sum / max(sample_count, 1), 6),
             "ir_balance_error": round(ir_sum / max(sample_count, 1), 6),
+            "task_variant": task_variant,
+            "task_quality_summary": task_quality_summary,
             "track_variant": track_variant,
             "line_reacquisition_events": line_reacquisition_events,
             "max_line_reacquisition_steps": max_line_reacquisition_steps,
@@ -765,6 +871,8 @@ class SessionDaemon:
                 "mean_obstacle_pressure": round(obstacle_pressure_sum / max(sample_count, 1), 6),
                 "mean_forward_speed": round(mean_forward_speed, 6),
                 "contact_points_count": int(self.runtime_snapshots["supervisor"].state.get("contact_points_count", 0)),
+                "task_variant": task_variant,
+                "task_quality_summary": task_quality_summary,
                 "track_variant": track_variant,
                 "line_reacquisition_events": line_reacquisition_events,
                 "max_line_reacquisition_steps": max_line_reacquisition_steps,
@@ -772,6 +880,15 @@ class SessionDaemon:
                 "oscillation_score": round(oscillation_delta_sum / max(sample_count, 1), 6),
                 "speed_envelope_violations": speed_envelope_violations,
                 "heading_drift": round(abs(float(final_heading or 0.0) - float(initial_heading or 0.0)), 6),
+                "min_front_range": round(min_front_range, 6),
+                "obstacle_clearance_violations": obstacle_clearance_violations,
+                "heading_recovery_events": heading_recovery_events,
+                "stalled_steps": stalled_steps,
+                "progress_ratio": round(max_progress_ratio if max_progress_ratio > 0.0 else last_progress_ratio, 6),
+                "distance_to_goal_final": round(float(target_distance if target_distance is not None else (last_distance_to_goal_estimate or 0.0)), 6),
+                "heading_alignment_error": round(float(last_heading_alignment_error or 0.0), 6),
+                "path_deviation_score": round(path_deviation_sum / max(path_deviation_samples, 1), 6),
+                "waypoint_recovery_events": waypoint_recovery_events,
                 "target_position": list(target_position) if target_position else None,
                 "target_distance": round(target_distance, 6) if target_distance is not None else None,
                 "target_reached": target_reached,

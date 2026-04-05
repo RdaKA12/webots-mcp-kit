@@ -1,0 +1,64 @@
+{
+  "benchmark_report": {
+    "benchmark": "line-follower",
+    "task_variant": "baseline"
+  },
+  "samples": [
+    {
+      "sensors": {
+        "front_range": 1.2,
+        "heading": 0.0,
+        "left_encoder": 0.0,
+        "right_encoder": 0.0
+      },
+      "metrics": {
+        "mean_forward_speed": 0.28,
+        "camera_signal_strength": 0.92,
+        "line_visible": true,
+        "collision_events": 0
+      }
+    },
+    {
+      "sensors": {
+        "front_range": 1.18,
+        "heading": 0.01,
+        "left_encoder": 1.0,
+        "right_encoder": 1.08
+      },
+      "metrics": {
+        "mean_forward_speed": 0.27,
+        "camera_signal_strength": 0.88,
+        "line_visible": false,
+        "collision_events": 0
+      }
+    },
+    {
+      "sensors": {
+        "front_range": 1.16,
+        "heading": 0.02,
+        "left_encoder": 2.0,
+        "right_encoder": 2.15
+      },
+      "metrics": {
+        "mean_forward_speed": 0.29,
+        "camera_signal_strength": 0.9,
+        "line_visible": true,
+        "collision_events": 0
+      }
+    },
+    {
+      "sensors": {
+        "front_range": 1.15,
+        "heading": 0.03,
+        "left_encoder": 3.0,
+        "right_encoder": 3.22
+      },
+      "metrics": {
+        "mean_forward_speed": 0.3,
+        "camera_signal_strength": 0.91,
+        "line_visible": true,
+        "collision_events": 0
+      }
+    }
+  ]
+}

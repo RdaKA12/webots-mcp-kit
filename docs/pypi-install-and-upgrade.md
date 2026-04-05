@@ -48,10 +48,22 @@ Team-oriented upgrade lane:
 powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\upgrade-check -Runtime
 ```
 
+MonsterBorg team upgrade lane:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\monsterborg-upgrade-check -RobotProfile monsterborg-4wd -Runtime
+```
+
 Starter workspace bootstrap:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter line-follower -Destination .\workspaces\line-follower-demo
+```
+
+MonsterBorg starter bootstrap:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter monsterborg-line-follower -Destination .\workspaces\monsterborg-line-follower
 ```
 
 ## Install A Specific Version Or Wheel
@@ -59,13 +71,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Star
 Pinned PyPI version:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.2.0"
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.9.0a1"
 ```
 
 Local wheel:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.2.0-py3-none-any.whl"
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.9.0a1-py3-none-any.whl"
 ```
 
 ## Fallback: Virtual Environment
@@ -87,7 +99,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1
 
 ## Notes
 
-- Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots`, `e-puck`
+- Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webots`, `e-puck`, `monsterborg-4wd`
 - The install helpers do not silently mutate persistent `WEBOTS_HOME`
 - Bundled benchmark assets ship inside the wheel, so `benchmark list` and bundled-world inspect work without a source checkout
 - If install or verify fails, go to [Troubleshooting](./troubleshooting.md)
