@@ -72,7 +72,7 @@ jobs:
   github-release:
     runs-on: ubuntu-latest
     needs: [build, monsterborg-physical-gate]
-    if: ${{ needs.build.result == 'success' && (needs.monsterborg-physical-gate.result == 'success' || needs.monsterborg-physical-gate.result == 'skipped') }}
+    if: ${{ always() && needs.build.result == 'success' && (needs.monsterborg-physical-gate.result == 'success' || needs.monsterborg-physical-gate.result == 'skipped') }}
     permissions:
       contents: write
     steps:
@@ -94,7 +94,7 @@ jobs:
   publish-testpypi:
     runs-on: ubuntu-latest
     needs: [build, monsterborg-physical-gate, github-release]
-    if: ${{ needs.build.result == 'success' && needs.github-release.result == 'success' && (needs.monsterborg-physical-gate.result == 'success' || needs.monsterborg-physical-gate.result == 'skipped') }}
+    if: ${{ always() && needs.build.result == 'success' && needs.github-release.result == 'success' && (needs.monsterborg-physical-gate.result == 'success' || needs.monsterborg-physical-gate.result == 'skipped') }}
     permissions:
       id-token: write
     environment:
