@@ -51,6 +51,12 @@ Configure PyPI and TestPyPI trusted publishers for:
 
 ## Tag flow
 
+Preview tags:
+
+- `v*.alpha*` preview tags stop after build plus draft GitHub release
+- preview tags do not publish to TestPyPI or PyPI
+- stable non-alpha tags are the only ones that run the full publish flow
+
 1. Push `v*` tag
 2. Verify build + `twine check`
 3. Verify draft GitHub release exists
