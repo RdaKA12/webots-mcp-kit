@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the controller authoring surface in `v2.8.0-alpha.1`.
+This page documents the controller authoring surface in `v2.8.0`.
 
 ## Supported scope
 

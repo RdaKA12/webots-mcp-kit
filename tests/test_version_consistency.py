@@ -30,9 +30,9 @@ def test_cli_version_matches_module_version() -> None:
     assert result.stdout.strip() == f"webots-mcp-kit {webots_mcp_kit.__version__}"
 
 
-def test_monsterborg_docs_use_current_preview_release_language() -> None:
+def test_monsterborg_docs_use_current_release_language() -> None:
     root = Path(__file__).resolve().parents[1]
-    current_release = "v2.8.0-alpha.1"
+    current_release = "v2.8.0"
     release_docs = [
         root / "README.md",
         root / "docs" / "controller-authoring-and-editing.md",

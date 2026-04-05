@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.8.0-alpha.1
+## v2.8.0
 
 - Hardened MonsterBorg line-follow with a state-machine controller template, multi-row camera processing, richer benchmark metrics, and robot-aware controller/scenario readiness outputs.
 - Added bundled MonsterBorg line-follow variant specs for deterministic and robustness suites, plus replay-visible track metrics and benchmark artifact export.
