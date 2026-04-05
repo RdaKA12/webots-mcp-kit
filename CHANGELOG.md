@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.8.0-alpha.1
+
+- Hardened MonsterBorg line-follow with a state-machine controller template, multi-row camera processing, richer benchmark metrics, and robot-aware controller/scenario readiness outputs.
+- Added bundled MonsterBorg line-follow variant specs for deterministic and robustness suites, plus replay-visible track metrics and benchmark artifact export.
+- Added a MonsterBorg calibration report helper for comparing Webots exports against Raspberry Pi physical-adapter exports without changing the existing export/replay contract.
+
 ## v2.5.0
 
 - Added a robot-profile registry and expanded the toolkit beyond `e-puck` to stable `monsterborg-4wd` support across scenario generation, bundled benchmarks, controller scaffolds, import metadata, session manifests, benchmark reports, replay summaries, and MCP payloads.

@@ -57,6 +57,80 @@ SUPPORTED_ARENA_FLOORS: dict[str, dict[str, Any]] = {
     "grid": {"base_color": (0.86, 0.86, 0.84), "grid": True},
 }
 
+DEFAULT_LINE_TRACK_COLOR = [0.0, 0.0, 0.0]
+MONSTERBORG_LINE_TRACK_VARIANTS = {
+    "baseline": {
+        "width": 0.12,
+        "points": [[-1.25, 0.05], [-0.55, 0.05], [-0.2, 0.48], [0.55, 0.48], [1.05, 0.1], [1.2, -0.32]],
+        "color": DEFAULT_LINE_TRACK_COLOR,
+        "camera_width": 48,
+        "camera_height": 8,
+        "camera_field_of_view": 1.0,
+        "drive_max_torque": 24.0,
+        "robot_mass": 1.6,
+        "floor": "light",
+    },
+    "tight-turns": {
+        "width": 0.12,
+        "points": [[-1.25, 0.05], [-0.65, 0.05], [-0.35, 0.58], [0.05, 0.58], [0.22, 0.05], [0.65, 0.05], [0.82, -0.55], [1.12, -0.55]],
+        "color": DEFAULT_LINE_TRACK_COLOR,
+        "camera_width": 48,
+        "camera_height": 8,
+        "camera_field_of_view": 1.0,
+        "drive_max_torque": 24.0,
+        "robot_mass": 1.6,
+        "floor": "light",
+    },
+    "broken-line-recovery": {
+        "width": 0.12,
+        "segments": [
+            [[-1.25, 0.05], [-0.65, 0.05], [-0.35, 0.4]],
+            [[-0.08, 0.52], [0.45, 0.52], [0.7, 0.1]],
+            [[0.92, -0.05], [1.18, -0.35]],
+        ],
+        "color": DEFAULT_LINE_TRACK_COLOR,
+        "camera_width": 48,
+        "camera_height": 8,
+        "camera_field_of_view": 1.0,
+        "drive_max_torque": 24.0,
+        "robot_mass": 1.6,
+        "floor": "light",
+    },
+    "low-contrast": {
+        "width": 0.12,
+        "points": [[-1.25, 0.05], [-0.55, 0.05], [-0.2, 0.48], [0.55, 0.48], [1.05, 0.1], [1.2, -0.32]],
+        "color": [0.44, 0.44, 0.44],
+        "camera_width": 48,
+        "camera_height": 8,
+        "camera_field_of_view": 1.0,
+        "drive_max_torque": 24.0,
+        "robot_mass": 1.6,
+        "floor": "plain",
+    },
+    "friction-perturbation": {
+        "width": 0.12,
+        "points": [[-1.25, 0.05], [-0.55, 0.05], [-0.2, 0.48], [0.55, 0.48], [1.05, 0.1], [1.2, -0.32]],
+        "color": DEFAULT_LINE_TRACK_COLOR,
+        "camera_width": 48,
+        "camera_height": 8,
+        "camera_field_of_view": 1.0,
+        "drive_max_torque": 19.5,
+        "robot_mass": 1.8,
+        "floor": "light",
+    },
+    "camera-degradation": {
+        "width": 0.12,
+        "points": [[-1.25, 0.05], [-0.55, 0.05], [-0.2, 0.48], [0.55, 0.48], [1.05, 0.1], [1.2, -0.32]],
+        "color": DEFAULT_LINE_TRACK_COLOR,
+        "camera_width": 32,
+        "camera_height": 6,
+        "camera_field_of_view": 1.0,
+        "drive_max_torque": 24.0,
+        "robot_mass": 1.6,
+        "floor": "light",
+    },
+}
+
 ROBOT_CLEARANCE_RADIUS = 0.045
 
 
@@ -280,31 +354,35 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
 
     if scenario_kind == "line-follow":
         line_track = spec.layout.get("line_track") if isinstance(spec.layout.get("line_track"), dict) else {}
-        if not _is_point_list(line_track.get("points"), min_points=2):
+        polylines = _line_track_polylines(line_track)
+        if not polylines:
             issues.append(
                 ValidationIssue(
                     "invalid-line-track",
-                    "layout.line_track.points must contain at least two XY points for line-follow scenarios.",
-                    "layout.line_track.points",
+                    "layout.line_track must contain line_track.points or line_track.segments with at least one two-point polyline.",
+                    "layout.line_track",
                 )
             )
         width = line_track.get("width")
         if not isinstance(width, (int, float)) or float(width) <= 0:
             issues.append(ValidationIssue("invalid-line-width", "layout.line_track.width must be a positive number.", "layout.line_track.width"))
         else:
-            for index, (start, end) in enumerate(zip(line_track.get("points", []), line_track.get("points", [])[1:]), start=1):
-                if float(start[0]) == float(end[0]) and float(start[1]) == float(end[1]):
-                    issues.append(
-                        ValidationIssue(
-                            "degenerate-line-segment",
-                            f"layout.line_track.points contains a zero-length segment at index {index}.",
-                            "layout.line_track.points",
+            segment_index = 0
+            for polyline in polylines:
+                for start, end in zip(polyline, polyline[1:]):
+                    segment_index += 1
+                    if float(start[0]) == float(end[0]) and float(start[1]) == float(end[1]):
+                        issues.append(
+                            ValidationIssue(
+                                "degenerate-line-segment",
+                                f"layout.line_track contains a zero-length segment at index {segment_index}.",
+                                "layout.line_track",
+                            )
                         )
-                    )
             if _is_positive_pair(arena.get("dimensions")):
                 half_width = float(arena["dimensions"][0]) / 2
                 half_height = float(arena["dimensions"][1]) / 2
-                for index, point in enumerate(line_track.get("points", [])):
+                for index, point in enumerate(_all_line_track_points(line_track)):
                     if abs(float(point[0])) > half_width or abs(float(point[1])) > half_height:
                         issues.append(
                             ValidationIssue(
@@ -321,6 +399,28 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
                             "layout.line_track.width",
                         )
                     )
+                if robot_profile == "monsterborg-4wd" and float(width) < 0.09:
+                    issues.append(
+                        ValidationIssue(
+                            "line-track-width-too-narrow",
+                            "MonsterBorg line-follow scenarios require line_track.width >= 0.09 for stable camera visibility.",
+                            "layout.line_track.width",
+                            level="warning",
+                        )
+                    )
+        variant = _str_field(line_track, "variant") or "baseline"
+        if robot_profile == "monsterborg-4wd" and variant not in MONSTERBORG_LINE_TRACK_VARIANTS:
+            issues.append(
+                ValidationIssue(
+                    "unsupported-line-track-variant",
+                    f"MonsterBorg line-follow variants must be one of {sorted(MONSTERBORG_LINE_TRACK_VARIANTS)}.",
+                    "layout.line_track.variant",
+                    level="warning",
+                )
+            )
+        color = line_track.get("color")
+        if color is not None and not _is_numeric_list(color, 3):
+            issues.append(ValidationIssue("invalid-line-color", "layout.line_track.color must be a three-item numeric list.", "layout.line_track.color"))
     if scenario_kind == "waypoint-nav" and not _is_point_list(spec.layout.get("waypoints"), min_points=1):
         issues.append(ValidationIssue("missing-waypoints", "layout.waypoints must contain at least one waypoint.", "layout.waypoints"))
     if scenario_kind == "waypoint-nav":
@@ -476,7 +576,8 @@ def validate_scenario(path: Path) -> ScenarioValidationResult:
     normalized["controller"]["scaffold_source"] = (
         str(get_scenario(benchmark_name, robot_profile=robot_profile).controller) if benchmark_name else None
     )
-    return ScenarioValidationResult(str(spec_path), not issues, scenario_name, scenario_kind, environment_template, benchmark_name, issues, normalized)
+    is_valid = not any(issue.level == "error" for issue in issues)
+    return ScenarioValidationResult(str(spec_path), is_valid, scenario_name, scenario_kind, environment_template, benchmark_name, issues, normalized)
 
 
 def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
@@ -616,6 +717,103 @@ def describe_scenario(path: Path) -> str:
     return "\n".join(lines)
 
 
+def _camera_visibility_readiness(spec: ScenarioSpec, report: ScenarioValidationResult) -> dict[str, Any]:
+    if spec.scenario.get("kind") != "line-follow":
+        return {"ready": True, "issues": []}
+    line_track = spec.layout.get("line_track") if isinstance(spec.layout.get("line_track"), dict) else {}
+    color = _line_track_style(line_track)
+    brightness = sum(color) / 3.0
+    camera_width = int(line_track.get("camera_width", 48))
+    camera_height = int(line_track.get("camera_height", 8))
+    issues = [issue.code for issue in report.issues if issue.field in {"environment.arena.floor", "layout.line_track.color", "layout.line_track.width"}]
+    ready = not issues and camera_width >= 32 and camera_height >= 4 and brightness <= 0.5
+    return {
+        "ready": ready,
+        "camera_width": camera_width,
+        "camera_height": camera_height,
+        "line_brightness": round(brightness, 3),
+        "issues": issues,
+    }
+
+
+def _spawn_alignment_readiness(spec: ScenarioSpec, report: ScenarioValidationResult) -> dict[str, Any]:
+    if spec.scenario.get("kind") != "line-follow":
+        return {"ready": True, "issues": []}
+    line_track = spec.layout.get("line_track") if isinstance(spec.layout.get("line_track"), dict) else {}
+    points = _all_line_track_points(line_track)
+    spawn = spec.layout.get("spawn") if isinstance(spec.layout.get("spawn"), dict) else {}
+    translation = spawn.get("translation")
+    if not (points and _is_numeric_list(translation, 3)):
+        return {"ready": False, "distance_to_start": None, "issues": ["spawn-line-track-mismatch"]}
+    distance_to_start = _distance_2d([float(translation[0]), float(translation[1])], points[0])
+    issues = [issue.code for issue in report.issues if issue.code == "spawn-line-track-mismatch"]
+    return {
+        "ready": distance_to_start <= 0.35 and not issues,
+        "distance_to_start": round(distance_to_start, 6),
+        "issues": issues,
+    }
+
+
+def _track_clearance_readiness(spec: ScenarioSpec, report: ScenarioValidationResult) -> dict[str, Any]:
+    if spec.scenario.get("kind") != "line-follow":
+        return {"ready": True, "issues": []}
+    line_track = spec.layout.get("line_track") if isinstance(spec.layout.get("line_track"), dict) else {}
+    points = _all_line_track_points(line_track)
+    width = float(line_track.get("width", 0.0)) if isinstance(line_track.get("width"), (int, float)) else 0.0
+    blocking = 0
+    for obstacle in spec.layout.get("obstacles", []):
+        if not isinstance(obstacle, dict) or not _is_numeric_list(obstacle.get("position"), 2):
+            continue
+        center = [float(obstacle["position"][0]), float(obstacle["position"][1])]
+        radius = _obstacle_footprint_radius(obstacle)
+        if any(_distance_2d(center, point) <= radius + width * 0.9 for point in points):
+            blocking += 1
+    issues = [issue.code for issue in report.issues if issue.code in {"obstacle-out-of-bounds", "obstacle-prop-collision"}]
+    return {
+        "ready": blocking == 0 and not issues,
+        "blocking_object_count": blocking,
+        "issues": issues,
+    }
+
+
+def _line_follow_readiness(
+    spec: ScenarioSpec,
+    report: ScenarioValidationResult,
+    *,
+    camera_visibility_readiness: dict[str, Any],
+    spawn_alignment_readiness: dict[str, Any],
+    track_clearance_readiness: dict[str, Any],
+) -> dict[str, Any]:
+    if spec.scenario.get("kind") != "line-follow":
+        return {"ready": True, "track_variant": None, "issues": []}
+    line_track = spec.layout.get("line_track") if isinstance(spec.layout.get("line_track"), dict) else {}
+    polylines = _line_track_polylines(line_track)
+    points = _all_line_track_points(line_track)
+    width = float(line_track.get("width", 0.0)) if isinstance(line_track.get("width"), (int, float)) else 0.0
+    total_length = 0.0
+    for polyline in polylines:
+        for start, end in zip(polyline, polyline[1:]):
+            total_length += _distance_2d(start, end)
+    issues = [issue.code for issue in report.issues if issue.field and issue.field.startswith("layout.line_track")]
+    ready = (
+        report.valid
+        and bool(polylines)
+        and width >= 0.09
+        and camera_visibility_readiness.get("ready")
+        and spawn_alignment_readiness.get("ready")
+        and track_clearance_readiness.get("ready")
+    )
+    return {
+        "ready": ready,
+        "track_variant": _str_field(line_track, "variant") or "baseline",
+        "line_width": round(width, 6),
+        "polyline_count": len(polylines),
+        "point_count": len(points),
+        "track_length": round(total_length, 6),
+        "issues": issues,
+    }
+
+
 def scenario_doctor(path: Path) -> dict[str, Any]:
     spec_path = scenario_spec_path(path)
     report = validate_scenario(spec_path)
@@ -639,6 +837,10 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
             "runtime_smoke_readiness": {"ready": False, "requires_interactive_runner": True, "benchmark_name": None},
             "benchmark_mapping_readiness": {"ready": False, "benchmark_name": None, "target_robot_name": None, "target_robot_def": None, "expected_sensor_keys": [], "expected_metric_keys": [], "expected_actuator_keys": [], "issues": [issue.code for issue in report.issues]},
             "world_authoring_readiness": {"ready": False, "supported_edit_targets": ["spawn", "obstacles", "walls", "landmarks", "zones", "props"], "counts": {"obstacles": 0, "walls": 0, "landmarks": 0, "zones": 0, "props": 0}, "recommended_next_edit_ops": []},
+            "line_follow_readiness": {"ready": False, "track_variant": None, "issues": [issue.code for issue in report.issues]},
+            "camera_visibility_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
+            "spawn_alignment_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
+            "track_clearance_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
             "issues": [issue.to_dict() for issue in report.issues],
             "support_tier": "experimental-foundation",
             "next_step": "Create a spec with `webots-kit scenario init <path> --template <template>`.",
@@ -717,6 +919,16 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "recommended_next_edit_ops": _recommended_next_edit_ops(spec),
         "issues": [issue.code for issue in report.issues if issue.field and issue.field.startswith("layout.")],
     }
+    camera_visibility_readiness = _camera_visibility_readiness(spec, report)
+    spawn_alignment_readiness = _spawn_alignment_readiness(spec, report)
+    track_clearance_readiness = _track_clearance_readiness(spec, report)
+    line_follow_readiness = _line_follow_readiness(
+        spec,
+        report,
+        camera_visibility_readiness=camera_visibility_readiness,
+        spawn_alignment_readiness=spawn_alignment_readiness,
+        track_clearance_readiness=track_clearance_readiness,
+    )
     next_step = f"Run `webots-kit scenario build \"{spec_path}\"` once the validation issues are fixed."
     if report.valid and benchmark_name:
         next_step = (
@@ -741,6 +953,10 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "runtime_smoke_readiness": runtime_smoke_readiness,
         "benchmark_mapping_readiness": benchmark_mapping_readiness,
         "world_authoring_readiness": world_authoring_readiness,
+        "line_follow_readiness": line_follow_readiness,
+        "camera_visibility_readiness": camera_visibility_readiness,
+        "spawn_alignment_readiness": spawn_alignment_readiness,
+        "track_clearance_readiness": track_clearance_readiness,
         "issues": [issue.to_dict() for issue in report.issues],
         "support_tier": "experimental-foundation",
         "next_step": next_step,
@@ -928,6 +1144,7 @@ def replay_session(export_path: Path) -> dict[str, Any]:
     runtime_environment_path = Path(
         str(export_manifest.get("runtime_environment_path") or standard_artifacts["runtime_environment"])
     )
+    benchmark_artifact_path = export_root / "artifacts" / "benchmark-last.json"
     if not session_path.exists() and not summary_path.exists():
         raise FileNotFoundError(f"Session export was not found under {export_root}")
 
@@ -936,6 +1153,7 @@ def replay_session(export_path: Path) -> dict[str, Any]:
     inspect = json.loads(inspect_path.read_text(encoding="utf-8")) if inspect_path.exists() else {}
     log_summary = json.loads(log_summary_path.read_text(encoding="utf-8")) if log_summary_path.exists() else {}
     runtime_environment = json.loads(runtime_environment_path.read_text(encoding="utf-8")) if runtime_environment_path.exists() else {}
+    benchmark_artifact = json.loads(benchmark_artifact_path.read_text(encoding="utf-8")) if benchmark_artifact_path.exists() else {}
     session_state = inspect.get("session_state") if isinstance(inspect.get("session_state"), dict) else {}
     result_reason = session_state.get("last_error_code") or session_state.get("status") or "completed"
     benchmark_name = str(session.get("scenario") or "line-follower")
@@ -949,9 +1167,15 @@ def replay_session(export_path: Path) -> dict[str, Any]:
         status=session.get("status"),
         result_reason=result_reason,
         last_error_code=session_state.get("last_error_code"),
+        benchmark_artifact=benchmark_artifact,
     )
     triage_recipe = _build_triage_recipe(runtime_failure_class)
-    fix_hints = controller_fix_hints(benchmark_name, result_reason)
+    fix_hints = controller_fix_hints(
+        benchmark_name,
+        result_reason,
+        robot_profile=str(session.get("robot_profile") or "e-puck"),
+        extra_metrics=benchmark_artifact.get("extra_metrics", {}),
+    )
     return {
         "export_dir": str(export_root),
         "session_id": summary.get("session_id"),
@@ -972,6 +1196,12 @@ def replay_session(export_path: Path) -> dict[str, Any]:
         "runtime_failure_class": runtime_failure_class,
         "triage_recipe": triage_recipe,
         "controller_fix_hints": fix_hints,
+        "track_variant": benchmark_artifact.get("track_variant"),
+        "line_reacquisition_events": benchmark_artifact.get("line_reacquisition_events"),
+        "max_line_reacquisition_steps": benchmark_artifact.get("max_line_reacquisition_steps"),
+        "camera_signal_strength_mean": benchmark_artifact.get("camera_signal_strength_mean"),
+        "oscillation_score": benchmark_artifact.get("oscillation_score"),
+        "speed_envelope_violations": benchmark_artifact.get("speed_envelope_violations"),
         "copied_logs": sorted(Path(path).name for path in copied_logs) if copied_logs is not None else sorted(path.name for path in (export_root / "logs").glob("*")),
         "copied_artifacts": (
             sorted(Path(path).name for path in copied_artifacts)
@@ -1049,6 +1279,10 @@ def format_scenario_doctor_report(payload: dict[str, Any]) -> str:
         f"runtime_smoke_readiness: {payload.get('runtime_smoke_readiness', {}).get('ready')}",
         f"benchmark_mapping_readiness: {payload.get('benchmark_mapping_readiness', {}).get('ready')}",
         f"world_authoring_readiness: {payload.get('world_authoring_readiness', {}).get('ready')}",
+        f"line_follow_readiness: {payload.get('line_follow_readiness', {}).get('ready')}",
+        f"camera_visibility_readiness: {payload.get('camera_visibility_readiness', {}).get('ready')}",
+        f"spawn_alignment_readiness: {payload.get('spawn_alignment_readiness', {}).get('ready')}",
+        f"track_clearance_readiness: {payload.get('track_clearance_readiness', {}).get('ready')}",
         f"unsupported_combinations: {len(payload.get('unsupported_combinations', []))}",
         f"summary: {len(payload.get('issues', []))} issues",
         "support_tier: experimental-foundation",
@@ -1084,6 +1318,12 @@ def format_session_replay(payload: dict[str, Any]) -> str:
         f"last_error: {payload['last_error']}",
         f"runtime_failure_class: {payload.get('runtime_failure_class')}",
         f"benchmark_summary: {benchmark_summary.get('benchmark_name')} ({benchmark_summary.get('result_reason')})",
+        f"track_variant: {payload.get('track_variant')}",
+        f"line_reacquisition_events: {payload.get('line_reacquisition_events')}",
+        f"max_line_reacquisition_steps: {payload.get('max_line_reacquisition_steps')}",
+        f"camera_signal_strength_mean: {payload.get('camera_signal_strength_mean')}",
+        f"oscillation_score: {payload.get('oscillation_score')}",
+        f"speed_envelope_violations: {payload.get('speed_envelope_violations')}",
         f"telemetry_roles: {telemetry_summary.get('connected_roles')}",
         f"runtime_runner_mode: {runner_mode_text}",
         f"runtime_python: {runtime_environment.get('python_executable')}",
@@ -1106,17 +1346,22 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
     arena_dimensions = spec.environment["arena"]["dimensions"]
     floor_style = str(spec.environment.get("arena", {}).get("floor", "plain"))
     spawn = spec.layout["spawn"]
-    segments = _line_track_segments(spec.layout["line_track"]["points"])
+    line_track = spec.layout["line_track"]
+    line_color = _line_track_style(line_track)
+    track_variant = _str_field(line_track, "variant") or "baseline"
     segment_nodes: list[str] = []
-    for index, segment in enumerate(segments, start=1):
-        segment_nodes.append(
-            f"""Solid {{
+    segment_index = 0
+    for polyline in _line_track_polylines(line_track):
+        for segment in _line_track_segments(polyline):
+            segment_index += 1
+            segment_nodes.append(
+                f"""Solid {{
   translation {_fmt(segment['x'])} {_fmt(segment['y'])} 0.001
   rotation 0 0 1 {_fmt(segment['rotation'])}
   children [
-    DEF LINE_SEGMENT_{index} Shape {{
+    DEF LINE_SEGMENT_{segment_index} Shape {{
       appearance PBRAppearance {{
-        baseColor 0 0 0
+        baseColor {_fmt(line_color[0])} {_fmt(line_color[1])} {_fmt(line_color[2])}
         roughness 1
         metalness 0
       }}
@@ -1125,10 +1370,10 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
       }}
     }}
   ]
-  name "line-segment-{index}"
+  name "line-segment-{segment_index}"
   locked TRUE
 }}"""
-        )
+            )
     for index, wall in enumerate(spec.layout.get("walls", []), start=1):
         segment_nodes.append(_wall_block(index, wall))
     for index, landmark in enumerate(spec.layout.get("landmarks", []), start=1):
@@ -1139,11 +1384,21 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
         segment_nodes.append(_prop_block(index, prop))
     return _world_shell(
         title=f"{spec.project['name']} {spec.scenario['name']}",
-        info_lines=["Generated by webots-kit scenario build.", "Template-driven line-follow scenario."],
+        info_lines=[
+            "Generated by webots-kit scenario build.",
+            "Template-driven line-follow scenario.",
+            f"Track variant: {track_variant}",
+        ],
         arena_size=arena_dimensions,
         floor_style=floor_style,
         body="\n".join(segment_nodes),
-        robot_block=_robot_block(robot_profile=str(spec.robot["template"]), robot_name=str(spec.robot["name"]), spawn=spawn, camera_mode=True),
+        robot_block=_robot_block(
+            robot_profile=str(spec.robot["template"]),
+            robot_name=str(spec.robot["name"]),
+            spawn=spawn,
+            camera_mode=True,
+            line_track=line_track,
+        ),
     )
 
 
@@ -1298,39 +1553,51 @@ def _floor_overlay_block(floor_style: str, arena_size: list[float]) -> str:
     return "\n".join(stripe_nodes)
 
 
-def _robot_block(*, robot_profile: str, robot_name: str, spawn: dict[str, Any], camera_mode: bool) -> str:
+def _robot_block(
+    *,
+    robot_profile: str,
+    robot_name: str,
+    spawn: dict[str, Any],
+    camera_mode: bool,
+    line_track: dict[str, Any] | None = None,
+) -> str:
     translation = spawn["translation"]
     rotation = float(spawn.get("rotation_z", 0.0))
     if robot_profile == "monsterborg-4wd":
+        camera_width = int(line_track.get("camera_width", 48)) if isinstance(line_track, dict) else 48
+        camera_height = int(line_track.get("camera_height", 8)) if isinstance(line_track, dict) else 8
+        camera_field_of_view = float(line_track.get("camera_field_of_view", 1.0)) if isinstance(line_track, dict) else 1.0
+        drive_max_torque = float(line_track.get("drive_max_torque", 24.0)) if isinstance(line_track, dict) else 24.0
+        robot_mass = float(line_track.get("robot_mass", 1.6)) if isinstance(line_track, dict) else 1.6
         camera_block = ""
         if camera_mode:
-            camera_block = """
-    Transform {
+            camera_block = f"""
+    Transform {{
       translation 0.16 0 0.14
       rotation 0 1 0 0.62
       children [
-        Camera {
+        Camera {{
           name "front_camera"
-          width 40
-          height 1
-          fieldOfView 1.05
-        }
+          width {camera_width}
+          height {camera_height}
+          fieldOfView {_fmt(camera_field_of_view)}
+        }}
       ]
-    }"""
+    }}"""
         else:
-            camera_block = """
-    Transform {
+            camera_block = f"""
+    Transform {{
       translation 0.16 0 0.14
       rotation 0 1 0 0.62
       children [
-        Camera {
+        Camera {{
           name "front_camera"
-          width 64
-          height 12
-          fieldOfView 1.05
-        }
+          width {max(camera_width, 64)}
+          height {max(camera_height, 12)}
+          fieldOfView {_fmt(camera_field_of_view)}
+        }}
       ]
-    }"""
+    }}"""
         return f"""DEF MONSTERBORG Robot {{
   translation {_fmt(translation[0])} {_fmt(translation[1])} {_fmt(translation[2])}
   rotation 0 0 1 {_fmt(rotation)}
@@ -1379,7 +1646,7 @@ def _robot_block(*, robot_profile: str, robot_name: str, spawn: dict[str, Any], 
         RotationalMotor {{
           name "front_left_motor"
           maxVelocity 9
-          maxTorque 24
+          maxTorque {_fmt(drive_max_torque)}
         }}
         PositionSensor {{
           name "left_encoder"
@@ -1430,7 +1697,7 @@ def _robot_block(*, robot_profile: str, robot_name: str, spawn: dict[str, Any], 
         RotationalMotor {{
           name "front_right_motor"
           maxVelocity 9
-          maxTorque 24
+          maxTorque {_fmt(drive_max_torque)}
         }}
         PositionSensor {{
           name "right_encoder"
@@ -1661,7 +1928,7 @@ def _robot_block(*, robot_profile: str, robot_name: str, spawn: dict[str, Any], 
   }}
   physics Physics {{
     density -1
-    mass 1.6
+    mass {_fmt(robot_mass)}
   }}
 }}"""
     camera_settings = ""
@@ -1851,6 +2118,32 @@ def _line_track_segments(points: list[list[float]]) -> list[dict[str, float]]:
     return segments
 
 
+def _line_track_polylines(line_track: dict[str, Any]) -> list[list[list[float]]]:
+    segments = line_track.get("segments")
+    if isinstance(segments, list):
+        polylines = [segment for segment in segments if _is_point_list(segment, min_points=2)]
+        if polylines:
+            return polylines
+    points = line_track.get("points")
+    if _is_point_list(points, min_points=2):
+        return [points]
+    return []
+
+
+def _all_line_track_points(line_track: dict[str, Any]) -> list[list[float]]:
+    points: list[list[float]] = []
+    for polyline in _line_track_polylines(line_track):
+        points.extend(polyline)
+    return points
+
+
+def _line_track_style(line_track: dict[str, Any]) -> tuple[float, float, float]:
+    color = line_track.get("color")
+    if _is_numeric_list(color, 3):
+        return float(color[0]), float(color[1]), float(color[2])
+    return tuple(DEFAULT_LINE_TRACK_COLOR)
+
+
 def _default_spec(template: str, scenario_name: str, project_name: str) -> ScenarioSpec:
     default_kind = SUPPORTED_ENVIRONMENT_TEMPLATES[template]["default_kind"]
     robot_profile = SUPPORTED_ENVIRONMENT_TEMPLATES[template]["robot_profile"]
@@ -1935,7 +2228,17 @@ def _template_defaults(template: str) -> dict[str, Any]:
             "arena": {"dimensions": [3.2, 2.2], "floor": "light"},
             "layout": {
                 "spawn": {"translation": [-1.1, 0.05, 0.0], "rotation_z": 0.0},
-                "line_track": {"width": 0.1, "points": [[-1.25, 0.05], [-0.45, 0.05], [-0.15, 0.6], [0.95, 0.6], [1.15, -0.4]]},
+                "line_track": {
+                    "variant": "baseline",
+                    "width": 0.12,
+                    "points": [[-1.25, 0.05], [-0.55, 0.05], [-0.2, 0.48], [0.55, 0.48], [1.05, 0.1], [1.2, -0.32]],
+                    "color": [0.0, 0.0, 0.0],
+                    "camera_width": 48,
+                    "camera_height": 8,
+                    "camera_field_of_view": 1.0,
+                    "drive_max_torque": 24.0,
+                    "robot_mass": 1.6,
+                },
                 "obstacles": [],
                 "walls": [],
                 "landmarks": [],
@@ -2010,6 +2313,13 @@ def _apply_scenario_defaults(spec: ScenarioSpec) -> None:
         line_track = layout.setdefault("line_track", {})
         line_track.setdefault("width", defaults["layout"].get("line_track", {}).get("width", 0.06))
         line_track.setdefault("points", defaults["layout"].get("line_track", {}).get("points", []))
+        line_track.setdefault("variant", defaults["layout"].get("line_track", {}).get("variant", "baseline"))
+        line_track.setdefault("color", defaults["layout"].get("line_track", {}).get("color", DEFAULT_LINE_TRACK_COLOR))
+        line_track.setdefault("camera_width", defaults["layout"].get("line_track", {}).get("camera_width", 40))
+        line_track.setdefault("camera_height", defaults["layout"].get("line_track", {}).get("camera_height", 1))
+        line_track.setdefault("camera_field_of_view", defaults["layout"].get("line_track", {}).get("camera_field_of_view", 1.05))
+        line_track.setdefault("drive_max_torque", defaults["layout"].get("line_track", {}).get("drive_max_torque", 24.0))
+        line_track.setdefault("robot_mass", defaults["layout"].get("line_track", {}).get("robot_mass", 1.6))
     if scenario_kind == "waypoint-nav" and not isinstance(layout.get("goal_region"), dict) and _is_point_list(layout.get("waypoints"), min_points=1):
         layout["goal_region"] = {"center": list(layout["waypoints"][-1]), "radius": 0.16}
 
@@ -2099,8 +2409,8 @@ def _validate_layout_geometry(spec: ScenarioSpec) -> list[ValidationIssue]:
 
     if scenario_kind == "line-follow":
         line_track = layout.get("line_track") if isinstance(layout.get("line_track"), dict) else {}
-        points = line_track.get("points") if isinstance(line_track.get("points"), list) else []
-        if spawn_xy and _is_point_list(points, min_points=2) and _distance_2d(spawn_xy, points[0]) > 0.5:
+        points = _all_line_track_points(line_track)
+        if spawn_xy and points and _distance_2d(spawn_xy, points[0]) > 0.5:
             issues.append(
                 ValidationIssue(
                     "spawn-line-track-mismatch",
@@ -2109,6 +2419,22 @@ def _validate_layout_geometry(spec: ScenarioSpec) -> list[ValidationIssue]:
                     level="warning",
                 )
             )
+        if robot_profile_from_template(_str_field(spec.robot, "template")) == "monsterborg-4wd" and len(points) >= 3:
+            sharp_turns = 0
+            for left, middle, right in zip(points, points[1:], points[2:]):
+                left_angle = math.atan2(float(middle[1]) - float(left[1]), float(middle[0]) - float(left[0]))
+                right_angle = math.atan2(float(right[1]) - float(middle[1]), float(right[0]) - float(middle[0]))
+                if abs(right_angle - left_angle) > 1.2:
+                    sharp_turns += 1
+            if sharp_turns >= 3:
+                issues.append(
+                    ValidationIssue(
+                        "line-track-high-curvature",
+                        "MonsterBorg line-follow track contains multiple sharp turns; widen the line or reduce curvature if benchmark stability drops.",
+                        "layout.line_track",
+                        level="warning",
+                    )
+                )
 
     blocking_objects: list[dict[str, Any]] = []
     obstacles = layout.get("obstacles") if isinstance(layout.get("obstacles"), list) else []
@@ -2446,7 +2772,15 @@ def _classify_runtime_failure(*, last_error_code: str | None, status: Any, resul
     return "none"
 
 
-def _build_benchmark_summary(*, benchmark_name: str, status: Any, result_reason: str | None, last_error_code: str | None) -> dict[str, Any]:
+def _build_benchmark_summary(
+    *,
+    benchmark_name: str,
+    status: Any,
+    result_reason: str | None,
+    last_error_code: str | None,
+    benchmark_artifact: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    artifact = benchmark_artifact if isinstance(benchmark_artifact, dict) else {}
     return {
         "benchmark_name": benchmark_name,
         "result_reason": result_reason,
@@ -2454,6 +2788,12 @@ def _build_benchmark_summary(*, benchmark_name: str, status: Any, result_reason:
         "last_error_code": last_error_code,
         "rerun_supported": benchmark_name in scenario_registry(),
         "next_step": benchmark_next_step(benchmark_name, result_reason or "completed"),
+        "track_variant": artifact.get("track_variant"),
+        "line_reacquisition_events": artifact.get("line_reacquisition_events"),
+        "max_line_reacquisition_steps": artifact.get("max_line_reacquisition_steps"),
+        "camera_signal_strength_mean": artifact.get("camera_signal_strength_mean"),
+        "oscillation_score": artifact.get("oscillation_score"),
+        "speed_envelope_violations": artifact.get("speed_envelope_violations"),
     }
 
 

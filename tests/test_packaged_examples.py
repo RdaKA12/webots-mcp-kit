@@ -8,6 +8,8 @@ def test_packaged_example_root_exists() -> None:
     assert (root / "line-follower" / "worlds" / "line_follower_benchmark.wbt").exists()
     assert (root / "waypoint-nav" / "controllers" / "waypoint_nav_agent.py").exists()
     assert (root / "monsterborg" / "line-follower" / "worlds" / "monsterborg_line_follower_benchmark.wbt").exists()
+    assert (root / "monsterborg" / "line-follower" / "variants" / "baseline.webots-kit.scenario.json").exists()
+    assert (root / "monsterborg" / "line-follower" / "variants" / "camera-degradation.webots-kit.scenario.json").exists()
     assert (root / "monsterborg" / "waypoint-nav" / "controllers" / "monsterborg_waypoint_nav_agent.py").exists()
     assert (root / "getting-started" / "line-follower" / "starter.json").exists()
     assert (root / "getting-started" / "monsterborg-line-follower" / "starter.json").exists()

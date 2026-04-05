@@ -52,10 +52,27 @@ def test_monsterborg_controller_scaffold_and_validation(tmp_path: Path) -> None:
     inspection = inspect_controller(target, scenario="line-follower", robot_profile="monsterborg-4wd")
     assert inspection.robot_family == "monsterborg"
     assert inspection.robot_profile == "monsterborg-4wd"
+    assert inspection.line_follow_contract_gaps == []
+    assert inspection.camera_processing_readiness["ready"] is True
+    assert inspection.reacquisition_readiness["ready"] is True
     result = validate_controller(target, scenario="line-follower", strict=True, robot_profile="monsterborg-4wd")
     assert result.valid is True
     assert result.details["robot_family"] == "monsterborg"
     assert result.details["robot_profile"] == "monsterborg-4wd"
+    assert result.details["line_follow_contract_gaps"] == []
+
+
+def test_monsterborg_cpp_line_follow_scaffold_and_validation(tmp_path: Path) -> None:
+    target = tmp_path / "monsterborg_line_agent.cpp"
+    payload = scaffold_controller(path=target, scenario="line-follower", language="cpp", robot_profile="monsterborg-4wd")
+    assert payload["robot_family"] == "monsterborg"
+    inspection = inspect_controller(target, scenario="line-follower", robot_profile="monsterborg-4wd")
+    assert inspection.line_follow_contract_gaps == []
+    assert inspection.camera_processing_readiness["ready"] is True
+    assert inspection.reacquisition_readiness["ready"] is True
+    result = validate_controller(target, scenario="line-follower", strict=True, robot_profile="monsterborg-4wd")
+    assert result.valid is True
+    assert result.details["line_follow_contract_gaps"] == []
 
 
 def test_monsterborg_scenario_build_and_import_are_robot_aware(tmp_path: Path) -> None:

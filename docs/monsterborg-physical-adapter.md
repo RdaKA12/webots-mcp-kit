@@ -57,6 +57,28 @@ The physical adapter bundle preserves:
 
 The replay path stays additive. Existing Webots exports remain unchanged.
 
+## Compare Sim And Physical Runs
+
+When you want a parity report between a Webots export and a physical MonsterBorg export, run:
+
+```powershell
+python .\scripts\monsterborg_calibration_report.py --sim-export .\artifacts\monsterborg-sim --physical-export .\artifacts\monsterborg-physical --output .\artifacts\monsterborg-calibration.json
+```
+
+The calibration report compares:
+
+- `mean_forward_speed`
+- `encoder_distance`
+- `heading_drift`
+- `line_reacquisition_events`
+- `max_line_reacquisition_steps`
+- `collision_count`
+
+Green condition:
+
+- `pass: true`
+- `next_step` is either a no-op summary or a small tuning action
+
 Next:
 
 - use [Project import and session replay](./project-import-and-replay.md) when you need the broader import and handoff flow

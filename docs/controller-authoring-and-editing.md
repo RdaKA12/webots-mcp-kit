@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the controller authoring surface in `v2.5.0`.
+This page documents the controller authoring surface in `v2.8.0-alpha.1`.
 
 ## Supported scope
 
@@ -165,5 +165,10 @@ Status note:
 - deeper plan/schema details remain `experimental-foundation` and additive
 - `monsterborg-4wd` support uses the same CLI and MCP surfaces with additive robot-profile metadata
 - a ready sample workspace is available under `examples/getting-started/controller-edit`
+
+MonsterBorg line-follow preview notes:
+
+- the MonsterBorg Python line-follow scaffold now emits `line_confidence`, `camera_signal_strength`, `tracking_state_code`, and `speed_saturation`
+- inspect and validate now expose `line_follow_contract_gaps`, `camera_processing_readiness`, and `reacquisition_readiness`
 
 Next: continue with [World authoring and editing](./world-authoring-and-editing.md) if you also need to inspect or patch the `.wbt` side.

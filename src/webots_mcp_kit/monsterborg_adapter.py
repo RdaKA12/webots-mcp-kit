@@ -97,6 +97,68 @@ def _runtime_summary_from_samples(samples: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+def _physical_line_follow_metrics(samples: list[dict[str, Any]]) -> dict[str, Any]:
+    if not samples:
+        return {
+            "mean_forward_speed": 0.0,
+            "encoder_distance": 0.0,
+            "heading_drift": 0.0,
+            "line_reacquisition_events": 0,
+            "max_line_reacquisition_steps": 0,
+            "collision_count": 0,
+            "track_variant": "baseline",
+        }
+    mean_forward_speed_sum = 0.0
+    signal_strength_sum = 0.0
+    line_reacquisition_events = 0
+    max_line_reacquisition_steps = 0
+    current_loss_steps = 0
+    collision_count = 0
+    previous_left = None
+    previous_right = None
+    encoder_distance = 0.0
+    first_heading = None
+    last_heading = None
+    for sample in samples:
+        sensors = sample.get("sensors", {}) if isinstance(sample.get("sensors"), dict) else {}
+        metrics = sample.get("metrics", {}) if isinstance(sample.get("metrics"), dict) else {}
+        mean_forward_speed_sum += abs(float(metrics.get("mean_forward_speed", 0.0)))
+        signal_strength_sum += float(metrics.get("camera_signal_strength", 0.0))
+        line_visible = bool(metrics.get("line_visible", False))
+        if line_visible:
+            if current_loss_steps > 0:
+                line_reacquisition_events += 1
+                max_line_reacquisition_steps = max(max_line_reacquisition_steps, current_loss_steps)
+            current_loss_steps = 0
+        else:
+            current_loss_steps += 1
+        collision_count += int(metrics.get("collision_events", 0))
+        heading = sensors.get("heading")
+        if heading is not None and first_heading is None:
+            first_heading = float(heading)
+        if heading is not None:
+            last_heading = float(heading)
+        left = sensors.get("left_encoder")
+        right = sensors.get("right_encoder")
+        if previous_left is not None and previous_right is not None and left is not None and right is not None:
+            left_delta = float(left) - float(previous_left)
+            right_delta = float(right) - float(previous_right)
+            encoder_distance += abs((left_delta + right_delta) / 2.0) * 0.05
+        previous_left = left
+        previous_right = right
+    max_line_reacquisition_steps = max(max_line_reacquisition_steps, current_loss_steps)
+    return {
+        "mean_forward_speed": round(mean_forward_speed_sum / max(len(samples), 1), 6),
+        "camera_signal_strength_mean": round(signal_strength_sum / max(len(samples), 1), 6),
+        "encoder_distance": round(encoder_distance, 6),
+        "heading_drift": round(abs(float(last_heading or 0.0) - float(first_heading or 0.0)), 6),
+        "line_reacquisition_events": line_reacquisition_events,
+        "max_line_reacquisition_steps": max_line_reacquisition_steps,
+        "collision_count": collision_count,
+        "track_variant": "baseline",
+    }
+
+
 def build_monsterborg_physical_bundle(
     *,
     output_dir: Path,
@@ -125,6 +187,7 @@ def build_monsterborg_physical_bundle(
     standard_artifacts = {name: str(export_dir / filename) for name, filename in SESSION_EXPORT_STANDARD_ARTIFACTS}
     samples_path = artifacts_dir / "monsterborg_physical_samples.json"
     atomic_write_text(samples_path, json.dumps(samples, indent=2), encoding="utf-8")
+    derived_line_follow_metrics = _physical_line_follow_metrics(samples)
 
     runtime_summary = _runtime_summary_from_samples(samples)
     session_payload = {
@@ -202,6 +265,16 @@ def build_monsterborg_physical_bundle(
         "robot_profile": "monsterborg-4wd",
         "runtime_target": "monsterborg-physical",
         "notes": [],
+        "track_variant": derived_line_follow_metrics["track_variant"],
+        "line_reacquisition_events": derived_line_follow_metrics["line_reacquisition_events"],
+        "max_line_reacquisition_steps": derived_line_follow_metrics["max_line_reacquisition_steps"],
+        "camera_signal_strength_mean": derived_line_follow_metrics["camera_signal_strength_mean"],
+        "extra_metrics": {
+            "mean_forward_speed": derived_line_follow_metrics["mean_forward_speed"],
+            "encoder_distance": derived_line_follow_metrics["encoder_distance"],
+            "heading_drift": derived_line_follow_metrics["heading_drift"],
+            "collision_count": derived_line_follow_metrics["collision_count"],
+        },
         "physical_adapter_summary": physical_summary,
     }
     summary_payload = {
@@ -219,6 +292,10 @@ def build_monsterborg_physical_bundle(
             "robot_profile": "monsterborg-4wd",
             "runtime_target": "monsterborg-physical",
             "physical_adapter_summary": physical_summary,
+            "track_variant": benchmark_payload.get("track_variant"),
+            "line_reacquisition_events": benchmark_payload.get("line_reacquisition_events"),
+            "max_line_reacquisition_steps": benchmark_payload.get("max_line_reacquisition_steps"),
+            "camera_signal_strength_mean": benchmark_payload.get("camera_signal_strength_mean"),
         },
         "controller_fix_hints": benchmark_payload.get("controller_fix_hints", []),
         "telemetry_samples": len(samples),
@@ -255,6 +332,7 @@ def build_monsterborg_physical_bundle(
     atomic_write_text(Path(standard_artifacts["runtime_environment"]), json.dumps(session_payload["environment"], indent=2), encoding="utf-8")
     atomic_write_text(Path(standard_artifacts["summary"]), json.dumps(summary_payload, indent=2), encoding="utf-8")
     atomic_write_text(Path(standard_artifacts["export_manifest"]), json.dumps(export_payload.to_dict(), indent=2), encoding="utf-8")
+    atomic_write_text(artifacts_dir / "benchmark-last.json", json.dumps(benchmark_payload, indent=2), encoding="utf-8")
 
     return {
         "status": "completed",
