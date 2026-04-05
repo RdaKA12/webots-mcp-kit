@@ -154,8 +154,22 @@ def test_monsterborg_physical_workflow_exists_with_designated_runner_and_gate_st
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/monsterborg-physical-smoke.yml").read_text(encoding="utf-8")
     assert "runs-on: [self-hosted, linux, monsterborg-physical]" in content
-    assert "monsterborg_physical_verify.py --json" in content
+    assert "python3 scripts/monsterborg_physical_verify.py --json" in content
     assert "tests/test_monsterborg_physical_gate.py" in content
     assert "monsterborg_capture_run.py" in content
     assert "monsterborg_calibration_report.py" in content
     assert "monsterborg_benchmark_matrix.py" in content
+    assert "python3 -m pip install -e .[dev]" in content
+
+
+def test_monsterborg_physical_runner_setup_assets_exist() -> None:
+    root = Path(__file__).resolve().parents[1]
+    setup_script = (root / "scripts" / "setup_monsterborg_physical_runner.sh").read_text(encoding="utf-8")
+    runner_doc = (root / "docs" / "monsterborg-physical-runner.md").read_text(encoding="utf-8")
+    assert "--repo-url" in setup_script
+    assert "--token" in setup_script
+    assert "monsterborg-physical" in setup_script
+    assert "actions/runner/releases/latest" in setup_script
+    assert "this is not general Linux runtime support" in runner_doc
+    assert "self-hosted" in runner_doc
+    assert "monsterborg-physical" in runner_doc

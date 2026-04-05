@@ -177,6 +177,7 @@ MonsterBorg task-hardening preview extras:
 - [Upgrade guide](./docs/upgrade-guide.md)
 - [Version policy](./docs/version-policy.md)
 - [MonsterBorg physical adapter](./docs/monsterborg-physical-adapter.md)
+- [MonsterBorg physical runner](./docs/monsterborg-physical-runner.md)
 - [Controller authoring and editing](./docs/controller-authoring-and-editing.md)
 - [World authoring and editing](./docs/world-authoring-and-editing.md)
 - [Custom controller integration](./docs/custom-controller-integration.md)

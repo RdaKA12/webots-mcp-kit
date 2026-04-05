@@ -51,23 +51,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
+      - name: Verify runner Python
+        run: |
+          python3 --version
+          python3 -m ensurepip --upgrade || true
 
       - name: Install toolkit
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e .[dev]
 
       - name: Verify MonsterBorg physical environment
         run: |
-          python scripts/monsterborg_physical_verify.py --json
+          python3 scripts/monsterborg_physical_verify.py --json
 
       - name: MonsterBorg physical gate
         run: |
-          python -m pytest -q tests/test_monsterborg_physical_gate.py
+          python3 -m pytest -q tests/test_monsterborg_physical_gate.py
 
   github-release:
     runs-on: ubuntu-latest

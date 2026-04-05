@@ -105,3 +105,4 @@ Task-aware operator flow:
 Next:
 
 - use [Project import and session replay](./project-import-and-replay.md) when you need the broader import and handoff flow
+- use [MonsterBorg physical runner](./monsterborg-physical-runner.md) when you still need to register the designated Raspberry Pi release-gate runner
