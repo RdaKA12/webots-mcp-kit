@@ -73,6 +73,8 @@ def run_benchmark(
             passed=result["pass"],
             artifacts=result["artifacts"],
             notes=result["notes"],
+            task_variant=result.get("task_variant") or _infer_task_variant(scenario_def.name, Path(world) if world else scenario_def.world),
+            task_quality_summary=result.get("task_quality_summary", {}),
             track_variant=result.get("track_variant") or _infer_track_variant(Path(world) if world else scenario_def.world),
             line_reacquisition_events=int(result.get("line_reacquisition_events", result.get("extra_metrics", {}).get("line_reacquisition_events", 0))),
             max_line_reacquisition_steps=int(result.get("max_line_reacquisition_steps", result.get("extra_metrics", {}).get("max_line_reacquisition_steps", 0))),
@@ -133,12 +135,16 @@ def format_benchmark_report(path: Path) -> str:
     missing_telemetry_keys = data.get("missing_telemetry_keys", [])
     binding_hints = data.get("device_binding_hints", [])
     next_step = benchmark_next_step(data["benchmark"], result_reason)
+    task_variant = data.get("task_variant") or data.get("track_variant")
+    task_quality_summary = data.get("task_quality_summary", {})
+    leading_artifact = _leading_artifact(data.get("artifacts", {}))
     lines = [
         f"benchmark: {data['benchmark']}",
         f"result: {'pass' if data['pass'] else 'fail'} ({result_reason})",
         f"robot_family: {data.get('robot_family')}",
         f"robot_profile: {data.get('robot_profile')}",
         f"runtime_target: {data.get('runtime_target')}",
+        f"task_variant: {task_variant}",
         f"world: {data['world']}",
         f"controller: {data['controller']}",
         f"session_mode: {data['session_mode']}",
@@ -154,6 +160,8 @@ def format_benchmark_report(path: Path) -> str:
         f"camera_signal_strength_mean: {data.get('camera_signal_strength_mean')}",
         f"oscillation_score: {data.get('oscillation_score')}",
         f"speed_envelope_violations: {data.get('speed_envelope_violations')}",
+        f"task_quality_summary: {task_quality_summary}",
+        f"first_artifact: {leading_artifact}",
         f"next_step: {next_step}",
         f"artifacts: {data['artifacts']}",
         f"notes: {data['notes']}",
@@ -182,9 +190,9 @@ def benchmark_next_step(benchmark: str, result_reason: str) -> str:
     if result_reason == "line-loss-threshold-reached":
         return "Inspect camera metrics, confidence, and line reacquisition counters, then tune the controller around line reacquisition."
     if result_reason == "collision-detected":
-        return "Inspect proximity telemetry and contact-point metrics to reduce obstacle hits."
+        return "Inspect clearance metrics and contact-point artifacts, then reduce obstacle hits before rerunning."
     if result_reason in {"target-not-reached", "low-travel-distance"}:
-        return "Inspect waypoint progress and forward-speed metrics, then rerun with session logs enabled."
+        return "Inspect waypoint progress, alignment, and path deviation metrics, then rerun with session logs enabled."
     if result_reason == "insufficient-forward-speed":
         return "Inspect actuator outputs and pause/manual-override state before rerunning the benchmark."
     return f"Review session artifacts and logs for benchmark `{benchmark}` before rerunning."
@@ -229,6 +237,20 @@ def controller_fix_hints(
             hints.append("Reduce speed-envelope violations by tightening speed scheduling outside high-confidence tracking.")
         if int(metrics.get("line_reacquisition_events", 0) or 0) >= 2:
             hints.append("Improve search/recover transitions so the controller reacquires the line with fewer retries.")
+    if benchmark == "obstacle-avoidance":
+        if int(metrics.get("obstacle_clearance_violations", 0) or 0) > 0:
+            hints.append("Increase clearance margin or enter recovery mode earlier to avoid repeated close passes.")
+        if int(metrics.get("stalled_steps", 0) or 0) >= 3:
+            hints.append("Reduce stall time by shortening recovery turns or increasing low-speed escape torque.")
+        if int(metrics.get("heading_recovery_events", 0) or 0) >= 2:
+            hints.append("Smooth heading recovery so obstacle escape needs fewer full reorientation cycles.")
+    if benchmark == "waypoint-nav":
+        if float(metrics.get("progress_ratio", 0.0) or 0.0) < 0.85:
+            hints.append("Increase forward progress once heading is aligned so the robot closes the waypoint gap earlier.")
+        if float(metrics.get("heading_alignment_error", 0.0) or 0.0) > 0.2:
+            hints.append("Reduce heading-alignment error before accelerating into waypoint advance mode.")
+        if float(metrics.get("path_deviation_score", 0.0) or 0.0) > 0.3:
+            hints.append("Tighten heading and recovery thresholds so path deviation stays bounded through waypoint runs.")
     return sorted(dict.fromkeys(hints))
 
 
@@ -255,6 +277,57 @@ def _infer_track_variant(world_path: Path) -> str:
         if tail:
             return tail.splitlines()[0].strip(" ]")
     return "baseline"
+
+
+def _infer_task_variant(benchmark: str, world_path: Path) -> str:
+    if benchmark == "line-follower":
+        return _infer_track_variant(world_path)
+    stem = world_path.stem.lower()
+    variants = {
+        "obstacle-avoidance": (
+            "narrow-corridor",
+            "late-obstacle",
+            "cluttered",
+            "range-noise",
+            "friction-perturbation",
+            "baseline",
+        ),
+        "waypoint-nav": (
+            "offset-start",
+            "tight-waypoints",
+            "low-clearance",
+            "imu-drift",
+            "friction-perturbation",
+            "baseline",
+        ),
+    }.get(benchmark, ("baseline",))
+    for variant in variants:
+        normalized = variant.replace("-", "_")
+        if variant in stem or normalized in stem:
+            return variant
+    try:
+        content = world_path.read_text(encoding="utf-8", errors="replace").lower()
+    except OSError:
+        return "baseline"
+    marker = "task variant:"
+    if marker in content:
+        tail = content.split(marker, 1)[1].split('"', 1)[0].strip()
+        if tail:
+            return tail.splitlines()[0].strip(" ]")
+    return "baseline"
+
+
+def _leading_artifact(artifacts: object) -> str | None:
+    if not isinstance(artifacts, dict):
+        return None
+    for key in ("inspect", "summary", "doctor", "session"):
+        value = artifacts.get(key)
+        if isinstance(value, str):
+            return value
+    for value in artifacts.values():
+        if isinstance(value, str):
+            return value
+    return None
 
 
 def device_binding_hints(benchmark: str, result_reason: str, *, robot_profile: str = "e-puck") -> list[str]:

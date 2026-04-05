@@ -29,6 +29,10 @@ GENERATED_SCENARIO_CASES = [
 ]
 MONSTERBORG_LINE_VARIANTS = ("baseline", "tight-turns", "broken-line-recovery", "low-contrast")
 MONSTERBORG_ROBUSTNESS_VARIANTS = ("low-contrast", "friction-perturbation", "camera-degradation")
+MONSTERBORG_OBSTACLE_VARIANTS = ("baseline", "narrow-corridor", "late-obstacle", "cluttered")
+MONSTERBORG_OBSTACLE_ROBUSTNESS_VARIANTS = ("range-noise", "friction-perturbation")
+MONSTERBORG_WAYPOINT_VARIANTS = ("baseline", "offset-start", "tight-waypoints", "low-clearance")
+MONSTERBORG_WAYPOINT_ROBUSTNESS_VARIANTS = ("imu-drift", "friction-perturbation")
 
 
 def write_json(path: Path, payload: dict[str, object]) -> None:
@@ -126,6 +130,11 @@ def bundled_example_paths(robot_profile: str, scenario: str) -> tuple[Path, Path
 def bundled_monsterborg_variant_spec(variant: str) -> Path:
     examples_root = bundled_example_root()
     return examples_root / "monsterborg" / "line-follower" / "variants" / f"{variant}.webots-kit.scenario.json"
+
+
+def bundled_monsterborg_task_variant_spec(task: str, variant: str) -> Path:
+    examples_root = bundled_example_root()
+    return examples_root / "monsterborg" / task / "variants" / f"{variant}.webots-kit.scenario.json"
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
@@ -278,6 +287,236 @@ def test_monsterborg_line_follow_robustness_smoke(tmp_path: Path, variant: str) 
     assert "camera_signal_strength_mean" in payload
     assert "oscillation_score" in payload
     assert "speed_envelope_violations" in payload
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+@pytest.mark.parametrize("variant", MONSTERBORG_OBSTACLE_VARIANTS)
+def test_monsterborg_obstacle_variants_repeatability_smoke(tmp_path: Path, variant: str) -> None:
+    scenario_dir = tmp_path / f"obstacle-{variant}"
+    scenario_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    shutil.copy2(bundled_monsterborg_task_variant_spec("obstacle-avoidance", variant), spec_path)
+    validation = json.loads(run_cli("scenario", "validate", str(spec_path), "--json").stdout)
+    assert validation["valid"] is True
+    built = json.loads(run_cli("scenario", "build", str(spec_path)).stdout)
+    controller_path = tmp_path / f"obstacle-{variant}.py"
+    run_cli(
+        "controller",
+        "scaffold",
+        str(controller_path),
+        "--scenario",
+        "obstacle-avoidance",
+        "--language",
+        "python",
+        "--robot-profile",
+        "monsterborg-4wd",
+        "--force",
+    )
+    validate_payload = json.loads(
+        run_cli(
+            "controller",
+            "validate",
+            str(controller_path),
+            "--scenario",
+            "obstacle-avoidance",
+            "--robot-profile",
+            "monsterborg-4wd",
+            "--strict",
+            "--json",
+        ).stdout
+    )
+    assert validate_payload["valid"] is True
+    for attempt in range(5):
+        report_path = tmp_path / f"obstacle-{variant}-{attempt}.json"
+        payload = json.loads(
+            run_cli(
+                "benchmark",
+                "run",
+                "obstacle-avoidance",
+                "--controller",
+                str(controller_path),
+                "--world",
+                built["world_path"],
+                "--robot-profile",
+                "monsterborg-4wd",
+                "--robot-name",
+                built["target_robot_name"],
+                "--robot-def",
+                built["target_robot_def"],
+                "--output",
+                str(report_path),
+                "--duration-s",
+                "4",
+                timeout=300,
+            ).stdout
+        )
+        assert payload["pass"] is True
+        assert payload["task_variant"] == variant
+        assert payload["task_quality_summary"]["collision_events"] <= 1
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+@pytest.mark.parametrize("variant", MONSTERBORG_OBSTACLE_ROBUSTNESS_VARIANTS)
+def test_monsterborg_obstacle_robustness_smoke(tmp_path: Path, variant: str) -> None:
+    scenario_dir = tmp_path / f"obstacle-robust-{variant}"
+    scenario_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    shutil.copy2(bundled_monsterborg_task_variant_spec("obstacle-avoidance", variant), spec_path)
+    built = json.loads(run_cli("scenario", "build", str(spec_path)).stdout)
+    controller_path = tmp_path / f"obstacle-robust-{variant}.py"
+    run_cli(
+        "controller",
+        "scaffold",
+        str(controller_path),
+        "--scenario",
+        "obstacle-avoidance",
+        "--language",
+        "python",
+        "--robot-profile",
+        "monsterborg-4wd",
+        "--force",
+    )
+    report_path = tmp_path / f"obstacle-robust-{variant}.json"
+    payload = json.loads(
+        run_cli(
+            "benchmark",
+            "run",
+            "obstacle-avoidance",
+            "--controller",
+            str(controller_path),
+            "--world",
+            built["world_path"],
+            "--robot-profile",
+            "monsterborg-4wd",
+            "--robot-name",
+            built["target_robot_name"],
+            "--robot-def",
+            built["target_robot_def"],
+            "--output",
+            str(report_path),
+            "--duration-s",
+            "4",
+            timeout=300,
+        ).stdout
+    )
+    assert payload["pass"] is True
+    assert payload["task_variant"] == variant
+    assert "task_quality_summary" in payload
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+@pytest.mark.parametrize("variant", MONSTERBORG_WAYPOINT_VARIANTS)
+def test_monsterborg_waypoint_variants_repeatability_smoke(tmp_path: Path, variant: str) -> None:
+    scenario_dir = tmp_path / f"waypoint-{variant}"
+    scenario_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    shutil.copy2(bundled_monsterborg_task_variant_spec("waypoint-nav", variant), spec_path)
+    validation = json.loads(run_cli("scenario", "validate", str(spec_path), "--json").stdout)
+    assert validation["valid"] is True
+    built = json.loads(run_cli("scenario", "build", str(spec_path)).stdout)
+    controller_path = tmp_path / f"waypoint-{variant}.py"
+    run_cli(
+        "controller",
+        "scaffold",
+        str(controller_path),
+        "--scenario",
+        "waypoint-nav",
+        "--language",
+        "python",
+        "--robot-profile",
+        "monsterborg-4wd",
+        "--force",
+    )
+    validate_payload = json.loads(
+        run_cli(
+            "controller",
+            "validate",
+            str(controller_path),
+            "--scenario",
+            "waypoint-nav",
+            "--robot-profile",
+            "monsterborg-4wd",
+            "--strict",
+            "--json",
+        ).stdout
+    )
+    assert validate_payload["valid"] is True
+    for attempt in range(5):
+        report_path = tmp_path / f"waypoint-{variant}-{attempt}.json"
+        payload = json.loads(
+            run_cli(
+                "benchmark",
+                "run",
+                "waypoint-nav",
+                "--controller",
+                str(controller_path),
+                "--world",
+                built["world_path"],
+                "--robot-profile",
+                "monsterborg-4wd",
+                "--robot-name",
+                built["target_robot_name"],
+                "--robot-def",
+                built["target_robot_def"],
+                "--output",
+                str(report_path),
+                "--duration-s",
+                "5",
+                timeout=300,
+            ).stdout
+        )
+        assert payload["pass"] is True
+        assert payload["task_variant"] == variant
+        assert payload["task_quality_summary"]["progress_ratio"] >= 0.85
+
+
+@pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")
+@pytest.mark.parametrize("variant", MONSTERBORG_WAYPOINT_ROBUSTNESS_VARIANTS)
+def test_monsterborg_waypoint_robustness_smoke(tmp_path: Path, variant: str) -> None:
+    scenario_dir = tmp_path / f"waypoint-robust-{variant}"
+    scenario_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    shutil.copy2(bundled_monsterborg_task_variant_spec("waypoint-nav", variant), spec_path)
+    built = json.loads(run_cli("scenario", "build", str(spec_path)).stdout)
+    controller_path = tmp_path / f"waypoint-robust-{variant}.py"
+    run_cli(
+        "controller",
+        "scaffold",
+        str(controller_path),
+        "--scenario",
+        "waypoint-nav",
+        "--language",
+        "python",
+        "--robot-profile",
+        "monsterborg-4wd",
+        "--force",
+    )
+    report_path = tmp_path / f"waypoint-robust-{variant}.json"
+    payload = json.loads(
+        run_cli(
+            "benchmark",
+            "run",
+            "waypoint-nav",
+            "--controller",
+            str(controller_path),
+            "--world",
+            built["world_path"],
+            "--robot-profile",
+            "monsterborg-4wd",
+            "--robot-name",
+            built["target_robot_name"],
+            "--robot-def",
+            built["target_robot_def"],
+            "--output",
+            str(report_path),
+            "--duration-s",
+            "5",
+            timeout=300,
+        ).stdout
+    )
+    assert payload["pass"] is True
+    assert payload["task_variant"] == variant
+    assert "task_quality_summary" in payload
 
 
 @pytest.mark.skipif(not RUN_RUNTIME_SMOKE, reason="Runtime smoke tests are disabled unless WEBOTS_KIT_RUN_RUNTIME_SMOKE=1.")

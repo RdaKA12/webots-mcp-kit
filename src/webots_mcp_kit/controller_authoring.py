@@ -51,6 +51,12 @@ class ControllerInspectionResult:
     line_follow_contract_gaps: list[str] = field(default_factory=list)
     camera_processing_readiness: dict[str, Any] = field(default_factory=dict)
     reacquisition_readiness: dict[str, Any] = field(default_factory=dict)
+    obstacle_contract_gaps: list[str] = field(default_factory=list)
+    obstacle_readiness: dict[str, Any] = field(default_factory=dict)
+    clearance_recovery_readiness: dict[str, Any] = field(default_factory=dict)
+    waypoint_contract_gaps: list[str] = field(default_factory=list)
+    waypoint_progress_readiness: dict[str, Any] = field(default_factory=dict)
+    waypoint_recovery_readiness: dict[str, Any] = field(default_factory=dict)
     function_inventory: list[str] = field(default_factory=list)
     editable_symbols: list[str] = field(default_factory=list)
     compile_readiness: dict[str, Any] = field(default_factory=dict)
@@ -193,6 +199,12 @@ def inspect_controller(
     inspection.line_follow_contract_gaps = _line_follow_contract_gaps(inspection)
     inspection.camera_processing_readiness = _camera_processing_readiness(inspection)
     inspection.reacquisition_readiness = _reacquisition_readiness(inspection)
+    inspection.obstacle_contract_gaps = _obstacle_contract_gaps(inspection)
+    inspection.obstacle_readiness = _obstacle_readiness(inspection)
+    inspection.clearance_recovery_readiness = _clearance_recovery_readiness(inspection)
+    inspection.waypoint_contract_gaps = _waypoint_contract_gaps(inspection)
+    inspection.waypoint_progress_readiness = _waypoint_progress_readiness(inspection)
+    inspection.waypoint_recovery_readiness = _waypoint_recovery_readiness(inspection)
     inspection.compile_readiness = _compile_readiness(inspection)
     inspection.runtime_readiness = _runtime_readiness(inspection)
     inspection.controller_fix_hints = _controller_fix_hints(inspection)
@@ -299,6 +311,8 @@ def edit_controller(path: Path, *, plan_path: Path | None = None, plan: dict[str
             "benchmark_ready": bool(inspection.benchmark_readiness.get("ready")),
             "benchmark_contract_gap_count": len(inspection.benchmark_contract_gaps),
             "line_follow_contract_gap_count": len(inspection.line_follow_contract_gaps),
+            "obstacle_contract_gap_count": len(inspection.obstacle_contract_gaps),
+            "waypoint_contract_gap_count": len(inspection.waypoint_contract_gaps),
             "issue_count": len(inspection.issues),
         },
         "benchmark_readiness": inspection.benchmark_readiness,
@@ -306,6 +320,12 @@ def edit_controller(path: Path, *, plan_path: Path | None = None, plan: dict[str
         "line_follow_contract_gaps": inspection.line_follow_contract_gaps,
         "camera_processing_readiness": inspection.camera_processing_readiness,
         "reacquisition_readiness": inspection.reacquisition_readiness,
+        "obstacle_contract_gaps": inspection.obstacle_contract_gaps,
+        "obstacle_readiness": inspection.obstacle_readiness,
+        "clearance_recovery_readiness": inspection.clearance_recovery_readiness,
+        "waypoint_contract_gaps": inspection.waypoint_contract_gaps,
+        "waypoint_progress_readiness": inspection.waypoint_progress_readiness,
+        "waypoint_recovery_readiness": inspection.waypoint_recovery_readiness,
         "controller_fix_hints": inspection.controller_fix_hints,
         "support_tier": "experimental-foundation",
         "next_step": (
@@ -432,6 +452,18 @@ def format_controller_inspection_report(result: ControllerInspectionResult) -> s
         lines.append(f"camera_processing_readiness: {result.camera_processing_readiness}")
     if result.reacquisition_readiness:
         lines.append(f"reacquisition_readiness: {result.reacquisition_readiness}")
+    if result.obstacle_contract_gaps:
+        lines.append(f"obstacle_contract_gaps: {result.obstacle_contract_gaps}")
+    if result.obstacle_readiness:
+        lines.append(f"obstacle_readiness: {result.obstacle_readiness}")
+    if result.clearance_recovery_readiness:
+        lines.append(f"clearance_recovery_readiness: {result.clearance_recovery_readiness}")
+    if result.waypoint_contract_gaps:
+        lines.append(f"waypoint_contract_gaps: {result.waypoint_contract_gaps}")
+    if result.waypoint_progress_readiness:
+        lines.append(f"waypoint_progress_readiness: {result.waypoint_progress_readiness}")
+    if result.waypoint_recovery_readiness:
+        lines.append(f"waypoint_recovery_readiness: {result.waypoint_recovery_readiness}")
     if result.controller_fix_hints:
         lines.append(f"controller_fix_hints: {result.controller_fix_hints}")
     if result.issues:
@@ -459,6 +491,18 @@ def format_controller_edit_report(payload: dict[str, Any]) -> str:
         lines.append(f"camera_processing_readiness: {payload.get('camera_processing_readiness')}")
     if payload.get("reacquisition_readiness"):
         lines.append(f"reacquisition_readiness: {payload.get('reacquisition_readiness')}")
+    if payload.get("obstacle_contract_gaps"):
+        lines.append(f"obstacle_contract_gaps: {payload.get('obstacle_contract_gaps')}")
+    if payload.get("obstacle_readiness"):
+        lines.append(f"obstacle_readiness: {payload.get('obstacle_readiness')}")
+    if payload.get("clearance_recovery_readiness"):
+        lines.append(f"clearance_recovery_readiness: {payload.get('clearance_recovery_readiness')}")
+    if payload.get("waypoint_contract_gaps"):
+        lines.append(f"waypoint_contract_gaps: {payload.get('waypoint_contract_gaps')}")
+    if payload.get("waypoint_progress_readiness"):
+        lines.append(f"waypoint_progress_readiness: {payload.get('waypoint_progress_readiness')}")
+    if payload.get("waypoint_recovery_readiness"):
+        lines.append(f"waypoint_recovery_readiness: {payload.get('waypoint_recovery_readiness')}")
     if payload.get("controller_fix_hints"):
         lines.append(f"controller_fix_hints: {payload.get('controller_fix_hints')}")
     lines.append(f"support_tier: {payload.get('support_tier')}")
@@ -505,6 +549,8 @@ def _finalize_inspection_result(result: ControllerInspectionResult) -> Controlle
         "device_binding_count": len(result.device_bindings),
         "benchmark_contract_gap_count": len(result.benchmark_contract_gaps),
         "line_follow_contract_gap_count": len(result.line_follow_contract_gaps),
+        "obstacle_contract_gap_count": len(result.obstacle_contract_gaps),
+        "waypoint_contract_gap_count": len(result.waypoint_contract_gaps),
         "benchmark_ready": bool(result.benchmark_readiness.get("ready")),
     }
     result.next_step = (
@@ -635,6 +681,82 @@ def _reacquisition_readiness(inspection: ControllerInspectionResult) -> dict[str
     }
 
 
+def _obstacle_contract_gaps(inspection: ControllerInspectionResult) -> list[str]:
+    if inspection.scenario != "obstacle-avoidance" or inspection.robot_profile != "monsterborg-4wd":
+        return []
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    gaps: list[str] = []
+    for key in ("front_clearance_margin", "clearance_violation", "heading_recovery_events", "stalled_steps", "avoidance_state_code"):
+        if key not in metrics:
+            gaps.append(f"Missing obstacle metric '{key}'.")
+    return sorted(dict.fromkeys(gaps))
+
+
+def _obstacle_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
+    if inspection.scenario != "obstacle-avoidance" or inspection.robot_profile != "monsterborg-4wd":
+        return {"ready": True, "issues": []}
+    sensors = set(inspection.telemetry_sections.get("sensors", []))
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    issues: list[str] = []
+    if not {"front_range", "heading", "yaw_rate", "left_encoder", "right_encoder"}.issubset(sensors):
+        issues.append("monsterborg_obstacle_sensor_contract_incomplete")
+    if not {"obstacle_pressure", "mean_forward_speed", "front_clearance_margin", "stalled_steps"}.issubset(metrics):
+        issues.append("monsterborg_obstacle_metric_contract_incomplete")
+    return {"ready": not issues, "issues": issues}
+
+
+def _clearance_recovery_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
+    if inspection.scenario != "obstacle-avoidance" or inspection.robot_profile != "monsterborg-4wd":
+        return {"ready": True, "issues": []}
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    issues: list[str] = []
+    if "heading_recovery_events" not in metrics:
+        issues.append("heading_recovery_events_missing")
+    if "avoidance_state_code" not in metrics:
+        issues.append("avoidance_state_code_missing")
+    if "clearance_violation" not in metrics:
+        issues.append("clearance_violation_missing")
+    return {"ready": not issues, "issues": issues}
+
+
+def _waypoint_contract_gaps(inspection: ControllerInspectionResult) -> list[str]:
+    if inspection.scenario != "waypoint-nav" or inspection.robot_profile != "monsterborg-4wd":
+        return []
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    gaps: list[str] = []
+    for key in ("progress_ratio", "distance_to_goal_estimate", "heading_alignment_error", "path_deviation_score", "waypoint_recovery_events", "stalled_steps"):
+        if key not in metrics:
+            gaps.append(f"Missing waypoint metric '{key}'.")
+    return sorted(dict.fromkeys(gaps))
+
+
+def _waypoint_progress_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
+    if inspection.scenario != "waypoint-nav" or inspection.robot_profile != "monsterborg-4wd":
+        return {"ready": True, "issues": []}
+    sensors = set(inspection.telemetry_sections.get("sensors", []))
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    issues: list[str] = []
+    if not {"front_range", "heading", "yaw_rate", "left_encoder", "right_encoder"}.issubset(sensors):
+        issues.append("monsterborg_waypoint_sensor_contract_incomplete")
+    if not {"progress_ratio", "distance_to_goal_estimate", "heading_alignment_error", "path_deviation_score", "mean_forward_speed"}.issubset(metrics):
+        issues.append("monsterborg_waypoint_metric_contract_incomplete")
+    return {"ready": not issues, "issues": issues}
+
+
+def _waypoint_recovery_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
+    if inspection.scenario != "waypoint-nav" or inspection.robot_profile != "monsterborg-4wd":
+        return {"ready": True, "issues": []}
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    issues: list[str] = []
+    if "waypoint_recovery_events" not in metrics:
+        issues.append("waypoint_recovery_events_missing")
+    if "waypoint_state_code" not in metrics:
+        issues.append("waypoint_state_code_missing")
+    if "stalled_steps" not in metrics:
+        issues.append("waypoint_stalled_steps_missing")
+    return {"ready": not issues, "issues": issues}
+
+
 def _compile_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
     if inspection.language != "cpp":
         return {"supported": False, "required": False, "ready": True, "issues": []}
@@ -690,6 +812,20 @@ def _controller_fix_hints(inspection: ControllerInspectionResult) -> list[str]:
             hints.append("Add multi-row camera processing and explicit confidence telemetry before rerunning the line-follow benchmark.")
         if not inspection.reacquisition_readiness.get("ready"):
             hints.append("Implement track/predict/search/recover state transitions so line reacquisition remains observable and tunable.")
+    if inspection.scenario == "obstacle-avoidance":
+        if inspection.obstacle_contract_gaps:
+            hints.append("Emit front_clearance_margin, clearance_violation, heading_recovery_events, stalled_steps, and avoidance_state_code for MonsterBorg obstacle tuning.")
+        if not inspection.obstacle_readiness.get("ready"):
+            hints.append("Bind front_range, heading, yaw_rate, left_encoder, and right_encoder before rerunning the obstacle benchmark.")
+        if not inspection.clearance_recovery_readiness.get("ready"):
+            hints.append("Add an explicit clearance-recovery state machine so obstacle recovery and stalls remain observable.")
+    if inspection.scenario == "waypoint-nav":
+        if inspection.waypoint_contract_gaps:
+            hints.append("Emit progress_ratio, distance_to_goal_estimate, heading_alignment_error, path_deviation_score, waypoint_recovery_events, and stalled_steps for MonsterBorg waypoint tuning.")
+        if not inspection.waypoint_progress_readiness.get("ready"):
+            hints.append("Expose forward progress and heading-alignment telemetry before rerunning the waypoint benchmark.")
+        if not inspection.waypoint_recovery_readiness.get("ready"):
+            hints.append("Add an explicit align/advance/recover waypoint state machine so recovery events stay tunable.")
     return sorted(dict.fromkeys(hints))
 
 
@@ -1644,19 +1780,10 @@ def _python_monsterborg_obstacle_template() -> str:
 from controller import Robot
 
 from webots_mcp_kit.agent import ControllerAgent
-
-
-MAX_SPEED = 8.0
-CRUISE = 5.2
-RANGE_LIMIT = 900.0
-HEADING_GAIN = 0.35
+from webots_mcp_kit.monsterborg_navigation import ObstacleMemory, obstacle_control_step
 
 
 # webots-kit region HELPERS start
-def clamp(value: float) -> float:
-    return max(-MAX_SPEED, min(MAX_SPEED, value))
-
-
 def set_drive_velocity(left_velocity: float, right_velocity: float) -> None:
     front_left_motor.setVelocity(left_velocity)
     rear_left_motor.setVelocity(left_velocity)
@@ -1693,11 +1820,11 @@ imu.enable(time_step)
 # webots-kit region DEVICE_INIT end
 
 agent = ControllerAgent.from_robot(robot, default_camera="front_camera")
+memory = ObstacleMemory()
 previous_heading = 0.0
 
 while robot.step(time_step) != -1:
     front_range_value = float(front_range.getValue())
-    normalized_range = min(max(front_range_value / RANGE_LIMIT, 0.0), 1.0)
     heading = float(imu.getRollPitchYaw()[2])
     yaw_rate = (heading - previous_heading) / max(time_step / 1000.0, 1e-6)
     previous_heading = heading
@@ -1705,10 +1832,14 @@ while robot.step(time_step) != -1:
     right_ticks = float(right_encoder.getValue())
 
     # webots-kit region CONTROL_POLICY start
-    turn_bias = HEADING_GAIN * yaw_rate
-    pressure = normalized_range
-    left_speed = clamp(CRUISE - pressure * 6.0 - turn_bias)
-    right_speed = clamp(CRUISE - pressure * 2.5 + turn_bias)
+    memory, policy_metrics, (left_speed, right_speed) = obstacle_control_step(
+        memory,
+        front_range=front_range_value,
+        heading=heading,
+        yaw_rate=yaw_rate,
+        left_encoder=left_ticks,
+        right_encoder=right_ticks,
+    )
     # webots-kit region CONTROL_POLICY end
 
     override = agent.begin_step()
@@ -1727,8 +1858,14 @@ while robot.step(time_step) != -1:
         "right_encoder": round(right_ticks, 6),
     }
     metrics={
-        "obstacle_pressure": round(pressure, 6),
+        "obstacle_pressure": policy_metrics["obstacle_pressure"],
         "mean_forward_speed": round((left_speed + right_speed) / 2.0, 6),
+        "front_clearance_margin": policy_metrics["front_clearance_margin"],
+        "clearance_violation": policy_metrics["clearance_violation"],
+        "heading_recovery_events": policy_metrics["heading_recovery_events"],
+        "stalled_steps": policy_metrics["stalled_steps"],
+        "avoidance_state_code": policy_metrics["avoidance_state_code"],
+        "speed_saturation": policy_metrics["speed_saturation"],
         "line_visible": 0.0,
         "center_error": 0.0,
         "ir_balance_error": round((left_ticks - right_ticks) * 0.01, 6),
@@ -1755,19 +1892,10 @@ def _python_monsterborg_waypoint_template() -> str:
 from controller import Robot
 
 from webots_mcp_kit.agent import ControllerAgent
-
-
-MAX_SPEED = 8.0
-CRUISE = 5.8
-RANGE_LIMIT = 900.0
-HEADING_GAIN = 0.25
+from webots_mcp_kit.monsterborg_navigation import WaypointMemory, waypoint_control_step
 
 
 # webots-kit region HELPERS start
-def clamp(value: float) -> float:
-    return max(-MAX_SPEED, min(MAX_SPEED, value))
-
-
 def set_drive_velocity(left_velocity: float, right_velocity: float) -> None:
     front_left_motor.setVelocity(left_velocity)
     rear_left_motor.setVelocity(left_velocity)
@@ -1804,11 +1932,11 @@ imu.enable(time_step)
 # webots-kit region DEVICE_INIT end
 
 agent = ControllerAgent.from_robot(robot, default_camera="front_camera")
+memory = WaypointMemory()
 previous_heading = 0.0
 
 while robot.step(time_step) != -1:
     front_range_value = float(front_range.getValue())
-    normalized_range = min(max(front_range_value / RANGE_LIMIT, 0.0), 1.0)
     heading = float(imu.getRollPitchYaw()[2])
     yaw_rate = (heading - previous_heading) / max(time_step / 1000.0, 1e-6)
     previous_heading = heading
@@ -1816,9 +1944,14 @@ while robot.step(time_step) != -1:
     right_ticks = float(right_encoder.getValue())
 
     # webots-kit region CONTROL_POLICY start
-    turn_bias = HEADING_GAIN * heading
-    left_speed = clamp(CRUISE - normalized_range * 2.5 - turn_bias)
-    right_speed = clamp(CRUISE - normalized_range * 2.5 + turn_bias)
+    memory, policy_metrics, (left_speed, right_speed) = waypoint_control_step(
+        memory,
+        front_range=front_range_value,
+        heading=heading,
+        yaw_rate=yaw_rate,
+        left_encoder=left_ticks,
+        right_encoder=right_ticks,
+    )
     # webots-kit region CONTROL_POLICY end
 
     override = agent.begin_step()
@@ -1837,8 +1970,16 @@ while robot.step(time_step) != -1:
         "right_encoder": round(right_ticks, 6),
     }
     metrics={
-        "obstacle_pressure": round(normalized_range, 6),
+        "obstacle_pressure": policy_metrics["obstacle_pressure"],
         "mean_forward_speed": round((left_speed + right_speed) / 2.0, 6),
+        "progress_ratio": policy_metrics["progress_ratio"],
+        "distance_to_goal_estimate": policy_metrics["distance_to_goal_estimate"],
+        "heading_alignment_error": policy_metrics["heading_alignment_error"],
+        "path_deviation_score": policy_metrics["path_deviation_score"],
+        "waypoint_recovery_events": policy_metrics["waypoint_recovery_events"],
+        "stalled_steps": policy_metrics["stalled_steps"],
+        "waypoint_state_code": policy_metrics["waypoint_state_code"],
+        "speed_saturation": policy_metrics["speed_saturation"],
         "line_visible": 0.0,
         "center_error": 0.0,
         "ir_balance_error": round((left_ticks - right_ticks) * 0.01, 6),
@@ -2563,6 +2704,7 @@ def _cpp_monsterborg_obstacle_template() -> str:
 #include <webots/Robot.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <map>
 #include <string>
@@ -2573,9 +2715,16 @@ using webots_mcp_kit::CameraFrame;
 using webots_mcp_kit::ControllerAgent;
 
 const double MAX_SPEED = 8.0;
-const double CRUISE = 5.2;
+const double CRUISE = 5.4;
 const double RANGE_LIMIT = 900.0;
-const double HEADING_GAIN = 0.35;
+const double CAUTION_RANGE = 470.0;
+const double HARD_STOP_RANGE = 280.0;
+
+enum ObstacleState {
+  CRUISE_STATE = 0,
+  AVOID_STATE = 1,
+  RECOVER_STATE = 2,
+};
 
 // webots-kit region HELPERS start
 static double clamp_value(double value) {
@@ -2592,6 +2741,12 @@ static void set_drive_velocity(webots::Motor* front_left_motor,
   rear_left_motor->setVelocity(left_velocity);
   front_right_motor->setVelocity(right_velocity);
   rear_right_motor->setVelocity(right_velocity);
+}
+
+static double progress_step(double left_ticks, double right_ticks, double previous_left, double previous_right, bool initialized) {
+  if (!initialized)
+    return 0.0;
+  return std::abs(((left_ticks - previous_left) + (right_ticks - previous_right)) / 2.0) * 0.05;
 }
 // webots-kit region HELPERS end
 
@@ -2626,6 +2781,13 @@ int main() {
 
   auto agent = ControllerAgent::from_robot(&robot, "front_camera");
   double previous_heading = 0.0;
+  int state_code = CRUISE_STATE;
+  int heading_recovery_events = 0;
+  int stalled_steps = 0;
+  double search_direction = 1.0;
+  bool encoders_initialized = false;
+  double previous_left_ticks = 0.0;
+  double previous_right_ticks = 0.0;
 
   while (robot.step(time_step) != -1) {
     const double front_range_value = front_range->getValue();
@@ -2636,12 +2798,39 @@ int main() {
     previous_heading = heading;
     const double left_ticks = left_encoder->getValue();
     const double right_ticks = right_encoder->getValue();
+    const double step_distance = progress_step(left_ticks, right_ticks, previous_left_ticks, previous_right_ticks, encoders_initialized);
+    previous_left_ticks = left_ticks;
+    previous_right_ticks = right_ticks;
+    encoders_initialized = true;
 
     // webots-kit region CONTROL_POLICY start
-    const double turn_bias = HEADING_GAIN * yaw_rate;
-    const double pressure = normalized_range;
-    double left_speed = clamp_value(CRUISE - pressure * 6.0 - turn_bias);
-    double right_speed = clamp_value(CRUISE - pressure * 2.5 + turn_bias);
+    const double pressure = 1.0 - normalized_range;
+    if (std::abs(heading) > 0.05)
+      search_direction = heading > 0.0 ? -1.0 : 1.0;
+    else if (std::abs(yaw_rate) > 0.02)
+      search_direction = yaw_rate > 0.0 ? -1.0 : 1.0;
+    int next_state = CRUISE_STATE;
+    if (front_range_value < HARD_STOP_RANGE)
+      next_state = RECOVER_STATE;
+    else if (front_range_value < CAUTION_RANGE)
+      next_state = AVOID_STATE;
+    if (next_state != state_code && next_state == RECOVER_STATE)
+      heading_recovery_events += 1;
+    state_code = next_state;
+    double base_speed = CRUISE;
+    double turn = 0.0;
+    if (state_code == CRUISE_STATE) {
+      base_speed = CRUISE * std::max(0.7, 1.0 - pressure * 0.25);
+      turn = std::max(-2.4, std::min(2.4, heading * 1.1 + yaw_rate * 0.18));
+    } else if (state_code == AVOID_STATE) {
+      base_speed = 2.6;
+      turn = 3.8 * search_direction + yaw_rate * 0.35;
+    } else {
+      base_speed = 1.2;
+      turn = 4.8 * search_direction;
+    }
+    double left_speed = clamp_value(base_speed - turn);
+    double right_speed = clamp_value(base_speed + turn);
     // webots-kit region CONTROL_POLICY end
 
     auto override = agent.begin_step();
@@ -2652,6 +2841,10 @@ int main() {
 
     set_drive_velocity(front_left_motor, rear_left_motor, front_right_motor, rear_right_motor, left_speed, right_speed);
     const unsigned char* image = front_camera->getImage();
+    const double mean_forward_speed = (left_speed + right_speed) / 2.0;
+    if (std::abs(mean_forward_speed) > 1.0 && step_distance < 0.0015 && front_range_value < CAUTION_RANGE)
+      stalled_steps += 1;
+    const double speed_saturation = (std::abs(left_speed) >= MAX_SPEED - 0.05 || std::abs(right_speed) >= MAX_SPEED - 0.05) ? 1.0 : 0.0;
 
     // webots-kit region TELEMETRY_REPORT start
     std::map<std::string, double> sensors = {
@@ -2663,7 +2856,13 @@ int main() {
     };
     std::map<std::string, double> metrics = {
       {"obstacle_pressure", pressure},
-      {"mean_forward_speed", (left_speed + right_speed) / 2.0},
+      {"mean_forward_speed", mean_forward_speed},
+      {"front_clearance_margin", (front_range_value - CAUTION_RANGE) / CAUTION_RANGE},
+      {"clearance_violation", front_range_value < HARD_STOP_RANGE ? 1.0 : 0.0},
+      {"heading_recovery_events", static_cast<double>(heading_recovery_events)},
+      {"stalled_steps", static_cast<double>(stalled_steps)},
+      {"avoidance_state_code", static_cast<double>(state_code)},
+      {"speed_saturation", speed_saturation},
       {"line_visible", 0.0},
       {"center_error", 0.0},
       {"ir_balance_error", (left_ticks - right_ticks) * 0.01}
@@ -2695,6 +2894,7 @@ def _cpp_monsterborg_waypoint_template() -> str:
 #include <webots/Robot.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <map>
 #include <string>
@@ -2707,7 +2907,16 @@ using webots_mcp_kit::ControllerAgent;
 const double MAX_SPEED = 8.0;
 const double CRUISE = 5.8;
 const double RANGE_LIMIT = 900.0;
-const double HEADING_GAIN = 0.25;
+const double CAUTION_RANGE = 420.0;
+const double HARD_STOP_RANGE = 260.0;
+const double TARGET_DISTANCE = 1.35;
+
+enum WaypointState {
+  RECOVER_STATE = 2,
+  ALIGN_STATE = 3,
+  ADVANCE_STATE = 4,
+  HOLD_STATE = 5,
+};
 
 // webots-kit region HELPERS start
 static double clamp_value(double value) {
@@ -2724,6 +2933,20 @@ static void set_drive_velocity(webots::Motor* front_left_motor,
   rear_left_motor->setVelocity(left_velocity);
   front_right_motor->setVelocity(right_velocity);
   rear_right_motor->setVelocity(right_velocity);
+}
+
+static double wrap_angle(double value) {
+  while (value > 3.141592653589793)
+    value -= 6.283185307179586;
+  while (value < -3.141592653589793)
+    value += 6.283185307179586;
+  return value;
+}
+
+static double progress_step(double left_ticks, double right_ticks, double previous_left, double previous_right, bool initialized) {
+  if (!initialized)
+    return 0.0;
+  return std::abs(((left_ticks - previous_left) + (right_ticks - previous_right)) / 2.0) * 0.05;
 }
 // webots-kit region HELPERS end
 
@@ -2758,6 +2981,14 @@ int main() {
 
   auto agent = ControllerAgent::from_robot(&robot, "front_camera");
   double previous_heading = 0.0;
+  int state_code = ALIGN_STATE;
+  int waypoint_recovery_events = 0;
+  int stalled_steps = 0;
+  double encoder_distance = 0.0;
+  double search_direction = 1.0;
+  bool encoders_initialized = false;
+  double previous_left_ticks = 0.0;
+  double previous_right_ticks = 0.0;
 
   while (robot.step(time_step) != -1) {
     const double front_range_value = front_range->getValue();
@@ -2768,11 +2999,48 @@ int main() {
     previous_heading = heading;
     const double left_ticks = left_encoder->getValue();
     const double right_ticks = right_encoder->getValue();
+    const double step_distance = progress_step(left_ticks, right_ticks, previous_left_ticks, previous_right_ticks, encoders_initialized);
+    encoder_distance += step_distance;
+    previous_left_ticks = left_ticks;
+    previous_right_ticks = right_ticks;
+    encoders_initialized = true;
 
     // webots-kit region CONTROL_POLICY start
-    const double turn_bias = HEADING_GAIN * heading;
-    double left_speed = clamp_value(CRUISE - normalized_range * 2.5 - turn_bias);
-    double right_speed = clamp_value(CRUISE - normalized_range * 2.5 + turn_bias);
+    const double obstacle_pressure = 1.0 - normalized_range;
+    const double heading_error = wrap_angle(0.0 - heading);
+    const double heading_alignment_error = std::abs(heading_error);
+    const double progress_ratio = std::max(0.0, std::min(1.0, encoder_distance / TARGET_DISTANCE));
+    const double distance_to_goal_estimate = std::max(0.0, TARGET_DISTANCE - encoder_distance);
+    if (std::abs(heading_error) > 0.04)
+      search_direction = heading_error > 0.0 ? 1.0 : -1.0;
+    else if (std::abs(yaw_rate) > 0.02)
+      search_direction = yaw_rate > 0.0 ? -1.0 : 1.0;
+    int next_state = ADVANCE_STATE;
+    if (front_range_value < HARD_STOP_RANGE)
+      next_state = RECOVER_STATE;
+    else if (heading_alignment_error > 0.28)
+      next_state = ALIGN_STATE;
+    else if (progress_ratio >= 0.995)
+      next_state = HOLD_STATE;
+    if (next_state != state_code && (next_state == ALIGN_STATE || next_state == RECOVER_STATE))
+      waypoint_recovery_events += 1;
+    state_code = next_state;
+    double base_speed = 0.0;
+    double turn = 0.0;
+    if (state_code == ADVANCE_STATE) {
+      base_speed = CRUISE * std::max(0.55, 1.0 - heading_alignment_error * 0.65);
+      if (front_range_value < CAUTION_RANGE)
+        base_speed *= 0.72;
+      turn = std::max(-3.2, std::min(3.2, heading_error * 3.6 - yaw_rate * 0.32));
+    } else if (state_code == ALIGN_STATE) {
+      base_speed = 1.5;
+      turn = 4.4 * search_direction;
+    } else if (state_code == RECOVER_STATE) {
+      base_speed = 0.8;
+      turn = 5.0 * search_direction;
+    }
+    double left_speed = clamp_value(base_speed - turn);
+    double right_speed = clamp_value(base_speed + turn);
     // webots-kit region CONTROL_POLICY end
 
     auto override = agent.begin_step();
@@ -2783,6 +3051,11 @@ int main() {
 
     set_drive_velocity(front_left_motor, rear_left_motor, front_right_motor, rear_right_motor, left_speed, right_speed);
     const unsigned char* image = front_camera->getImage();
+    const double mean_forward_speed = (left_speed + right_speed) / 2.0;
+    if ((state_code == ADVANCE_STATE || state_code == ALIGN_STATE) && std::abs(mean_forward_speed) > 1.0 && step_distance < 0.0015)
+      stalled_steps += 1;
+    const double speed_saturation = (std::abs(left_speed) >= MAX_SPEED - 0.05 || std::abs(right_speed) >= MAX_SPEED - 0.05) ? 1.0 : 0.0;
+    const double path_deviation_score = heading_alignment_error * 0.8 + std::abs(yaw_rate) * 0.12 + obstacle_pressure * 0.2;
 
     // webots-kit region TELEMETRY_REPORT start
     std::map<std::string, double> sensors = {
@@ -2793,8 +3066,16 @@ int main() {
       {"right_encoder", right_ticks}
     };
     std::map<std::string, double> metrics = {
-      {"obstacle_pressure", normalized_range},
-      {"mean_forward_speed", (left_speed + right_speed) / 2.0},
+      {"obstacle_pressure", obstacle_pressure},
+      {"mean_forward_speed", mean_forward_speed},
+      {"progress_ratio", progress_ratio},
+      {"distance_to_goal_estimate", distance_to_goal_estimate},
+      {"heading_alignment_error", heading_alignment_error},
+      {"path_deviation_score", path_deviation_score},
+      {"waypoint_recovery_events", static_cast<double>(waypoint_recovery_events)},
+      {"stalled_steps", static_cast<double>(stalled_steps)},
+      {"waypoint_state_code", static_cast<double>(state_code)},
+      {"speed_saturation", speed_saturation},
       {"line_visible", 0.0},
       {"center_error", 0.0},
       {"ir_balance_error", (left_ticks - right_ticks) * 0.01}

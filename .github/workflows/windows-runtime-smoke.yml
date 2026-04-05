@@ -18,9 +18,15 @@ on:
       - "src/webots_mcp_kit/examples/**"
       - "src/webots_mcp_kit/benchmarks.py"
       - "src/webots_mcp_kit/monsterborg_adapter.py"
+      - "src/webots_mcp_kit/monsterborg_calibration.py"
+      - "src/webots_mcp_kit/monsterborg_matrix.py"
+      - "src/webots_mcp_kit/monsterborg_navigation.py"
       - "src/webots_mcp_kit/scenario_ops.py"
       - "src/webots_mcp_kit/world_document.py"
       - "src/webots_mcp_kit/world_ops.py"
+      - "scripts/monsterborg_benchmark_matrix.py"
+      - "scripts/monsterborg_calibration_report.py"
+      - "scripts/monsterborg_capture_run.py"
       - "tests/test_smoke_cli.py"
       - "examples/getting-started/**"
       - "examples/monsterborg/**"
@@ -41,9 +47,15 @@ on:
       - "src/webots_mcp_kit/examples/**"
       - "src/webots_mcp_kit/benchmarks.py"
       - "src/webots_mcp_kit/monsterborg_adapter.py"
+      - "src/webots_mcp_kit/monsterborg_calibration.py"
+      - "src/webots_mcp_kit/monsterborg_matrix.py"
+      - "src/webots_mcp_kit/monsterborg_navigation.py"
       - "src/webots_mcp_kit/scenario_ops.py"
       - "src/webots_mcp_kit/world_document.py"
       - "src/webots_mcp_kit/world_ops.py"
+      - "scripts/monsterborg_benchmark_matrix.py"
+      - "scripts/monsterborg_calibration_report.py"
+      - "scripts/monsterborg_capture_run.py"
       - "tests/test_smoke_cli.py"
       - "examples/getting-started/**"
       - "examples/monsterborg/**"
@@ -175,6 +187,30 @@ jobs:
       - name: Benchmark runtime smoke
         run: |
           & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k benchmark_smoke
+
+      - name: MonsterBorg line-follow repeatability runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k monsterborg_line_follow_variants_repeatability_smoke
+
+      - name: MonsterBorg line-follow robustness runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k monsterborg_line_follow_robustness_smoke
+
+      - name: MonsterBorg obstacle repeatability runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k monsterborg_obstacle_variants_repeatability_smoke
+
+      - name: MonsterBorg obstacle robustness runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k monsterborg_obstacle_robustness_smoke
+
+      - name: MonsterBorg waypoint repeatability runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k monsterborg_waypoint_variants_repeatability_smoke
+
+      - name: MonsterBorg waypoint robustness runtime smoke
+        run: |
+          & "${{ steps.python.outputs.python_exe }}" -m pytest -q -k monsterborg_waypoint_robustness_smoke
 
       - name: Generated scenario runtime smoke
         run: |

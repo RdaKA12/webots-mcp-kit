@@ -13,11 +13,13 @@
 - imported-world authoring runtime smoke passed on the interactive runner when authoring code changed
 - MCP authoring/editing contract smoke passed when `mcp_server`, controller authoring, or world authoring code changed
 - package build and `twine check` are green
+- designated Raspberry Pi physical smoke is green through `monsterborg_physical_verify.py`, capture/export/replay, and `monsterborg_calibration_report.py` when `MONSTERBORG_PHYSICAL_GATE=enabled`
 - TestPyPI install smoke passes through the public `verify_install.ps1` path on the hosted Windows runner
 - PyPI install smoke passes through the public `verify_install.ps1` path on the hosted Windows runner
 - starter workspace smoke is green through `bootstrap_workspace.ps1` or `upgrade_check.ps1`
 - team upgrade smoke is green through `powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace <path> -Runtime`
 - real runtime benchmark proof still comes from the self-hosted `interactive-webots` runtime smoke workflow
+- MonsterBorg task matrix aggregation is green through `python .\scripts\monsterborg_benchmark_matrix.py <report-or-export>... --output <json>`
 - README quickstart has been rerun once from a clean machine or clean virtual environment
 - changelog and README version notes are updated
 
@@ -49,6 +51,12 @@ Configure PyPI and TestPyPI trusted publishers for:
 
 ## Tag flow
 
+Preview tags:
+
+- `v*.alpha*` preview tags stop after build plus draft GitHub release
+- preview tags do not publish to TestPyPI or PyPI
+- stable non-alpha tags are the only ones that run the full publish flow
+
 1. Push `v*` tag
 2. Verify build + `twine check`
 3. Verify draft GitHub release exists
@@ -62,6 +70,11 @@ Configure PyPI and TestPyPI trusted publishers for:
 9. Verify the team adoption lane still works:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Starter line-follower -Destination .\workspaces\line-follower-demo`
    - `powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\artifacts\upgrade-check -Runtime`
+10. Verify the MonsterBorg physical lane still works on the designated Pi:
+   - `python .\scripts\monsterborg_physical_verify.py --json`
+   - `python .\scripts\monsterborg_capture_run.py --input .\capture.json --output .\artifacts\monsterborg-physical --scenario obstacle-avoidance --benchmark obstacle-avoidance --variant baseline`
+   - `webots-kit session replay .\artifacts\monsterborg-physical`
+   - `python .\scripts\monsterborg_calibration_report.py --sim-export .\artifacts\monsterborg-sim --physical-export .\artifacts\monsterborg-physical --output .\artifacts\monsterborg-calibration.json`
 
 ## After release
 

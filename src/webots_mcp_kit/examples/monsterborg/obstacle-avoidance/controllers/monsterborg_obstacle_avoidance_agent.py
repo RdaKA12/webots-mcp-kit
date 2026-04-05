@@ -3,19 +3,10 @@ from __future__ import annotations
 from controller import Robot
 
 from webots_mcp_kit.agent import ControllerAgent
-
-
-MAX_SPEED = 8.0
-CRUISE = 5.2
-RANGE_LIMIT = 900.0
-HEADING_GAIN = 0.35
+from webots_mcp_kit.monsterborg_navigation import ObstacleMemory, obstacle_control_step
 
 
 # webots-kit region HELPERS start
-def clamp(value: float) -> float:
-    return max(-MAX_SPEED, min(MAX_SPEED, value))
-
-
 def set_drive_velocity(left_velocity: float, right_velocity: float) -> None:
     front_left_motor.setVelocity(left_velocity)
     rear_left_motor.setVelocity(left_velocity)
@@ -52,11 +43,11 @@ imu.enable(time_step)
 # webots-kit region DEVICE_INIT end
 
 agent = ControllerAgent.from_robot(robot, default_camera="front_camera")
+memory = ObstacleMemory()
 previous_heading = 0.0
 
 while robot.step(time_step) != -1:
     front_range_value = float(front_range.getValue())
-    normalized_range = min(max(front_range_value / RANGE_LIMIT, 0.0), 1.0)
     heading = float(imu.getRollPitchYaw()[2])
     yaw_rate = (heading - previous_heading) / max(time_step / 1000.0, 1e-6)
     previous_heading = heading
@@ -64,10 +55,14 @@ while robot.step(time_step) != -1:
     right_ticks = float(right_encoder.getValue())
 
     # webots-kit region CONTROL_POLICY start
-    turn_bias = HEADING_GAIN * yaw_rate
-    pressure = normalized_range
-    left_speed = clamp(CRUISE - pressure * 6.0 - turn_bias)
-    right_speed = clamp(CRUISE - pressure * 2.5 + turn_bias)
+    memory, policy_metrics, (left_speed, right_speed) = obstacle_control_step(
+        memory,
+        front_range=front_range_value,
+        heading=heading,
+        yaw_rate=yaw_rate,
+        left_encoder=left_ticks,
+        right_encoder=right_ticks,
+    )
     # webots-kit region CONTROL_POLICY end
 
     override = agent.begin_step()
@@ -86,8 +81,14 @@ while robot.step(time_step) != -1:
         "right_encoder": round(right_ticks, 6),
     }
     metrics={
-        "obstacle_pressure": round(pressure, 6),
+        "obstacle_pressure": policy_metrics["obstacle_pressure"],
         "mean_forward_speed": round((left_speed + right_speed) / 2.0, 6),
+        "front_clearance_margin": policy_metrics["front_clearance_margin"],
+        "clearance_violation": policy_metrics["clearance_violation"],
+        "heading_recovery_events": policy_metrics["heading_recovery_events"],
+        "stalled_steps": policy_metrics["stalled_steps"],
+        "avoidance_state_code": policy_metrics["avoidance_state_code"],
+        "speed_saturation": policy_metrics["speed_saturation"],
         "line_visible": 0.0,
         "center_error": 0.0,
         "ir_balance_error": round((left_ticks - right_ticks) * 0.01, 6),

@@ -1,0 +1,72 @@
+{
+  "benchmark_report": {
+    "benchmark": "obstacle-avoidance",
+    "task_variant": "baseline"
+  },
+  "samples": [
+    {
+      "sensors": {
+        "front_range": 0.9,
+        "heading": 0.0,
+        "left_encoder": 0.0,
+        "right_encoder": 0.0
+      },
+      "metrics": {
+        "mean_forward_speed": 0.24,
+        "clearance_violation": 0,
+        "heading_recovery_events": 0,
+        "stalled_steps": 0,
+        "speed_saturation": 0,
+        "collision_events": 0
+      }
+    },
+    {
+      "sensors": {
+        "front_range": 0.46,
+        "heading": 0.03,
+        "left_encoder": 0.8,
+        "right_encoder": 0.82
+      },
+      "metrics": {
+        "mean_forward_speed": 0.22,
+        "clearance_violation": 0,
+        "heading_recovery_events": 1,
+        "stalled_steps": 0,
+        "speed_saturation": 0,
+        "collision_events": 0
+      }
+    },
+    {
+      "sensors": {
+        "front_range": 0.24,
+        "heading": 0.08,
+        "left_encoder": 1.2,
+        "right_encoder": 1.15
+      },
+      "metrics": {
+        "mean_forward_speed": 0.19,
+        "clearance_violation": 1,
+        "heading_recovery_events": 2,
+        "stalled_steps": 1,
+        "speed_saturation": 1,
+        "collision_events": 0
+      }
+    },
+    {
+      "sensors": {
+        "front_range": 0.37,
+        "heading": 0.04,
+        "left_encoder": 2.0,
+        "right_encoder": 1.94
+      },
+      "metrics": {
+        "mean_forward_speed": 0.23,
+        "clearance_violation": 0,
+        "heading_recovery_events": 2,
+        "stalled_steps": 1,
+        "speed_saturation": 0,
+        "collision_events": 0
+      }
+    }
+  ]
+}

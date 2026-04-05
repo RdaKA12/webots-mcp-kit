@@ -74,6 +74,7 @@ Replay is observability-focused. It does not rerun physics. Instead, it gives yo
 - a `telemetry_summary` derived from the exported runtime summary
 - a `runtime_failure_class` plus `triage_recipe`
 - additive authoring/runtime metadata including `robot_family`, `robot_profile`, and `runtime_target`
+- additive benchmark-facing metadata such as `task_variant` and `task_quality_summary` when the exported run came from the hardened MonsterBorg task lanes
 - the copied log summary captured at export time
 - copied logs and artifacts
 - the suggested next step for triage or rerun

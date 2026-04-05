@@ -82,6 +82,8 @@ class BenchmarkReport:
     passed: bool
     artifacts: dict[str, str]
     notes: list[str]
+    task_variant: str | None = None
+    task_quality_summary: dict[str, Any] = field(default_factory=dict)
     track_variant: str | None = None
     line_reacquisition_events: int = 0
     max_line_reacquisition_steps: int = 0

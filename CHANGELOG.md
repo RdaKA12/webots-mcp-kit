@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.9.0-alpha.1
+
+- Hardened MonsterBorg `obstacle-avoidance` and `waypoint-nav` with stateful reference controllers, generated task variants, and task-aware controller/scenario readiness outputs alongside the existing line-follow lane.
+- Added task-aware `benchmark report` and `session replay` summaries for MonsterBorg, including `task_variant`, `task_quality_summary`, richer controller fix hints, and a new `monsterborg_benchmark_matrix.py` tuning helper.
+- Extended the MonsterBorg physical-adapter parity lane across line-follow, obstacle, and waypoint tasks with task-aware capture shaping, calibration thresholds, packaged physical-capture fixtures, and a designated Raspberry Pi smoke gate.
+
 ## v2.8.0
 
 - Hardened MonsterBorg line-follow with a state-machine controller template, multi-row camera processing, richer benchmark metrics, and robot-aware controller/scenario readiness outputs.

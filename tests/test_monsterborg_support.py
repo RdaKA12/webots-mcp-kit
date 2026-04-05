@@ -75,6 +75,28 @@ def test_monsterborg_cpp_line_follow_scaffold_and_validation(tmp_path: Path) -> 
     assert result.details["line_follow_contract_gaps"] == []
 
 
+def test_monsterborg_obstacle_and_waypoint_scaffolds_expose_task_specific_readiness(tmp_path: Path) -> None:
+    obstacle_path = tmp_path / "monsterborg_obstacle.py"
+    waypoint_path = tmp_path / "monsterborg_waypoint.py"
+    scaffold_controller(path=obstacle_path, scenario="obstacle-avoidance", language="python", robot_profile="monsterborg-4wd")
+    scaffold_controller(path=waypoint_path, scenario="waypoint-nav", language="python", robot_profile="monsterborg-4wd")
+
+    obstacle_inspection = inspect_controller(obstacle_path, scenario="obstacle-avoidance", robot_profile="monsterborg-4wd")
+    assert obstacle_inspection.obstacle_contract_gaps == []
+    assert obstacle_inspection.obstacle_readiness["ready"] is True
+    assert obstacle_inspection.clearance_recovery_readiness["ready"] is True
+
+    waypoint_inspection = inspect_controller(waypoint_path, scenario="waypoint-nav", robot_profile="monsterborg-4wd")
+    assert waypoint_inspection.waypoint_contract_gaps == []
+    assert waypoint_inspection.waypoint_progress_readiness["ready"] is True
+    assert waypoint_inspection.waypoint_recovery_readiness["ready"] is True
+
+    obstacle_validation = validate_controller(obstacle_path, scenario="obstacle-avoidance", strict=True, robot_profile="monsterborg-4wd")
+    waypoint_validation = validate_controller(waypoint_path, scenario="waypoint-nav", strict=True, robot_profile="monsterborg-4wd")
+    assert obstacle_validation.valid is True
+    assert waypoint_validation.valid is True
+
+
 def test_monsterborg_scenario_build_and_import_are_robot_aware(tmp_path: Path) -> None:
     scenario_dir = tmp_path / "monsterborg-waypoint"
     init_payload = init_scenario(scenario_dir, template="monsterborg-waypoint")

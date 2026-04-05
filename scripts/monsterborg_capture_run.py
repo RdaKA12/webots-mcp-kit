@@ -23,6 +23,7 @@ def main() -> int:
     parser.add_argument("--output", required=True, help="Export directory to create.")
     parser.add_argument("--scenario", default="waypoint-nav", help="Scenario name recorded by the capture.")
     parser.add_argument("--benchmark", default=None, help="Benchmark name associated with the capture.")
+    parser.add_argument("--variant", default="baseline", help="Task variant label recorded by the capture.")
     parser.add_argument("--robot-name", default="monsterborg-physical", help="Logical robot name to write into the export bundle.")
     args = parser.parse_args()
 
@@ -31,13 +32,17 @@ def main() -> int:
     if not isinstance(samples, list) or not samples:
         raise ValueError("Capture input must contain a non-empty `samples` array.")
 
+    benchmark_report = payload.get("benchmark_report") if isinstance(payload.get("benchmark_report"), dict) else {}
+    if not benchmark_report:
+        benchmark_report = {"benchmark": args.benchmark or args.scenario}
+    benchmark_report.setdefault("task_variant", args.variant)
     result = build_monsterborg_physical_bundle(
         output_dir=Path(args.output),
         scenario=args.scenario,
         robot_name=args.robot_name,
         samples=samples,
         benchmark_name=args.benchmark or args.scenario,
-        benchmark_report=payload.get("benchmark_report") if isinstance(payload.get("benchmark_report"), dict) else None,
+        benchmark_report=benchmark_report,
         physical_adapter_summary=payload.get("physical_adapter_summary")
         if isinstance(payload.get("physical_adapter_summary"), dict)
         else None,

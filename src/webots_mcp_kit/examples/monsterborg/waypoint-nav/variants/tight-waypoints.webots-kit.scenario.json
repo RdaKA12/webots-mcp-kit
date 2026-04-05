@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "project": { "name": "monsterborg-waypoint" },
+  "scenario": { "name": "monsterborg-waypoint-tight-waypoints", "kind": "waypoint-nav" },
+  "robot": { "template": "monsterborg-4wd", "name": "monsterborg-waypoint-agent", "def": "MONSTERBORG" },
+  "environment": { "template": "monsterborg-waypoint" },
+  "layout": {},
+  "task": { "kind": "waypoint-nav", "variant": "tight-waypoints", "description": "MonsterBorg tight-waypoints variant." },
+  "controller": { "path": "controllers/monsterborg_waypoint_nav_agent.py", "default_camera": "front_camera" },
+  "benchmark": { "profile": "waypoint-nav", "duration_s": 8.0, "threshold_overrides": {} }
+}

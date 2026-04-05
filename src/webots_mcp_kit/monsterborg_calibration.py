@@ -20,11 +20,15 @@ def load_export_metrics(path: Path) -> dict[str, Any]:
     export_manifest = json.loads(export_manifest_path.read_text(encoding="utf-8")) if export_manifest_path.exists() else {}
     benchmark_summary = summary.get("benchmark_summary", {}) if isinstance(summary.get("benchmark_summary"), dict) else {}
     extra_metrics = benchmark.get("extra_metrics", {}) if isinstance(benchmark.get("extra_metrics"), dict) else {}
+    benchmark_name = benchmark.get("benchmark") or benchmark_summary.get("benchmark_name") or "line-follower"
+    task_quality_summary = benchmark.get("task_quality_summary", {}) if isinstance(benchmark.get("task_quality_summary"), dict) else {}
     return {
         "export_root": str(export_root),
+        "benchmark": benchmark_name,
         "robot_profile": benchmark.get("robot_profile") or summary.get("robot_profile") or "monsterborg-4wd",
         "runtime_target": benchmark.get("runtime_target") or summary.get("runtime_target"),
-        "track_variant": benchmark.get("track_variant") or benchmark_summary.get("track_variant") or "baseline",
+        "task_variant": benchmark.get("task_variant") or benchmark_summary.get("task_variant") or benchmark.get("track_variant") or benchmark_summary.get("track_variant") or "baseline",
+        "task_quality_summary": task_quality_summary or benchmark_summary.get("task_quality_summary", {}),
         "mean_forward_speed": float(extra_metrics.get("mean_forward_speed", 0.0)),
         "encoder_distance": float(extra_metrics.get("encoder_distance", extra_metrics.get("odometry_travelled_distance", 0.0))),
         "heading_drift": float(extra_metrics.get("heading_drift", 0.0)),
@@ -43,6 +47,7 @@ def delta_fraction(left: float, right: float) -> float:
 def build_calibration_report(*, sim_export: Path, physical_export: Path) -> dict[str, Any]:
     sim_summary = load_export_metrics(sim_export)
     physical_summary = load_export_metrics(physical_export)
+    benchmark_name = str(physical_summary.get("benchmark") or sim_summary.get("benchmark") or "line-follower")
     delta_summary = {
         "mean_forward_speed_delta": round(delta_fraction(sim_summary["mean_forward_speed"], physical_summary["mean_forward_speed"]), 6),
         "encoder_distance_delta": round(delta_fraction(sim_summary["encoder_distance"], physical_summary["encoder_distance"]), 6),
@@ -53,20 +58,76 @@ def build_calibration_report(*, sim_export: Path, physical_export: Path) -> dict
             6,
         ),
         "collision_count_delta": abs(int(sim_summary["collision_count"]) - int(physical_summary["collision_count"])),
+        "min_front_range_delta": round(
+            delta_fraction(
+                float(sim_summary.get("task_quality_summary", {}).get("min_front_range", 0.0)),
+                float(physical_summary.get("task_quality_summary", {}).get("min_front_range", 0.0)),
+            ),
+            6,
+        ),
+        "stalled_steps_delta": round(
+            delta_fraction(
+                float(sim_summary.get("task_quality_summary", {}).get("stalled_steps", 0.0)),
+                float(physical_summary.get("task_quality_summary", {}).get("stalled_steps", 0.0)),
+            ),
+            6,
+        ),
+        "progress_ratio_delta": round(
+            delta_fraction(
+                float(sim_summary.get("task_quality_summary", {}).get("progress_ratio", 0.0)),
+                float(physical_summary.get("task_quality_summary", {}).get("progress_ratio", 0.0)),
+            ),
+            6,
+        ),
+        "distance_to_goal_final_delta": round(
+            delta_fraction(
+                float(sim_summary.get("task_quality_summary", {}).get("distance_to_goal_final", 0.0)),
+                float(physical_summary.get("task_quality_summary", {}).get("distance_to_goal_final", 0.0)),
+            ),
+            6,
+        ),
+        "heading_alignment_error_delta": round(
+            delta_fraction(
+                float(sim_summary.get("task_quality_summary", {}).get("heading_alignment_error", 0.0)),
+                float(physical_summary.get("task_quality_summary", {}).get("heading_alignment_error", 0.0)),
+            ),
+            6,
+        ),
     }
     failures: list[str] = []
-    if delta_summary["encoder_distance_delta"] > 0.20:
-        failures.append("encoder_distance_delta")
-    if delta_summary["mean_forward_speed_delta"] > 0.20:
-        failures.append("mean_forward_speed_delta")
-    if delta_summary["max_line_reacquisition_steps_delta"] > 0.25:
-        failures.append("max_line_reacquisition_steps_delta")
-    if delta_summary["heading_drift_delta"] > 0.20:
-        failures.append("heading_drift_delta")
+    if benchmark_name == "line-follower":
+        if delta_summary["encoder_distance_delta"] > 0.20:
+            failures.append("encoder_distance_delta")
+        if delta_summary["mean_forward_speed_delta"] > 0.20:
+            failures.append("mean_forward_speed_delta")
+        if delta_summary["max_line_reacquisition_steps_delta"] > 0.25:
+            failures.append("max_line_reacquisition_steps_delta")
+        if delta_summary["heading_drift_delta"] > 0.20:
+            failures.append("heading_drift_delta")
+    elif benchmark_name == "obstacle-avoidance":
+        if delta_summary["min_front_range_delta"] > 0.25:
+            failures.append("min_front_range_delta")
+        if delta_summary["mean_forward_speed_delta"] > 0.20:
+            failures.append("mean_forward_speed_delta")
+        if delta_summary["stalled_steps_delta"] > 0.20:
+            failures.append("stalled_steps_delta")
+        if delta_summary["collision_count_delta"] > 0:
+            failures.append("collision_count_delta")
+    else:
+        if delta_summary["distance_to_goal_final_delta"] > 0.20:
+            failures.append("distance_to_goal_final_delta")
+        if delta_summary["progress_ratio_delta"] > 0.15:
+            failures.append("progress_ratio_delta")
+        if delta_summary["heading_alignment_error_delta"] > 0.20:
+            failures.append("heading_alignment_error_delta")
+        if delta_summary["mean_forward_speed_delta"] > 0.20:
+            failures.append("mean_forward_speed_delta")
     passed = not failures
     return {
         "robot_profile": "monsterborg-4wd",
-        "track_variant": physical_summary.get("track_variant") or sim_summary.get("track_variant") or "baseline",
+        "benchmark": benchmark_name,
+        "task_variant": physical_summary.get("task_variant") or sim_summary.get("task_variant") or "baseline",
+        "track_variant": physical_summary.get("task_variant") or sim_summary.get("task_variant") or "baseline",
         "sim_summary": sim_summary,
         "physical_summary": physical_summary,
         "delta_summary": delta_summary,
