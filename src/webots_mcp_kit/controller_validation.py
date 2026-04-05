@@ -69,6 +69,9 @@ def validate_controller(
         "telemetry_contract": inspection.telemetry_contract,
         "benchmark_readiness": inspection.benchmark_readiness,
         "benchmark_contract_gaps": inspection.benchmark_contract_gaps,
+        "line_follow_contract_gaps": inspection.line_follow_contract_gaps,
+        "camera_processing_readiness": inspection.camera_processing_readiness,
+        "reacquisition_readiness": inspection.reacquisition_readiness,
         "function_inventory": inspection.function_inventory,
         "editable_symbols": inspection.editable_symbols,
         "compile_readiness": inspection.compile_readiness,
@@ -169,6 +172,12 @@ def format_validation_report(result: ControllerValidationResult) -> str:
     ]
     if details.get("benchmark_contract_gaps"):
         lines.append(f"benchmark_contract_gaps: {details.get('benchmark_contract_gaps')}")
+    if details.get("line_follow_contract_gaps"):
+        lines.append(f"line_follow_contract_gaps: {details.get('line_follow_contract_gaps')}")
+    if details.get("camera_processing_readiness"):
+        lines.append(f"camera_processing_readiness: {details.get('camera_processing_readiness')}")
+    if details.get("reacquisition_readiness"):
+        lines.append(f"reacquisition_readiness: {details.get('reacquisition_readiness')}")
     if result.errors:
         lines.append("errors:")
         lines.extend(f"- {error}" for error in result.errors)

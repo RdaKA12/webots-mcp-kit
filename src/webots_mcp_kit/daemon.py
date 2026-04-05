@@ -25,6 +25,32 @@ def distance_2d(position: list[float] | tuple[float, ...], target: list[float] |
     return (dx * dx + dy * dy) ** 0.5
 
 
+def infer_line_follow_track_variant(world_path: Path) -> str:
+    stem = world_path.stem.lower()
+    for variant in (
+        "tight-turns",
+        "broken-line-recovery",
+        "low-contrast",
+        "friction-perturbation",
+        "camera-degradation",
+        "baseline",
+    ):
+        normalized = variant.replace("-", "_")
+        if variant in stem or normalized in stem:
+            return variant
+    try:
+        content = world_path.read_text(encoding="utf-8", errors="replace").lower()
+    except OSError:
+        return "baseline"
+    marker = "track variant:"
+    if marker in content:
+        tail = content.split(marker, 1)[1].split('"', 1)[0]
+        candidate = tail.splitlines()[0].strip(" ]")
+        if candidate:
+            return candidate
+    return "baseline"
+
+
 def is_transient_runtime_reset_error(exc: Exception) -> bool:
     return "Connection lost" in str(exc)
 
@@ -550,12 +576,17 @@ class SessionDaemon:
         start_step = int(snapshot.state.get("step_index", 0))
         baseline_contact_points = int(self.runtime_snapshots["supervisor"].state.get("contact_points_count", 0))
         line_loss_events = 0
+        line_reacquisition_events = 0
         current_streak = 0
         max_streak = 0
+        max_line_reacquisition_steps = 0
         center_sum = 0.0
         ir_sum = 0.0
+        camera_signal_strength_sum = 0.0
+        oscillation_delta_sum = 0.0
         obstacle_pressure_sum = 0.0
         mean_forward_speed_sum = 0.0
+        speed_envelope_violations = 0
         collision_events = 0
         sample_count = 0
         passed = True
@@ -574,8 +605,12 @@ class SessionDaemon:
         use_encoder_odometry = self.manifest.robot_profile == "monsterborg-4wd"
         previous_left_encoder = self.runtime_snapshots["agent"].sensors.get("left_encoder")
         previous_right_encoder = self.runtime_snapshots["agent"].sensors.get("right_encoder")
+        previous_center_error = 0.0
+        initial_heading = self.runtime_snapshots["agent"].sensors.get("heading")
+        final_heading = initial_heading
         initial_target_distance = distance_2d(previous_position, target_position) if previous_position and target_position else None
         previous_robot_time = start_time
+        track_variant = infer_line_follow_track_variant(Path(self.manifest.world))
         try:
             await self.send_runtime_command("agent", "set_paused", {"paused": False})
         except Exception as exc:
@@ -590,6 +625,10 @@ class SessionDaemon:
             metrics = snapshot.metrics
             supervisor_state = self.runtime_snapshots["supervisor"].state
             current_robot_time = float(snapshot.state.get("robot_time", 0.0))
+            if initial_heading is None and sensors.get("heading") is not None:
+                initial_heading = sensors.get("heading")
+            if sensors.get("heading") is not None:
+                final_heading = sensors.get("heading")
             logical_step_distance = 0.0
             if use_encoder_odometry:
                 left_encoder = sensors.get("left_encoder")
@@ -608,12 +647,30 @@ class SessionDaemon:
             if scenario_name == "line-follower":
                 line_visible = bool(metrics.get("line_visible", False))
                 if line_visible:
+                    if current_streak > 0:
+                        line_reacquisition_events += 1
+                        max_line_reacquisition_steps = max(max_line_reacquisition_steps, current_streak)
                     current_streak = 0
                 else:
                     current_streak += 1
                     if current_streak == 1:
                         line_loss_events += 1
                 max_streak = max(max_streak, current_streak)
+                current_center_error = float(metrics.get("center_error", 0.0))
+                oscillation_delta_sum += abs(current_center_error - previous_center_error)
+                previous_center_error = current_center_error
+                signal_strength = float(metrics.get("camera_signal_strength", 0.0))
+                if signal_strength <= 0.0:
+                    signal_strength = (
+                        float(sensors.get("camera_left_band", 0.0))
+                        + float(sensors.get("camera_center_band", 0.0))
+                        + float(sensors.get("camera_right_band", 0.0))
+                    ) / 3.0
+                camera_signal_strength_sum += signal_strength
+                left_velocity = abs(float(snapshot.actuators.get("left_velocity", 0.0)))
+                right_velocity = abs(float(snapshot.actuators.get("right_velocity", 0.0)))
+                if max(left_velocity, right_velocity) >= 7.84 or float(metrics.get("speed_saturation", 0.0)) > 0.0:
+                    speed_envelope_violations += 1
             else:
                 contact_points_count = int(supervisor_state.get("contact_points_count", 0))
                 has_collision = contact_points_count > baseline_contact_points + 2
@@ -663,6 +720,8 @@ class SessionDaemon:
             notes.append("low-travel-distance")
         if scenario_name == "waypoint-nav" and not target_reached and travelled_distance < min_travelled_distance:
             notes.append("low-travel-distance")
+        if current_streak > 0:
+            max_line_reacquisition_steps = max(max_line_reacquisition_steps, current_streak)
         mean_forward_speed = mean_forward_speed_sum / max(sample_count, 1)
         if scenario_name in {"obstacle-avoidance", "waypoint-nav"} and mean_forward_speed < min_mean_forward_speed:
             passed = False
@@ -671,7 +730,7 @@ class SessionDaemon:
             passed = False
             notes.append("target-not-reached")
 
-        return {
+        result = {
             "benchmark": scenario_name,
             "world": self.manifest.world,
             "controller": self.manifest.robot_controller,
@@ -685,6 +744,12 @@ class SessionDaemon:
             "max_line_loss_streak": max_streak,
             "mean_center_error": round(center_sum / max(sample_count, 1), 6),
             "ir_balance_error": round(ir_sum / max(sample_count, 1), 6),
+            "track_variant": track_variant,
+            "line_reacquisition_events": line_reacquisition_events,
+            "max_line_reacquisition_steps": max_line_reacquisition_steps,
+            "camera_signal_strength_mean": round(camera_signal_strength_sum / max(sample_count, 1), 6),
+            "oscillation_score": round(oscillation_delta_sum / max(sample_count, 1), 6),
+            "speed_envelope_violations": speed_envelope_violations,
             "pass": passed,
             "artifacts": {
                 "stdout": str(self.webots_stdout_path),
@@ -700,11 +765,20 @@ class SessionDaemon:
                 "mean_obstacle_pressure": round(obstacle_pressure_sum / max(sample_count, 1), 6),
                 "mean_forward_speed": round(mean_forward_speed, 6),
                 "contact_points_count": int(self.runtime_snapshots["supervisor"].state.get("contact_points_count", 0)),
+                "track_variant": track_variant,
+                "line_reacquisition_events": line_reacquisition_events,
+                "max_line_reacquisition_steps": max_line_reacquisition_steps,
+                "camera_signal_strength_mean": round(camera_signal_strength_sum / max(sample_count, 1), 6),
+                "oscillation_score": round(oscillation_delta_sum / max(sample_count, 1), 6),
+                "speed_envelope_violations": speed_envelope_violations,
+                "heading_drift": round(abs(float(final_heading or 0.0) - float(initial_heading or 0.0)), 6),
                 "target_position": list(target_position) if target_position else None,
                 "target_distance": round(target_distance, 6) if target_distance is not None else None,
                 "target_reached": target_reached,
             },
         }
+        atomic_write_text(self.artifacts_dir / "benchmark-last.json", json.dumps(result, indent=2), encoding="utf-8")
+        return result
 
     def read_log_tail(self, path: Path, tail: int = 10) -> list[str]:
         if not path.exists():

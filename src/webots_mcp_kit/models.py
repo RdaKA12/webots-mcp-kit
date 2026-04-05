@@ -82,6 +82,12 @@ class BenchmarkReport:
     passed: bool
     artifacts: dict[str, str]
     notes: list[str]
+    track_variant: str | None = None
+    line_reacquisition_events: int = 0
+    max_line_reacquisition_steps: int = 0
+    camera_signal_strength_mean: float = 0.0
+    oscillation_score: float = 0.0
+    speed_envelope_violations: int = 0
     extra_metrics: dict[str, Any] = field(default_factory=dict)
     physical_adapter_summary: dict[str, Any] = field(default_factory=dict)
     controller_fix_hints: list[str] = field(default_factory=list)

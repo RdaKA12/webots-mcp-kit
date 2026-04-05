@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the world authoring/editing surface in `v2.5.0`.
+This page documents the world authoring/editing surface in `v2.8.0-alpha.1`.
 
 ## Supported scope
 

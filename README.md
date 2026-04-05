@@ -1,6 +1,6 @@
 # webots-mcp-kit
 
-`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows. `v2.5.0` expands the product from an `e-puck`-only baseline to a second supported robot family, `MonsterBorg 4WD`, and adds a replay-compatible Raspberry Pi physical-adapter lane while preserving the existing runtime and authoring surfaces.
+`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows. The `v2.8.0-alpha.1` preview branch hardens MonsterBorg line-follow with richer track variants, stronger controller telemetry, and a sim-to-real calibration report on top of the existing `e-puck` and MonsterBorg runtime surfaces.
 
 ## Support Matrix
 
@@ -19,7 +19,7 @@ Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webot
 
 ## Unsupported Matrix
 
-| Area | Not supported on `v2.5.0` |
+| Area | Not supported on `v2.8.0-alpha.1` |
 | --- | --- |
 | Runtime | Windows service runner, Linux, macOS, live MCP control of physical robots |
 | Robotics stack | ROS2, multi-robot orchestration |
@@ -156,7 +156,13 @@ Core MCP tools:
 - world authoring: `webots_world_inspect`, `webots_world_validate`, `webots_world_edit`
 - controller authoring: `webots_controller_scaffold`, `webots_controller_inspect`, `webots_controller_validate`, `webots_controller_edit`
 
-Authoring workflows are supported on the stable release line, but the deeper schema surfaces remain `experimental-foundation` and additive. The MonsterBorg Webots runtime and Raspberry Pi physical-adapter lane are supported on `v2.5.0`.
+Authoring workflows are supported on the stable release line, but the deeper schema surfaces remain `experimental-foundation` and additive. On `v2.8.0-alpha.1`, the MonsterBorg line-follow hardening, variant bundle, and calibration report lane remain preview-scoped additions.
+
+MonsterBorg line-follow preview extras:
+
+- bundled variant specs under `examples/monsterborg/line-follower/variants`
+- richer `benchmark report` and `session replay` line-follow metrics
+- `python scripts/monsterborg_calibration_report.py --sim-export <dir> --physical-export <dir> --output <json>`
 
 ## Docs Map
 

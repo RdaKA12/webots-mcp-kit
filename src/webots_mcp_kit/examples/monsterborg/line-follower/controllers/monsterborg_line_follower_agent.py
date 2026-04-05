@@ -3,39 +3,32 @@ from __future__ import annotations
 from controller import Camera, Robot
 
 from webots_mcp_kit.agent import ControllerAgent
+from webots_mcp_kit.monsterborg_line_follow import (
+    LineFollowMemory,
+    camera_rows_from_image,
+    clamp_velocity_pair,
+    compute_drive_targets,
+    update_memory,
+    analyze_scan_rows,
+)
 
 
 TIME_STEP = 32
 MAX_SPEED = 8.0
-CRUISE = 5.4
-TURN_GAIN = 5.2
+CRUISE = 5.8
+MIN_CRUISE = 2.6
+TURN_GAIN = 5.6
+CURVATURE_GAIN = 2.4
+SEARCH_SPEED = 3.2
+RECOVER_SPEED = 3.8
 
 
 # webots-kit region HELPERS start
-def clamp(value: float, minimum: float, maximum: float) -> float:
-    return max(minimum, min(value, maximum))
-
-
 def set_drive_velocity(left_velocity: float, right_velocity: float) -> None:
     front_left_motor.setVelocity(left_velocity)
     rear_left_motor.setVelocity(left_velocity)
     front_right_motor.setVelocity(right_velocity)
     rear_right_motor.setVelocity(right_velocity)
-
-
-def find_middle(values: list[int]) -> int:
-    size = len(values)
-    mean = sum(values) / max(size, 1)
-    strong = [(index, value) for index, value in enumerate(values) if value > mean]
-    if not strong:
-        return size // 2
-    strong.sort(key=lambda item: item[1], reverse=True)
-    sample = strong[: max(size // 10, 1)]
-    rough_center = sum(index for index, _ in sample) / len(sample)
-    filtered = [index for index, _ in sample if abs(index - rough_center) <= size / 8]
-    if not filtered:
-        return size // 2
-    return int(sum(filtered) / len(filtered))
 # webots-kit region HELPERS end
 
 
@@ -68,17 +61,19 @@ imu.enable(TIME_STEP)
 # webots-kit region DEVICE_INIT end
 
 agent = ControllerAgent.from_robot(robot, default_camera="front_camera")
+memory = LineFollowMemory()
 previous_heading = 0.0
 
 while robot.step(TIME_STEP) != -1:
     image = front_camera.getImage()
-    blue = [255 - Camera.imageGetBlue(image, camera_width, x, 0) for x in range(camera_width)]
-    middle = find_middle(blue)
-    delta = middle - camera_width / 2.0
-    line_visible = any(value > 15 for value in blue)
-    camera_left = sum(blue[: camera_width // 3]) / max(camera_width // 3, 1)
-    camera_center = sum(blue[camera_width // 3 : 2 * camera_width // 3]) / max(camera_width // 3, 1)
-    camera_right = sum(blue[2 * camera_width // 3 :]) / max(camera_width - 2 * (camera_width // 3), 1)
+    rows = camera_rows_from_image(
+        image,
+        width=camera_width,
+        height=camera_height,
+        blue_reader=Camera.imageGetBlue,
+    )
+    profile = analyze_scan_rows(rows)
+    updated_memory = update_memory(memory, profile)
 
     heading = float(imu.getRollPitchYaw()[2])
     yaw_rate = (heading - previous_heading) / max(TIME_STEP / 1000.0, 1e-6)
@@ -88,40 +83,54 @@ while robot.step(TIME_STEP) != -1:
     right_ticks = float(right_encoder.getValue())
 
     # webots-kit region CONTROL_POLICY start
-    left_speed = clamp(CRUISE - TURN_GAIN * (delta / max(camera_width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED)
-    right_speed = clamp(CRUISE + TURN_GAIN * (delta / max(camera_width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED)
+    left_speed, right_speed = compute_drive_targets(
+        updated_memory,
+        profile,
+        max_speed=MAX_SPEED,
+        cruise_speed=CRUISE,
+        minimum_cruise=MIN_CRUISE,
+        turn_gain=TURN_GAIN,
+        curvature_gain=CURVATURE_GAIN,
+        search_speed=SEARCH_SPEED,
+        recover_speed=RECOVER_SPEED,
+    )
     # webots-kit region CONTROL_POLICY end
 
     override = agent.begin_step()
     if override is not None:
         left_speed, right_speed = override
 
-    left_speed = clamp(left_speed, -MAX_SPEED, MAX_SPEED)
-    right_speed = clamp(right_speed, -MAX_SPEED, MAX_SPEED)
+    left_speed, right_speed = clamp_velocity_pair(left_speed, right_speed, max_speed=MAX_SPEED)
     set_drive_velocity(left_speed, right_speed)
 
+    saturation = 1.0 if max(abs(left_speed), abs(right_speed)) >= MAX_SPEED * 0.98 else 0.0
+
     # webots-kit region TELEMETRY_REPORT start
-    sensors={
-        "camera_left_band": round(camera_left, 3),
-        "camera_center_band": round(camera_center, 3),
-        "camera_right_band": round(camera_right, 3),
+    sensors = {
+        "camera_left_band": round(profile.left_band, 3),
+        "camera_center_band": round(profile.center_band, 3),
+        "camera_right_band": round(profile.right_band, 3),
         "front_range": round(front_range_value, 6),
         "heading": round(heading, 6),
         "yaw_rate": round(yaw_rate, 6),
         "left_encoder": round(left_ticks, 6),
         "right_encoder": round(right_ticks, 6),
     }
-    metrics={
-        "line_visible": 1.0 if line_visible else 0.0,
-        "center_error": round(delta / max(camera_width / 2.0, 1.0), 6),
-        "ir_balance_error": round((camera_left - camera_right) / 255.0, 6),
+    metrics = {
+        "line_visible": 1.0 if profile.line_visible else 0.0,
+        "line_confidence": round(profile.confidence, 6),
+        "camera_signal_strength": round(profile.signal_strength_mean, 6),
+        "center_error": round(profile.center_error, 6),
+        "ir_balance_error": round((profile.left_band - profile.right_band) / 255.0, 6),
         "mean_forward_speed": round((left_speed + right_speed) / 2.0, 6),
+        "tracking_state_code": float(updated_memory.state_code),
+        "speed_saturation": saturation,
     }
-    actuators={
+    actuators = {
         "left_velocity": round(left_speed, 6),
         "right_velocity": round(right_speed, 6),
     }
-    camera_frames={"front_camera": {"image": image, "width": camera_width, "height": camera_height}}
+    camera_frames = {"front_camera": {"image": image, "width": camera_width, "height": camera_height}}
     # webots-kit region TELEMETRY_REPORT end
 
     agent.report_step(
@@ -129,4 +138,11 @@ while robot.step(TIME_STEP) != -1:
         metrics=metrics,
         actuators=actuators,
         camera_frames=camera_frames,
+    )
+
+    memory = LineFollowMemory(
+        state_code=updated_memory.state_code,
+        lost_steps=updated_memory.lost_steps,
+        last_center_error=profile.center_error,
+        search_direction=updated_memory.search_direction,
     )

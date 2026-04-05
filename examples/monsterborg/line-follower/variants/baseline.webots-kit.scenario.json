@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "project": { "name": "monsterborg-line-follow" },
+  "scenario": { "name": "monsterborg-line-follow-baseline", "kind": "line-follow" },
+  "robot": { "template": "monsterborg-4wd", "name": "monsterborg-line-follower", "def": "MONSTERBORG" },
+  "environment": { "template": "monsterborg-line-track", "arena": { "dimensions": [3.2, 2.2], "floor": "light" } },
+  "layout": {
+    "spawn": { "translation": [-1.1, 0.05, 0.0], "rotation_z": 0.0 },
+    "line_track": {
+      "variant": "baseline",
+      "width": 0.12,
+      "points": [[-1.25, 0.05], [-0.55, 0.05], [-0.2, 0.48], [0.55, 0.48], [1.05, 0.1], [1.2, -0.32]],
+      "color": [0.0, 0.0, 0.0],
+      "camera_width": 48,
+      "camera_height": 8,
+      "camera_field_of_view": 1.0,
+      "drive_max_torque": 24.0,
+      "robot_mass": 1.6
+    },
+    "obstacles": [],
+    "walls": [],
+    "landmarks": [],
+    "zones": [],
+    "props": [],
+    "waypoints": []
+  },
+  "task": { "kind": "line-follow", "description": "MonsterBorg baseline line-follow variant." },
+  "controller": { "path": "controllers/monsterborg_line_follower_agent.py", "default_camera": "front_camera" },
+  "benchmark": { "profile": "line-follower", "duration_s": 8.0, "threshold_overrides": {} }
+}

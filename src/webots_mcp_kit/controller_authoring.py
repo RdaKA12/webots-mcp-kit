@@ -48,6 +48,9 @@ class ControllerInspectionResult:
     telemetry_contract: dict[str, Any] = field(default_factory=dict)
     benchmark_readiness: dict[str, Any] = field(default_factory=dict)
     benchmark_contract_gaps: list[str] = field(default_factory=list)
+    line_follow_contract_gaps: list[str] = field(default_factory=list)
+    camera_processing_readiness: dict[str, Any] = field(default_factory=dict)
+    reacquisition_readiness: dict[str, Any] = field(default_factory=dict)
     function_inventory: list[str] = field(default_factory=list)
     editable_symbols: list[str] = field(default_factory=list)
     compile_readiness: dict[str, Any] = field(default_factory=dict)
@@ -187,6 +190,9 @@ def inspect_controller(
             "extra": {"sensors": inspection.telemetry_sections.get("sensors", []), "metrics": inspection.telemetry_sections.get("metrics", []), "actuators": inspection.telemetry_sections.get("actuators", [])},
         }
         inspection.benchmark_contract_gaps = ["No benchmark scenario context provided."]
+    inspection.line_follow_contract_gaps = _line_follow_contract_gaps(inspection)
+    inspection.camera_processing_readiness = _camera_processing_readiness(inspection)
+    inspection.reacquisition_readiness = _reacquisition_readiness(inspection)
     inspection.compile_readiness = _compile_readiness(inspection)
     inspection.runtime_readiness = _runtime_readiness(inspection)
     inspection.controller_fix_hints = _controller_fix_hints(inspection)
@@ -292,10 +298,14 @@ def edit_controller(path: Path, *, plan_path: Path | None = None, plan: dict[str
             "applied_operation_count": len(applied),
             "benchmark_ready": bool(inspection.benchmark_readiness.get("ready")),
             "benchmark_contract_gap_count": len(inspection.benchmark_contract_gaps),
+            "line_follow_contract_gap_count": len(inspection.line_follow_contract_gaps),
             "issue_count": len(inspection.issues),
         },
         "benchmark_readiness": inspection.benchmark_readiness,
         "benchmark_contract_gaps": inspection.benchmark_contract_gaps,
+        "line_follow_contract_gaps": inspection.line_follow_contract_gaps,
+        "camera_processing_readiness": inspection.camera_processing_readiness,
+        "reacquisition_readiness": inspection.reacquisition_readiness,
         "controller_fix_hints": inspection.controller_fix_hints,
         "support_tier": "experimental-foundation",
         "next_step": (
@@ -416,6 +426,12 @@ def format_controller_inspection_report(result: ControllerInspectionResult) -> s
         lines.append(f"telemetry_sections: {result.telemetry_sections}")
     if result.benchmark_contract_gaps:
         lines.append(f"benchmark_contract_gaps: {result.benchmark_contract_gaps}")
+    if result.line_follow_contract_gaps:
+        lines.append(f"line_follow_contract_gaps: {result.line_follow_contract_gaps}")
+    if result.camera_processing_readiness:
+        lines.append(f"camera_processing_readiness: {result.camera_processing_readiness}")
+    if result.reacquisition_readiness:
+        lines.append(f"reacquisition_readiness: {result.reacquisition_readiness}")
     if result.controller_fix_hints:
         lines.append(f"controller_fix_hints: {result.controller_fix_hints}")
     if result.issues:
@@ -437,6 +453,12 @@ def format_controller_edit_report(payload: dict[str, Any]) -> str:
     ]
     if payload.get("benchmark_contract_gaps"):
         lines.append(f"benchmark_contract_gaps: {payload.get('benchmark_contract_gaps')}")
+    if payload.get("line_follow_contract_gaps"):
+        lines.append(f"line_follow_contract_gaps: {payload.get('line_follow_contract_gaps')}")
+    if payload.get("camera_processing_readiness"):
+        lines.append(f"camera_processing_readiness: {payload.get('camera_processing_readiness')}")
+    if payload.get("reacquisition_readiness"):
+        lines.append(f"reacquisition_readiness: {payload.get('reacquisition_readiness')}")
     if payload.get("controller_fix_hints"):
         lines.append(f"controller_fix_hints: {payload.get('controller_fix_hints')}")
     lines.append(f"support_tier: {payload.get('support_tier')}")
@@ -482,6 +504,7 @@ def _finalize_inspection_result(result: ControllerInspectionResult) -> Controlle
         "editable_symbol_count": len(result.editable_symbols),
         "device_binding_count": len(result.device_bindings),
         "benchmark_contract_gap_count": len(result.benchmark_contract_gaps),
+        "line_follow_contract_gap_count": len(result.line_follow_contract_gaps),
         "benchmark_ready": bool(result.benchmark_readiness.get("ready")),
     }
     result.next_step = (
@@ -565,6 +588,53 @@ def _benchmark_contract_gaps(
     return sorted(dict.fromkeys(gaps))
 
 
+def _line_follow_contract_gaps(inspection: ControllerInspectionResult) -> list[str]:
+    if inspection.scenario != "line-follower" or inspection.robot_profile != "monsterborg-4wd":
+        return []
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    gaps: list[str] = []
+    for key in ("line_confidence", "camera_signal_strength", "tracking_state_code", "speed_saturation"):
+        if key not in metrics:
+            gaps.append(f"Missing line-follow metric '{key}'.")
+    return sorted(dict.fromkeys(gaps))
+
+
+def _camera_processing_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
+    if inspection.scenario != "line-follower" or inspection.robot_profile != "monsterborg-4wd":
+        return {"ready": True, "issues": []}
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    sensor_keys = set(inspection.telemetry_sections.get("sensors", []))
+    issues: list[str] = []
+    if not {"camera_left_band", "camera_center_band", "camera_right_band"}.issubset(sensor_keys):
+        issues.append("camera_bands_missing")
+    if "line_confidence" not in metrics:
+        issues.append("line_confidence_missing")
+    if "camera_signal_strength" not in metrics:
+        issues.append("camera_signal_strength_missing")
+    return {
+        "ready": not issues,
+        "issues": issues,
+        "camera_band_keys": sorted(sensor_keys.intersection({"camera_left_band", "camera_center_band", "camera_right_band"})),
+    }
+
+
+def _reacquisition_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
+    if inspection.scenario != "line-follower" or inspection.robot_profile != "monsterborg-4wd":
+        return {"ready": True, "issues": []}
+    metrics = set(inspection.telemetry_sections.get("metrics", []))
+    issues: list[str] = []
+    if "tracking_state_code" not in metrics:
+        issues.append("tracking_state_code_missing")
+    if "speed_saturation" not in metrics:
+        issues.append("speed_saturation_missing")
+    if "line_confidence" not in metrics:
+        issues.append("reacquisition_state_machine_missing")
+    return {
+        "ready": not issues,
+        "issues": issues,
+    }
+
+
 def _compile_readiness(inspection: ControllerInspectionResult) -> dict[str, Any]:
     if inspection.language != "cpp":
         return {"supported": False, "required": False, "ready": True, "issues": []}
@@ -612,6 +682,14 @@ def _controller_fix_hints(inspection: ControllerInspectionResult) -> list[str]:
         hints.append("Resolve C++ compile-readiness issues before rerunning validation.")
     if not inspection.runtime_readiness.get("ready"):
         hints.append("Restore the Robot -> begin_step -> report_step control loop shape before rerunning.")
+    for issue in inspection.line_follow_contract_gaps:
+        if "line-follow metric" in issue:
+            hints.append("Emit line_confidence, camera_signal_strength, tracking_state_code, and speed_saturation for MonsterBorg line-follow tuning.")
+    if inspection.scenario == "line-follower":
+        if not inspection.camera_processing_readiness.get("ready"):
+            hints.append("Add multi-row camera processing and explicit confidence telemetry before rerunning the line-follow benchmark.")
+        if not inspection.reacquisition_readiness.get("ready"):
+            hints.append("Implement track/predict/search/recover state transitions so line reacquisition remains observable and tunable.")
     return sorted(dict.fromkeys(hints))
 
 
@@ -1415,39 +1493,32 @@ def _python_monsterborg_line_follower_template() -> str:
 from controller import Camera, Robot
 
 from webots_mcp_kit.agent import ControllerAgent
+from webots_mcp_kit.monsterborg_line_follow import (
+    LineFollowMemory,
+    analyze_scan_rows,
+    camera_rows_from_image,
+    clamp_velocity_pair,
+    compute_drive_targets,
+    update_memory,
+)
 
 
 TIME_STEP = 32
 MAX_SPEED = 8.0
-CRUISE = 5.4
-TURN_GAIN = 5.2
+CRUISE = 5.8
+MIN_CRUISE = 2.6
+TURN_GAIN = 5.6
+CURVATURE_GAIN = 2.4
+SEARCH_SPEED = 3.2
+RECOVER_SPEED = 3.8
 
 
 # webots-kit region HELPERS start
-def clamp(value: float, minimum: float, maximum: float) -> float:
-    return max(minimum, min(value, maximum))
-
-
 def set_drive_velocity(left_velocity: float, right_velocity: float) -> None:
     front_left_motor.setVelocity(left_velocity)
     rear_left_motor.setVelocity(left_velocity)
     front_right_motor.setVelocity(right_velocity)
     rear_right_motor.setVelocity(right_velocity)
-
-
-def find_middle(values: list[int]) -> int:
-    size = len(values)
-    mean = sum(values) / max(size, 1)
-    strong = [(index, value) for index, value in enumerate(values) if value > mean]
-    if not strong:
-        return size // 2
-    strong.sort(key=lambda item: item[1], reverse=True)
-    sample = strong[: max(size // 10, 1)]
-    rough_center = sum(index for index, _ in sample) / len(sample)
-    filtered = [index for index, _ in sample if abs(index - rough_center) <= size / 8]
-    if not filtered:
-        return size // 2
-    return int(sum(filtered) / len(filtered))
 # webots-kit region HELPERS end
 
 
@@ -1480,17 +1551,19 @@ imu.enable(TIME_STEP)
 # webots-kit region DEVICE_INIT end
 
 agent = ControllerAgent.from_robot(robot, default_camera="front_camera")
+memory = LineFollowMemory()
 previous_heading = 0.0
 
 while robot.step(TIME_STEP) != -1:
     image = front_camera.getImage()
-    blue = [255 - Camera.imageGetBlue(image, camera_width, x, 0) for x in range(camera_width)]
-    middle = find_middle(blue)
-    delta = middle - camera_width / 2.0
-    line_visible = any(value > 15 for value in blue)
-    camera_left = sum(blue[: camera_width // 3]) / max(camera_width // 3, 1)
-    camera_center = sum(blue[camera_width // 3 : 2 * camera_width // 3]) / max(camera_width // 3, 1)
-    camera_right = sum(blue[2 * camera_width // 3 :]) / max(camera_width - 2 * (camera_width // 3), 1)
+    rows = camera_rows_from_image(
+        image,
+        width=camera_width,
+        height=camera_height,
+        blue_reader=Camera.imageGetBlue,
+    )
+    profile = analyze_scan_rows(rows)
+    updated_memory = update_memory(memory, profile)
 
     heading = float(imu.getRollPitchYaw()[2])
     yaw_rate = (heading - previous_heading) / max(TIME_STEP / 1000.0, 1e-6)
@@ -1500,23 +1573,32 @@ while robot.step(TIME_STEP) != -1:
     right_ticks = float(right_encoder.getValue())
 
     # webots-kit region CONTROL_POLICY start
-    left_speed = clamp(CRUISE - TURN_GAIN * (delta / max(camera_width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED)
-    right_speed = clamp(CRUISE + TURN_GAIN * (delta / max(camera_width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED)
+    left_speed, right_speed = compute_drive_targets(
+        updated_memory,
+        profile,
+        max_speed=MAX_SPEED,
+        cruise_speed=CRUISE,
+        minimum_cruise=MIN_CRUISE,
+        turn_gain=TURN_GAIN,
+        curvature_gain=CURVATURE_GAIN,
+        search_speed=SEARCH_SPEED,
+        recover_speed=RECOVER_SPEED,
+    )
     # webots-kit region CONTROL_POLICY end
 
     override = agent.begin_step()
     if override is not None:
         left_speed, right_speed = override
 
-    left_speed = clamp(left_speed, -MAX_SPEED, MAX_SPEED)
-    right_speed = clamp(right_speed, -MAX_SPEED, MAX_SPEED)
+    left_speed, right_speed = clamp_velocity_pair(left_speed, right_speed, max_speed=MAX_SPEED)
     set_drive_velocity(left_speed, right_speed)
+    saturation = 1.0 if max(abs(left_speed), abs(right_speed)) >= MAX_SPEED * 0.98 else 0.0
 
     # webots-kit region TELEMETRY_REPORT start
     sensors={
-        "camera_left_band": round(camera_left, 3),
-        "camera_center_band": round(camera_center, 3),
-        "camera_right_band": round(camera_right, 3),
+        "camera_left_band": round(profile.left_band, 3),
+        "camera_center_band": round(profile.center_band, 3),
+        "camera_right_band": round(profile.right_band, 3),
         "front_range": round(front_range_value, 6),
         "heading": round(heading, 6),
         "yaw_rate": round(yaw_rate, 6),
@@ -1524,10 +1606,14 @@ while robot.step(TIME_STEP) != -1:
         "right_encoder": round(right_ticks, 6),
     }
     metrics={
-        "line_visible": 1.0 if line_visible else 0.0,
-        "center_error": round(delta / max(camera_width / 2.0, 1.0), 6),
-        "ir_balance_error": round((camera_left - camera_right) / 255.0, 6),
+        "line_visible": 1.0 if profile.line_visible else 0.0,
+        "line_confidence": round(profile.confidence, 6),
+        "camera_signal_strength": round(profile.signal_strength_mean, 6),
+        "center_error": round(profile.center_error, 6),
+        "ir_balance_error": round((profile.left_band - profile.right_band) / 255.0, 6),
         "mean_forward_speed": round((left_speed + right_speed) / 2.0, 6),
+        "tracking_state_code": float(updated_memory.state_code),
+        "speed_saturation": saturation,
     }
     actuators={
         "left_velocity": round(left_speed, 6),
@@ -1541,6 +1627,13 @@ while robot.step(TIME_STEP) != -1:
         metrics=metrics,
         actuators=actuators,
         camera_frames=camera_frames,
+    )
+
+    memory = LineFollowMemory(
+        state_code=updated_memory.state_code,
+        lost_steps=updated_memory.lost_steps,
+        last_center_error=profile.center_error,
+        search_direction=updated_memory.search_direction,
     )
 '''
 
@@ -2180,6 +2273,7 @@ def _cpp_monsterborg_line_follower_template() -> str:
 #include <limits>
 #include <map>
 #include <string>
+#include <tuple>
 #include <vector>
 
 using webots::Camera;
@@ -2189,8 +2283,35 @@ using webots_mcp_kit::ControllerAgent;
 
 const int TIME_STEP = 32;
 const double MAX_SPEED = 8.0;
-const double CRUISE = 5.4;
-const double TURN_GAIN = 5.2;
+const double CRUISE = 5.6;
+const double TURN_GAIN = 5.4;
+const double SEARCH_GAIN = 4.6;
+const double RECOVER_GAIN = 5.8;
+
+enum TrackingState {
+  TRACK = 0,
+  PREDICT = 1,
+  SEARCH = 2,
+  RECOVER = 3,
+};
+
+struct LineObservation {
+  bool line_visible = false;
+  double normalized_error = 0.0;
+  double confidence = 0.0;
+  double signal_strength = 0.0;
+  double left_band = 0.0;
+  double center_band = 0.0;
+  double right_band = 0.0;
+};
+
+struct FollowMemory {
+  TrackingState state = SEARCH;
+  double filtered_error = 0.0;
+  double last_error = 0.0;
+  double last_turn_sign = 1.0;
+  int lost_steps = 0;
+};
 
 // webots-kit region HELPERS start
 static double clamp_value(double value, double minimum, double maximum) {
@@ -2209,40 +2330,125 @@ static void set_drive_velocity(webots::Motor* front_left_motor,
   rear_right_motor->setVelocity(right_velocity);
 }
 
-static int find_middle(const std::vector<int>& values) {
-  const int size = static_cast<int>(values.size());
-  if (size <= 0)
-    return 0;
-  double mean = 0.0;
-  for (int value : values)
-    mean += value;
-  mean /= size;
-  std::vector<std::pair<int, int>> strong;
-  for (int index = 0; index < size; ++index) {
-    if (values[index] > mean)
-      strong.emplace_back(index, values[index]);
+static double band_average(const std::vector<double>& values, int start, int end) {
+  start = std::max(0, start);
+  end = std::min(static_cast<int>(values.size()), end);
+  if (end <= start)
+    return 0.0;
+  double total = 0.0;
+  for (int index = start; index < end; ++index)
+    total += values[index];
+  return total / std::max(end - start, 1);
+}
+
+static LineObservation analyze_line_frame(const unsigned char* image, int width, int height) {
+  const std::vector<double> row_weights = {0.55, 0.3, 0.15};
+  const std::vector<double> row_ratios = {0.64, 0.78, 0.9};
+  double weighted_error = 0.0;
+  double weighted_confidence = 0.0;
+  double total_visible_weight = 0.0;
+  double left_band = 0.0;
+  double center_band = 0.0;
+  double right_band = 0.0;
+  double signal_strength = 0.0;
+  for (size_t row_index = 0; row_index < row_ratios.size(); ++row_index) {
+    const int row = std::max(0, std::min(height - 1, static_cast<int>(std::round(row_ratios[row_index] * (height - 1)))));
+    std::vector<double> values(width, 0.0);
+    double row_total = 0.0;
+    double max_value = 0.0;
+    double min_value = 255.0;
+    for (int x = 0; x < width; ++x) {
+      double sample = 255.0 - static_cast<double>(Camera::imageGetBlue(image, width, x, row));
+      if (x > 0 && x + 1 < width) {
+        sample = (sample + (255.0 - static_cast<double>(Camera::imageGetBlue(image, width, x - 1, row))) +
+                  (255.0 - static_cast<double>(Camera::imageGetBlue(image, width, x + 1, row)))) /
+                 3.0;
+      }
+      values[x] = sample;
+      row_total += sample;
+      max_value = std::max(max_value, sample);
+      min_value = std::min(min_value, sample);
+    }
+    const double row_mean = row_total / std::max(width, 1);
+    const double threshold = std::max(14.0, row_mean * 0.95);
+    double weighted_sum = 0.0;
+    double total_weight = 0.0;
+    for (int x = 0; x < width; ++x) {
+      const double score = std::max(0.0, values[x] - threshold);
+      if (score <= 0.0)
+        continue;
+      weighted_sum += score * static_cast<double>(x);
+      total_weight += score;
+    }
+    const bool visible = total_weight > static_cast<double>(width) * 1.75;
+    const double center = visible ? (weighted_sum / std::max(total_weight, 1e-6)) : static_cast<double>(width - 1) / 2.0;
+    const double normalized_error = (center - static_cast<double>(width) / 2.0) / std::max(static_cast<double>(width) / 2.0, 1.0);
+    const double row_confidence = visible ? clamp_value(total_weight / std::max(static_cast<double>(width) * 22.0, 1.0), 0.0, 1.0) : 0.0;
+    const int third = std::max(width / 3, 1);
+    left_band += band_average(values, 0, third) * row_weights[row_index];
+    center_band += band_average(values, third, 2 * third) * row_weights[row_index];
+    right_band += band_average(values, 2 * third, width) * row_weights[row_index];
+    signal_strength += (max_value - min_value) * row_weights[row_index];
+    if (visible) {
+      weighted_error += normalized_error * row_weights[row_index];
+      weighted_confidence += row_confidence * row_weights[row_index];
+      total_visible_weight += row_weights[row_index];
+    }
   }
-  if (strong.empty())
-    return size / 2;
-  std::sort(strong.begin(), strong.end(), [](const auto& left, const auto& right) { return left.second > right.second; });
-  const int sample_size = std::max(size / 10, 1);
-  strong.resize(std::min(sample_size, static_cast<int>(strong.size())));
-  double rough_center = 0.0;
-  for (const auto& entry : strong)
-    rough_center += entry.first;
-  rough_center /= strong.size();
-  std::vector<int> filtered;
-  for (const auto& entry : strong) {
-    if (std::fabs(entry.first - rough_center) <= size / 8.0)
-      filtered.push_back(entry.first);
+  if (total_visible_weight > 0.0)
+    weighted_error /= total_visible_weight;
+  return LineObservation{
+      total_visible_weight > 0.0,
+      clamp_value(weighted_error, -1.0, 1.0),
+      clamp_value(weighted_confidence, 0.0, 1.0),
+      std::max(signal_strength / 255.0, 0.0),
+      left_band,
+      center_band,
+      right_band,
+  };
+}
+
+static void update_memory(FollowMemory& memory, const LineObservation& observation) {
+  if (observation.line_visible) {
+    memory.state = memory.lost_steps > 0 ? RECOVER : TRACK;
+    memory.filtered_error = 0.7 * memory.filtered_error + 0.3 * observation.normalized_error;
+    memory.last_error = observation.normalized_error;
+    memory.lost_steps = 0;
+    if (std::fabs(observation.normalized_error) > 0.05)
+      memory.last_turn_sign = observation.normalized_error >= 0.0 ? 1.0 : -1.0;
+    return;
   }
-  if (filtered.empty())
-    return size / 2;
-  double middle = 0.0;
-  for (int index : filtered)
-    middle += index;
-  middle /= filtered.size();
-  return static_cast<int>(middle);
+  memory.lost_steps += 1;
+  if (memory.lost_steps <= 3)
+    memory.state = PREDICT;
+  else if (memory.lost_steps <= 9)
+    memory.state = SEARCH;
+  else
+    memory.state = RECOVER;
+  memory.filtered_error = 0.82 * memory.filtered_error + 0.18 * memory.last_error;
+}
+
+static std::tuple<double, double, bool> compute_drive_targets(const FollowMemory& memory, const LineObservation& observation) {
+  double base_speed = CRUISE;
+  double turn = TURN_GAIN * memory.filtered_error;
+  if (observation.line_visible && std::fabs(memory.filtered_error) > 0.35)
+    base_speed *= 0.72;
+  if (observation.line_visible && observation.confidence < 0.3)
+    base_speed *= 0.75;
+  if (memory.state == PREDICT) {
+    base_speed *= 0.68;
+    turn = TURN_GAIN * 0.85 * memory.filtered_error;
+  } else if (memory.state == SEARCH) {
+    base_speed = 2.2;
+    turn = SEARCH_GAIN * memory.last_turn_sign;
+  } else if (memory.state == RECOVER) {
+    base_speed = 1.4;
+    turn = RECOVER_GAIN * memory.last_turn_sign;
+  }
+  const double left_speed = clamp_value(base_speed - turn, -MAX_SPEED, MAX_SPEED);
+  const double right_speed = clamp_value(base_speed + turn, -MAX_SPEED, MAX_SPEED);
+  const bool saturated = std::fabs(left_speed) >= (MAX_SPEED - 0.05) || std::fabs(right_speed) >= (MAX_SPEED - 0.05);
+  return std::make_tuple(left_speed, right_speed, saturated);
 }
 // webots-kit region HELPERS end
 
@@ -2278,36 +2484,12 @@ int main() {
 
   auto agent = ControllerAgent::from_robot(&robot, "front_camera");
   double previous_heading = 0.0;
+  FollowMemory memory;
 
   while (robot.step(TIME_STEP) != -1) {
     const unsigned char* image = front_camera->getImage();
-    std::vector<int> blue(width, 0);
-    for (int x = 0; x < width; ++x)
-      blue[x] = 255 - Camera::imageGetBlue(image, width, x, 0);
-    const int middle = find_middle(blue);
-    const double delta = middle - width / 2.0;
-    bool line_visible = false;
-    for (int value : blue) {
-      if (value > 15) {
-        line_visible = true;
-        break;
-      }
-    }
-    double camera_left = 0.0;
-    double camera_center = 0.0;
-    double camera_right = 0.0;
-    const int third = std::max(width / 3, 1);
-    for (int x = 0; x < width; ++x) {
-      if (x < third)
-        camera_left += blue[x];
-      else if (x < 2 * third)
-        camera_center += blue[x];
-      else
-        camera_right += blue[x];
-    }
-    camera_left /= third;
-    camera_center /= third;
-    camera_right /= std::max(width - 2 * third, 1);
+    const LineObservation observation = analyze_line_frame(image, width, height);
+    update_memory(memory, observation);
 
     const double* rpy = imu->getRollPitchYaw();
     const double heading = rpy[2];
@@ -2318,23 +2500,26 @@ int main() {
     const double right_ticks = right_encoder->getValue();
 
     // webots-kit region CONTROL_POLICY start
-    double left_speed = clamp_value(CRUISE - TURN_GAIN * (delta / std::max(width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED);
-    double right_speed = clamp_value(CRUISE + TURN_GAIN * (delta / std::max(width / 2.0, 1.0)), -MAX_SPEED, MAX_SPEED);
+    auto targets = compute_drive_targets(memory, observation);
+    double left_speed = std::get<0>(targets);
+    double right_speed = std::get<1>(targets);
+    bool speed_saturation = std::get<2>(targets);
     // webots-kit region CONTROL_POLICY end
 
     auto override = agent.begin_step();
     if (override.has_value()) {
       left_speed = override->first;
       right_speed = override->second;
+      speed_saturation = std::fabs(left_speed) >= (MAX_SPEED - 0.05) || std::fabs(right_speed) >= (MAX_SPEED - 0.05);
     }
 
     set_drive_velocity(front_left_motor, rear_left_motor, front_right_motor, rear_right_motor, left_speed, right_speed);
 
     // webots-kit region TELEMETRY_REPORT start
     std::map<std::string, double> sensors = {
-      {"camera_left_band", camera_left},
-      {"camera_center_band", camera_center},
-      {"camera_right_band", camera_right},
+      {"camera_left_band", observation.left_band},
+      {"camera_center_band", observation.center_band},
+      {"camera_right_band", observation.right_band},
       {"front_range", front_range_value},
       {"heading", heading},
       {"yaw_rate", yaw_rate},
@@ -2342,9 +2527,13 @@ int main() {
       {"right_encoder", right_ticks}
     };
     std::map<std::string, double> metrics = {
-      {"line_visible", line_visible ? 1.0 : 0.0},
-      {"center_error", delta / std::max(width / 2.0, 1.0)},
-      {"ir_balance_error", (camera_left - camera_right) / 255.0},
+      {"line_visible", observation.line_visible ? 1.0 : 0.0},
+      {"center_error", memory.filtered_error},
+      {"ir_balance_error", (observation.left_band - observation.right_band) / 255.0},
+      {"line_confidence", observation.confidence},
+      {"camera_signal_strength", observation.signal_strength},
+      {"tracking_state_code", static_cast<double>(memory.state)},
+      {"speed_saturation", speed_saturation ? 1.0 : 0.0},
       {"mean_forward_speed", (left_speed + right_speed) / 2.0}
     };
     std::map<std::string, double> actuators = {

@@ -73,12 +73,19 @@ def run_benchmark(
             passed=result["pass"],
             artifacts=result["artifacts"],
             notes=result["notes"],
+            track_variant=result.get("track_variant") or _infer_track_variant(Path(world) if world else scenario_def.world),
+            line_reacquisition_events=int(result.get("line_reacquisition_events", result.get("extra_metrics", {}).get("line_reacquisition_events", 0))),
+            max_line_reacquisition_steps=int(result.get("max_line_reacquisition_steps", result.get("extra_metrics", {}).get("max_line_reacquisition_steps", 0))),
+            camera_signal_strength_mean=float(result.get("camera_signal_strength_mean", result.get("extra_metrics", {}).get("camera_signal_strength_mean", 0.0))),
+            oscillation_score=float(result.get("oscillation_score", result.get("extra_metrics", {}).get("oscillation_score", 0.0))),
+            speed_envelope_violations=int(result.get("speed_envelope_violations", result.get("extra_metrics", {}).get("speed_envelope_violations", 0))),
             extra_metrics=result.get("extra_metrics", {}),
             physical_adapter_summary=result.get("physical_adapter_summary", {}),
             controller_fix_hints=controller_fix_hints(
                 scenario,
                 result["notes"][0] if result.get("notes") else "completed",
                 robot_profile=profile.robot_profile,
+                extra_metrics=result.get("extra_metrics", {}),
             ),
             missing_telemetry_keys=[],
             device_binding_hints=device_binding_hints(
@@ -141,6 +148,12 @@ def format_benchmark_report(path: Path) -> str:
         f"max_line_loss_streak: {data['max_line_loss_streak']}",
         f"mean_center_error: {data['mean_center_error']}",
         f"ir_balance_error: {data['ir_balance_error']}",
+        f"track_variant: {data.get('track_variant')}",
+        f"line_reacquisition_events: {data.get('line_reacquisition_events')}",
+        f"max_line_reacquisition_steps: {data.get('max_line_reacquisition_steps')}",
+        f"camera_signal_strength_mean: {data.get('camera_signal_strength_mean')}",
+        f"oscillation_score: {data.get('oscillation_score')}",
+        f"speed_envelope_violations: {data.get('speed_envelope_violations')}",
         f"next_step: {next_step}",
         f"artifacts: {data['artifacts']}",
         f"notes: {data['notes']}",
@@ -167,7 +180,7 @@ def benchmark_next_step(benchmark: str, result_reason: str) -> str:
     if result_reason == "completed":
         return "Use `webots-kit mcp serve` or run a longer benchmark to inspect live telemetry."
     if result_reason == "line-loss-threshold-reached":
-        return "Inspect camera metrics and center_error, then tune the controller around line reacquisition."
+        return "Inspect camera metrics, confidence, and line reacquisition counters, then tune the controller around line reacquisition."
     if result_reason == "collision-detected":
         return "Inspect proximity telemetry and contact-point metrics to reduce obstacle hits."
     if result_reason in {"target-not-reached", "low-travel-distance"}:
@@ -186,7 +199,13 @@ def _benchmark_request_timeout(controller: str | None, duration_s: float) -> flo
     return timeout
 
 
-def controller_fix_hints(benchmark: str, result_reason: str, *, robot_profile: str = "e-puck") -> list[str]:
+def controller_fix_hints(
+    benchmark: str,
+    result_reason: str,
+    *,
+    robot_profile: str = "e-puck",
+    extra_metrics: dict[str, object] | None = None,
+) -> list[str]:
     hints: list[str] = []
     if result_reason == "line-loss-threshold-reached":
         hints.append("Tune the control policy around camera-based line reacquisition.")
@@ -202,12 +221,47 @@ def controller_fix_hints(benchmark: str, result_reason: str, *, robot_profile: s
             hints.append("Ensure front_range, heading, yaw_rate, left_encoder, and right_encoder are exposed in report_step sensors.")
         else:
             hints.append("Ensure all ps0-ps7 readings are exposed in report_step sensors.")
+    metrics = extra_metrics if isinstance(extra_metrics, dict) else {}
+    if benchmark == "line-follower":
+        if float(metrics.get("oscillation_score", 0.0) or 0.0) > 0.45:
+            hints.append("Reduce line-follow oscillation by lowering turn gain or increasing centerline filtering.")
+        if int(metrics.get("speed_envelope_violations", 0) or 0) > 0:
+            hints.append("Reduce speed-envelope violations by tightening speed scheduling outside high-confidence tracking.")
+        if int(metrics.get("line_reacquisition_events", 0) or 0) >= 2:
+            hints.append("Improve search/recover transitions so the controller reacquires the line with fewer retries.")
     return sorted(dict.fromkeys(hints))
+
+
+def _infer_track_variant(world_path: Path) -> str:
+    stem = world_path.stem.lower()
+    for variant in (
+        "tight-turns",
+        "broken-line-recovery",
+        "low-contrast",
+        "friction-perturbation",
+        "camera-degradation",
+        "baseline",
+    ):
+        normalized = variant.replace("-", "_")
+        if variant in stem or normalized in stem:
+            return variant
+    try:
+        content = world_path.read_text(encoding="utf-8", errors="replace").lower()
+    except OSError:
+        return "baseline"
+    marker = "track variant:"
+    if marker in content:
+        tail = content.split(marker, 1)[1].split('"', 1)[0].strip()
+        if tail:
+            return tail.splitlines()[0].strip(" ]")
+    return "baseline"
 
 
 def device_binding_hints(benchmark: str, result_reason: str, *, robot_profile: str = "e-puck") -> list[str]:
     camera_name = get_robot_profile(robot_profile).default_camera or "camera"
     hints = [f"Bind the benchmark default camera '{camera_name}' through ControllerAgent.from_robot(...)."]
+    if benchmark == "line-follower" and robot_profile == "monsterborg-4wd":
+        hints.append("Emit line_confidence, camera_signal_strength, tracking_state_code, and speed_saturation metrics from report_step(...).")
     if benchmark in {"obstacle-avoidance", "waypoint-nav"}:
         if robot_profile == "monsterborg-4wd":
             hints.append("Bind front_range, imu, left_encoder, and right_encoder in the controller setup block.")
