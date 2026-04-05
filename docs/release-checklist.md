@@ -13,7 +13,7 @@
 - imported-world authoring runtime smoke passed on the interactive runner when authoring code changed
 - MCP authoring/editing contract smoke passed when `mcp_server`, controller authoring, or world authoring code changed
 - package build and `twine check` are green
-- designated Raspberry Pi physical smoke is green through `monsterborg_physical_verify.py`, capture/export/replay, and `monsterborg_calibration_report.py`
+- designated Raspberry Pi physical smoke is green through `monsterborg_physical_verify.py`, capture/export/replay, and `monsterborg_calibration_report.py` when `MONSTERBORG_PHYSICAL_GATE=enabled`
 - TestPyPI install smoke passes through the public `verify_install.ps1` path on the hosted Windows runner
 - PyPI install smoke passes through the public `verify_install.ps1` path on the hosted Windows runner
 - starter workspace smoke is green through `bootstrap_workspace.ps1` or `upgrade_check.ps1`

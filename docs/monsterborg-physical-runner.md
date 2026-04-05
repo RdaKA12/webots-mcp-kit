@@ -76,7 +76,8 @@ Green condition:
 ## How the release gate uses it
 
 - preview tags like `v2.9.0-alpha.N` skip the physical gate
-- stable tags like `v2.9.0` require this runner to be online and healthy
+- stable tags like `v2.9.0` require this runner only when the repository variable `MONSTERBORG_PHYSICAL_GATE=enabled` is set
+- until that variable is enabled, the physical workflow is manual-only through `workflow_dispatch`
 
 The workflow files involved are:
 

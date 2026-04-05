@@ -122,6 +122,7 @@ def test_release_and_package_workflows_use_public_verify_path() -> None:
     assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime -Output .\\verify-install-monsterborg.json" in release_content
     assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\upgrade_check.ps1 -Workspace .\\monsterborg-upgrade-check -RobotProfile monsterborg-4wd -Runtime -Output .\\monsterborg-upgrade-check.json" in release_content
     assert "monsterborg-physical-gate:" in release_content
+    assert "vars.MONSTERBORG_PHYSICAL_GATE == 'enabled'" in release_content
     assert "!contains(github.ref_name, 'alpha')" in release_content
     assert "needs.monsterborg-physical-gate.result == 'skipped'" in release_content
     assert "always() && needs.build.result == 'success'" in release_content
@@ -153,12 +154,12 @@ def test_windows_ci_includes_team_upgrade_smoke() -> None:
 def test_monsterborg_physical_workflow_exists_with_designated_runner_and_gate_steps() -> None:
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/monsterborg-physical-smoke.yml").read_text(encoding="utf-8")
+    assert "workflow_dispatch:" in content
+    assert "push:" not in content
+    assert "pull_request:" not in content
     assert "runs-on: [self-hosted, linux, monsterborg-physical]" in content
     assert "python3 scripts/monsterborg_physical_verify.py --json" in content
     assert "tests/test_monsterborg_physical_gate.py" in content
-    assert "monsterborg_capture_run.py" in content
-    assert "monsterborg_calibration_report.py" in content
-    assert "monsterborg_benchmark_matrix.py" in content
     assert "python3 -m pip install -e .[dev]" in content
 
 

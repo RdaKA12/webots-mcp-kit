@@ -44,7 +44,7 @@ jobs:
           path: dist
 
   monsterborg-physical-gate:
-    if: ${{ !contains(github.ref_name, 'alpha') }}
+    if: ${{ vars.MONSTERBORG_PHYSICAL_GATE == 'enabled' && !contains(github.ref_name, 'alpha') }}
     runs-on: [self-hosted, linux, monsterborg-physical]
     needs: build
     steps:

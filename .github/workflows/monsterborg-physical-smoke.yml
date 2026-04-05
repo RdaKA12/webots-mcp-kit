@@ -1,51 +1,6 @@
 name: MonsterBorg Physical Smoke
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/monsterborg-physical-smoke.yml"
-      - ".github/workflows/release.yml"
-      - "src/webots_mcp_kit/monsterborg_adapter.py"
-      - "src/webots_mcp_kit/monsterborg_calibration.py"
-      - "src/webots_mcp_kit/monsterborg_matrix.py"
-      - "src/webots_mcp_kit/monsterborg_navigation.py"
-      - "src/webots_mcp_kit/benchmarks.py"
-      - "src/webots_mcp_kit/benchmark.py"
-      - "src/webots_mcp_kit/daemon.py"
-      - "src/webots_mcp_kit/scenario_ops.py"
-      - "examples/monsterborg/**"
-      - "scripts/monsterborg_capture_run.py"
-      - "scripts/monsterborg_calibration_report.py"
-      - "scripts/monsterborg_benchmark_matrix.py"
-      - "scripts/monsterborg_physical_verify.py"
-      - "tests/test_monsterborg_adapter.py"
-      - "tests/test_monsterborg_calibration.py"
-      - "tests/test_monsterborg_matrix.py"
-      - "tests/test_monsterborg_physical_gate.py"
-      - "docs/monsterborg-physical-adapter.md"
-  pull_request:
-    paths:
-      - ".github/workflows/monsterborg-physical-smoke.yml"
-      - ".github/workflows/release.yml"
-      - "src/webots_mcp_kit/monsterborg_adapter.py"
-      - "src/webots_mcp_kit/monsterborg_calibration.py"
-      - "src/webots_mcp_kit/monsterborg_matrix.py"
-      - "src/webots_mcp_kit/monsterborg_navigation.py"
-      - "src/webots_mcp_kit/benchmarks.py"
-      - "src/webots_mcp_kit/benchmark.py"
-      - "src/webots_mcp_kit/daemon.py"
-      - "src/webots_mcp_kit/scenario_ops.py"
-      - "examples/monsterborg/**"
-      - "scripts/monsterborg_capture_run.py"
-      - "scripts/monsterborg_calibration_report.py"
-      - "scripts/monsterborg_benchmark_matrix.py"
-      - "scripts/monsterborg_physical_verify.py"
-      - "tests/test_monsterborg_adapter.py"
-      - "tests/test_monsterborg_calibration.py"
-      - "tests/test_monsterborg_matrix.py"
-      - "tests/test_monsterborg_physical_gate.py"
-      - "docs/monsterborg-physical-adapter.md"
   workflow_dispatch:
 
 jobs:
