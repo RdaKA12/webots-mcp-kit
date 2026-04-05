@@ -122,6 +122,8 @@ def test_release_and_package_workflows_use_public_verify_path() -> None:
     assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime -Output .\\verify-install-monsterborg.json" in release_content
     assert "powershell -ExecutionPolicy Bypass -File .\\scripts\\upgrade_check.ps1 -Workspace .\\monsterborg-upgrade-check -RobotProfile monsterborg-4wd -Runtime -Output .\\monsterborg-upgrade-check.json" in release_content
     assert "monsterborg-physical-gate:" in release_content
+    assert "!contains(github.ref_name, 'alpha')" in release_content
+    assert "needs.monsterborg-physical-gate.result == 'skipped'" in release_content
     assert release_content.count("verify_install.ps1 -Runtime -Output") >= 2
     assert release_content.count("upgrade_check.ps1 -Workspace .\\upgrade-check -Runtime -Output") >= 2
 
