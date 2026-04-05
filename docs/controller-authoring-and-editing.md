@@ -1,6 +1,6 @@
 # Controller Authoring and Editing
 
-This page documents the controller authoring surface in `v2.9.0-alpha.1`.
+This page documents the controller authoring surface in `v2.9.0`.
 
 ## Supported scope
 
@@ -166,7 +166,7 @@ Status note:
 - `monsterborg-4wd` support uses the same CLI and MCP surfaces with additive robot-profile metadata
 - a ready sample workspace is available under `examples/getting-started/controller-edit`
 
-MonsterBorg task-hardening preview notes:
+MonsterBorg task-hardening notes:
 
 - the MonsterBorg Python line-follow scaffold now emits `line_confidence`, `camera_signal_strength`, `tracking_state_code`, and `speed_saturation`
 - MonsterBorg obstacle scaffolds now expose `obstacle_contract_gaps`, `obstacle_readiness`, and `clearance_recovery_readiness`

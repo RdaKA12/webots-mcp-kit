@@ -6,7 +6,7 @@ Status:
 
 - the CLI command names are stable
 - the documented core `ScenarioSpec` subset is stable
-- richer authoring, robot-profile metadata, MonsterBorg task-hardening fields, and physical-adapter metadata remain `experimental-foundation` and additive on the `v2.9.0-alpha.1` preview line
+- richer authoring, robot-profile metadata, MonsterBorg task-hardening fields, and physical-adapter metadata remain `experimental-foundation` and additive on the `v2.9.0` stable line
 
 ## Supported templates
 

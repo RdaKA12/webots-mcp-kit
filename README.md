@@ -1,6 +1,6 @@
 # webots-mcp-kit
 
-`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows. `v2.9.0-alpha.1` extends the current MonsterBorg hardening line from line-follow into obstacle avoidance, waypoint navigation, tuning analytics, and a designated Raspberry Pi physical parity gate on top of the existing `e-puck` and MonsterBorg runtime surfaces.
+`webots-mcp-kit` is a Windows-first toolkit for running Webots with a stable CLI, MCP server, controller SDK, bundled benchmarks, and structured world/controller authoring workflows. `v2.9.0` extends the MonsterBorg hardening line from line-follow into obstacle avoidance, waypoint navigation, tuning analytics, and an optional Raspberry Pi physical parity gate on top of the existing `e-puck` and MonsterBorg runtime surfaces.
 
 ## Support Matrix
 
@@ -19,7 +19,7 @@ Supported baseline: Windows, Webots `R2025a`, Python `3.11+`, `interactive-webot
 
 ## Unsupported Matrix
 
-| Area | Not supported on `v2.9.0-alpha.1` |
+| Area | Not supported on `v2.9.0` |
 | --- | --- |
 | Runtime | Windows service runner, Linux, macOS, live MCP control of physical robots |
 | Robotics stack | ROS2, multi-robot orchestration |
@@ -156,9 +156,9 @@ Core MCP tools:
 - world authoring: `webots_world_inspect`, `webots_world_validate`, `webots_world_edit`
 - controller authoring: `webots_controller_scaffold`, `webots_controller_inspect`, `webots_controller_validate`, `webots_controller_edit`
 
-Authoring workflows are supported on the stable release line, but the deeper schema surfaces remain `experimental-foundation` and additive. In `v2.9.0-alpha.1`, the MonsterBorg task-hardening preview extends the additive line with obstacle and waypoint variants, task-aware replay summaries, a benchmark matrix helper, and the designated Raspberry Pi physical parity gate.
+Authoring workflows are supported on the stable release line, but the deeper schema surfaces remain `experimental-foundation` and additive. In `v2.9.0`, the MonsterBorg task-hardening line adds obstacle and waypoint variants, task-aware replay summaries, a benchmark matrix helper, and the optional Raspberry Pi physical parity gate.
 
-MonsterBorg task-hardening preview extras:
+MonsterBorg task-hardening extras:
 
 - bundled variant specs under `examples/monsterborg/line-follower/variants`
 - bundled variant specs under `examples/monsterborg/obstacle-avoidance/variants`

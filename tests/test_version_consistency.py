@@ -32,7 +32,7 @@ def test_cli_version_matches_module_version() -> None:
 
 def test_monsterborg_docs_use_current_release_language() -> None:
     root = Path(__file__).resolve().parents[1]
-    current_release = "v2.9.0-alpha.1"
+    current_release = "v2.9.0"
     release_docs = [
         root / "README.md",
         root / "docs" / "controller-authoring-and-editing.md",

@@ -1,6 +1,6 @@
 # World Authoring and Editing
 
-This page documents the world authoring/editing surface in `v2.9.0-alpha.1`.
+This page documents the world authoring/editing surface in `v2.9.0`.
 
 ## Supported scope
 
@@ -201,7 +201,7 @@ Richer generated scenarios can now carry:
 
 `scenario build` writes these structures into the generated `.wbt` and stores additive authoring metadata such as `recommended_next_edit_ops`, `world_inventory_summary`, and `benchmark_mapping` in `webots-kit.generated.json`.
 
-For `monsterborg-4wd`, the current preview line also uses task variants to tune generated defaults for:
+For `monsterborg-4wd`, the current release line also uses task variants to tune generated defaults for:
 
 - `monsterborg-line-track`
 - `monsterborg-obstacle-course`

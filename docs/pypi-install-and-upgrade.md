@@ -71,13 +71,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_workspace.ps1 -Star
 Pinned PyPI version:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.9.0a1"
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec "webots-mcp-kit==2.9.0"
 ```
 
 Local wheel:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.9.0a1-py3-none-any.whl"
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -PackageSpec ".\dist\webots_mcp_kit-2.9.0-py3-none-any.whl"
 ```
 
 ## Fallback: Virtual Environment
