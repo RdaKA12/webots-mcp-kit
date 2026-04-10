@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 
-MONSTERBORG_MODEL_REVISION = "monsterborg-reference-r3"
+MONSTERBORG_MODEL_REVISION = "monsterborg-reference-r4"
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,7 +50,7 @@ def monsterborg_dimensions() -> MonsterBorgDimensions:
         track_width_m=0.198,
         body_clearance_z_m=0.027,
         wheel_center_z_m=0.0525,
-        camera_mount_translation=(0.118, 0.0, 0.098),
+        camera_mount_translation=(0.122, 0.0, 0.094),
         camera_mount_pitch_rad=0.17,
         range_mount_translation=(0.128, 0.0, 0.060),
         imu_translation=(0.0, 0.0, 0.060),

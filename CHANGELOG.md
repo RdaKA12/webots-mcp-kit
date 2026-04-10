@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.4
+
+- Lowered the visible MonsterBorg motor cans underneath the chassis stack so the motor side now reads as the underside of the robot instead of sitting on the top deck.
+- Rebuilt the front camera bracket with a proper mast and bridge so the camera no longer appears to float off the mount, and promoted the visual layout to `monsterborg-reference-r4`.
+
 ## v2.10.3
 
 - Corrected the MonsterBorg wheel and motor visual axes so bundled smoke/example worlds now use the intended 90° rotation around the X axis instead of leaving cylinders flat on the floor.

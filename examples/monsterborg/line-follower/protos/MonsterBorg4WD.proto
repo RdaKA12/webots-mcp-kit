@@ -68,7 +68,7 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation 0.084 0 0.048
+        translation 0.091 0 0.085
         children [
           Shape {
             appearance PBRAppearance {
@@ -77,13 +77,13 @@ PROTO MonsterBorg4WD [
               metalness 0.04
             }
             geometry Box {
-              size 0.020 0.062 0.010
+              size 0.034 0.060 0.006
             }
           }
         ]
       }
       Transform {
-        translation 0.106 0 0.090
+        translation 0.106 0 0.076
         children [
           Shape {
             appearance PBRAppearance {
@@ -92,13 +92,28 @@ PROTO MonsterBorg4WD [
               metalness 0.06
             }
             geometry Box {
-              size 0.012 0.060 0.046
+              size 0.012 0.060 0.028
             }
           }
         ]
       }
       Transform {
-        translation 0.118 0 0.098
+        translation 0.118 0 0.090
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.16 0.16 0.18
+              roughness 0.9
+              metalness 0.06
+            }
+            geometry Box {
+              size 0.020 0.060 0.006
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.122 0 0.094
         rotation 0 1 0 0.17
         children [
           Shape {
@@ -147,7 +162,7 @@ PROTO MonsterBorg4WD [
         name "imu"
       }
       Transform {
-        translation -0.066 0.0505 0.0525
+        translation -0.066 0.0505 0.0335
         rotation 1 0 0 1.5708
         children [
           Shape {
@@ -164,7 +179,7 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation 0.066 0.0505 0.0525
+        translation 0.066 0.0505 0.0335
         rotation 1 0 0 1.5708
         children [
           Shape {
@@ -181,7 +196,7 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation -0.066 -0.0505 0.0525
+        translation -0.066 -0.0505 0.0335
         rotation 1 0 0 1.5708
         children [
           Shape {
@@ -198,7 +213,7 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation 0.066 -0.0505 0.0525
+        translation 0.066 -0.0505 0.0335
         rotation 1 0 0 1.5708
         children [
           Shape {
@@ -548,10 +563,26 @@ PROTO MonsterBorg4WD [
           ]
         }
         Transform {
-          translation 0.106 0 0.090
+          translation 0.091 0 0.085
           children [
             Box {
-              size 0.012 0.060 0.046
+              size 0.034 0.060 0.006
+            }
+          ]
+        }
+        Transform {
+          translation 0.106 0 0.076
+          children [
+            Box {
+              size 0.012 0.060 0.028
+            }
+          ]
+        }
+        Transform {
+          translation 0.118 0 0.090
+          children [
+            Box {
+              size 0.020 0.060 0.006
             }
           ]
         }
