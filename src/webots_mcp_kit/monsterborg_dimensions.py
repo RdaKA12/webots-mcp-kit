@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 
-MONSTERBORG_MODEL_REVISION = "monsterborg-reference-r1"
+MONSTERBORG_MODEL_REVISION = "monsterborg-reference-r2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,23 +40,23 @@ def monsterborg_dimensions() -> MonsterBorgDimensions:
         model_revision=MONSTERBORG_MODEL_REVISION,
         wheel_diameter_m=0.105,
         wheel_radius_m=0.0525,
-        wheel_width_m=0.050,
+        wheel_width_m=0.038,
         motor_can_diameter_m=0.037,
         motor_can_length_m=0.057,
         chassis_length_m=0.160,
         chassis_width_m=0.140,
         chassis_thickness_m=0.003,
-        wheelbase_m=0.110,
-        track_width_m=0.190,
+        wheelbase_m=0.132,
+        track_width_m=0.198,
         body_clearance_z_m=0.027,
         wheel_center_z_m=0.0525,
         camera_mount_translation=(0.118, 0.0, 0.098),
         camera_mount_pitch_rad=0.17,
         range_mount_translation=(0.128, 0.0, 0.060),
         imu_translation=(0.0, 0.0, 0.060),
-        body_mass_kg=1.50,
-        wheel_mass_kg=0.12,
-        footprint_radius_m=0.150,
+        body_mass_kg=1.70,
+        wheel_mass_kg=0.10,
+        footprint_radius_m=0.158,
         dimension_source_summary={
             "primary_sources": [
                 "official-piborg-monsterborg",
@@ -72,9 +72,9 @@ def monsterborg_dimensions() -> MonsterBorgDimensions:
                 "chassis_thickness_m": 0.003,
                 "chassis_length_m": 0.160,
                 "chassis_width_m": 0.140,
-                "wheelbase_m": 0.110,
-                "track_width_m": 0.190,
+                "wheel_width_m": 0.038,
+                "wheelbase_m": 0.132,
+                "track_width_m": 0.198,
             },
         },
     )
-

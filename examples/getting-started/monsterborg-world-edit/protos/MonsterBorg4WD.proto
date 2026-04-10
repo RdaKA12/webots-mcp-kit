@@ -8,8 +8,8 @@ PROTO MonsterBorg4WD [
   field MFString   controllerArgs    [ ]
   field SFBool     supervisor        FALSE
   field SFFloat    driveMaxTorque    24
-  field SFFloat    bodyMass          1.5
-  field SFFloat    wheelMass         0.12
+  field SFFloat    bodyMass          1.7
+  field SFFloat    wheelMass         0.10
   field SFInt32    cameraWidth       48
   field SFInt32    cameraHeight      8
   field SFFloat    cameraFieldOfView 1
@@ -23,13 +23,13 @@ PROTO MonsterBorg4WD [
     supervisor IS supervisor
     children [
       Transform {
-        translation 0 0 0.027
+        translation 0 0 0.0285
         children [
           Shape {
             appearance PBRAppearance {
-              baseColor 0.88 0.88 0.9
-              roughness 0.85
-              metalness 0.15
+              baseColor 0.87 0.88 0.91
+              roughness 0.82
+              metalness 0.16
             }
             geometry Box {
               size 0.16 0.14 0.003
@@ -38,114 +38,61 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation -0.0795 0 0.041
+        translation 0 0 0.0435
         children [
           Shape {
             appearance PBRAppearance {
-              baseColor 0.72 0.72 0.74
+              baseColor 0.76 0.78 0.82
               roughness 0.8
-              metalness 0.2
+              metalness 0.12
             }
             geometry Box {
-              size 0.001 0.03 0.03
+              size 0.142 0.096 0.010
             }
           }
         ]
       }
       Transform {
-        translation 0 0 0.066
+        translation 0 0 0.064
         children [
           Shape {
             appearance PBRAppearance {
-              baseColor 0.73 0.75 0.79
+              baseColor 0.72 0.74 0.79
               roughness 0.78
-              metalness 0.08
+              metalness 0.10
             }
             geometry Box {
-              size 0.12 0.10 0.032
+              size 0.122 0.102 0.031
             }
           }
         ]
       }
       Transform {
-        translation -0.055 0.04 0.05
-        rotation 1 0 0 1.5708
+        translation 0.084 0 0.048
         children [
           Shape {
             appearance PBRAppearance {
-              baseColor 0.28 0.28 0.30
-              roughness 0.75
-              metalness 0.45
+              baseColor 0.17 0.17 0.19
+              roughness 0.92
+              metalness 0.04
             }
-            geometry Cylinder {
-              height 0.057
-              radius 0.0185
+            geometry Box {
+              size 0.020 0.062 0.010
             }
           }
         ]
       }
       Transform {
-        translation 0.055 0.04 0.05
-        rotation 1 0 0 1.5708
+        translation 0.106 0 0.090
         children [
           Shape {
             appearance PBRAppearance {
-              baseColor 0.28 0.28 0.30
-              roughness 0.75
-              metalness 0.45
-            }
-            geometry Cylinder {
-              height 0.057
-              radius 0.0185
-            }
-          }
-        ]
-      }
-      Transform {
-        translation -0.055 -0.04 0.05
-        rotation 1 0 0 1.5708
-        children [
-          Shape {
-            appearance PBRAppearance {
-              baseColor 0.28 0.28 0.30
-              roughness 0.75
-              metalness 0.45
-            }
-            geometry Cylinder {
-              height 0.057
-              radius 0.0185
-            }
-          }
-        ]
-      }
-      Transform {
-        translation 0.055 -0.04 0.05
-        rotation 1 0 0 1.5708
-        children [
-          Shape {
-            appearance PBRAppearance {
-              baseColor 0.28 0.28 0.30
-              roughness 0.75
-              metalness 0.45
-            }
-            geometry Cylinder {
-              height 0.057
-              radius 0.0185
-            }
-          }
-        ]
-      }
-      Transform {
-        translation 0.103 0 0.090
-        children [
-          Shape {
-            appearance PBRAppearance {
-              baseColor 0.15 0.15 0.17
+              baseColor 0.16 0.16 0.18
               roughness 0.9
-              metalness 0.05
+              metalness 0.06
             }
             geometry Box {
-              size 0.010 0.060 0.040
+              size 0.012 0.060 0.046
             }
           }
         ]
@@ -156,12 +103,12 @@ PROTO MonsterBorg4WD [
         children [
           Shape {
             appearance PBRAppearance {
-              baseColor 0.12 0.12 0.13
-              roughness 0.9
+              baseColor 0.11 0.11 0.12
+              roughness 0.94
               metalness 0.0
             }
             geometry Box {
-              size 0.025 0.025 0.008
+              size 0.026 0.026 0.008
             }
           }
           Camera {
@@ -173,16 +120,16 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation 0.128 0 0.060
+        translation 0.128 0 0.062
         children [
           Shape {
             appearance PBRAppearance {
-              baseColor 0.10 0.10 0.10
+              baseColor 0.1 0.1 0.1
               roughness 0.95
               metalness 0.0
             }
             geometry Box {
-              size 0.012 0.022 0.012
+              size 0.014 0.024 0.012
             }
           }
           DistanceSensor {
@@ -199,10 +146,142 @@ PROTO MonsterBorg4WD [
       InertialUnit {
         name "imu"
       }
+      Transform {
+        translation -0.066 0.0505 0.0525
+        rotation 0 0 1 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.27 0.27 0.30
+              roughness 0.72
+              metalness 0.46
+            }
+            geometry Cylinder {
+              height 0.057
+              radius 0.0185
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.066 0.0505 0.0525
+        rotation 0 0 1 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.27 0.27 0.30
+              roughness 0.72
+              metalness 0.46
+            }
+            geometry Cylinder {
+              height 0.057
+              radius 0.0185
+            }
+          }
+        ]
+      }
+      Transform {
+        translation -0.066 -0.0505 0.0525
+        rotation 0 0 1 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.27 0.27 0.30
+              roughness 0.72
+              metalness 0.46
+            }
+            geometry Cylinder {
+              height 0.057
+              radius 0.0185
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.066 -0.0505 0.0525
+        rotation 0 0 1 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.27 0.27 0.30
+              roughness 0.72
+              metalness 0.46
+            }
+            geometry Cylinder {
+              height 0.057
+              radius 0.0185
+            }
+          }
+        ]
+      }
+      Transform {
+        translation -0.066 0.079 0.0525
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.68 0.70 0.73
+              roughness 0.78
+              metalness 0.24
+            }
+            geometry Cylinder {
+              height 0.040
+              radius 0.005
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.066 0.079 0.0525
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.68 0.70 0.73
+              roughness 0.78
+              metalness 0.24
+            }
+            geometry Cylinder {
+              height 0.040
+              radius 0.005
+            }
+          }
+        ]
+      }
+      Transform {
+        translation -0.066 -0.079 0.0525
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.68 0.70 0.73
+              roughness 0.78
+              metalness 0.24
+            }
+            geometry Cylinder {
+              height 0.040
+              radius 0.005
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.066 -0.079 0.0525
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.68 0.70 0.73
+              roughness 0.78
+              metalness 0.24
+            }
+            geometry Cylinder {
+              height 0.040
+              radius 0.005
+            }
+          }
+        ]
+      }
       HingeJoint {
         jointParameters HingeJointParameters {
           axis 0 1 0
-          anchor 0.055 0.095 0.0525
+          anchor 0.066 0.099 0.0525
         }
         device [
           RotationalMotor {
@@ -215,7 +294,7 @@ PROTO MonsterBorg4WD [
           }
         ]
         endPoint Solid {
-          translation 0.055 0.095 0.0525
+          translation 0.066 0.099 0.0525
           name "front-left-drive-wheel"
           children [
             Shape {
@@ -225,13 +304,24 @@ PROTO MonsterBorg4WD [
                 metalness 0
               }
               geometry Cylinder {
-                height 0.05
+                height 0.038
                 radius 0.0525
+              }
+            }
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.14 0.14 0.16
+                roughness 0.8
+                metalness 0.24
+              }
+              geometry Cylinder {
+                height 0.041
+                radius 0.019
               }
             }
           ]
           boundingObject Cylinder {
-            height 0.05
+            height 0.038
             radius 0.0525
           }
           physics Physics {
@@ -243,7 +333,7 @@ PROTO MonsterBorg4WD [
       HingeJoint {
         jointParameters HingeJointParameters {
           axis 0 1 0
-          anchor 0.055 -0.095 0.0525
+          anchor 0.066 -0.099 0.0525
         }
         device [
           RotationalMotor {
@@ -256,7 +346,7 @@ PROTO MonsterBorg4WD [
           }
         ]
         endPoint Solid {
-          translation 0.055 -0.095 0.0525
+          translation 0.066 -0.099 0.0525
           name "front-right-drive-wheel"
           children [
             Shape {
@@ -266,13 +356,24 @@ PROTO MonsterBorg4WD [
                 metalness 0
               }
               geometry Cylinder {
-                height 0.05
+                height 0.038
                 radius 0.0525
+              }
+            }
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.14 0.14 0.16
+                roughness 0.8
+                metalness 0.24
+              }
+              geometry Cylinder {
+                height 0.041
+                radius 0.019
               }
             }
           ]
           boundingObject Cylinder {
-            height 0.05
+            height 0.038
             radius 0.0525
           }
           physics Physics {
@@ -284,7 +385,7 @@ PROTO MonsterBorg4WD [
       HingeJoint {
         jointParameters HingeJointParameters {
           axis 0 1 0
-          anchor -0.055 0.095 0.0525
+          anchor -0.066 0.099 0.0525
         }
         device [
           RotationalMotor {
@@ -294,7 +395,7 @@ PROTO MonsterBorg4WD [
           }
         ]
         endPoint Solid {
-          translation -0.055 0.095 0.0525
+          translation -0.066 0.099 0.0525
           name "rear-left-drive-wheel"
           children [
             Shape {
@@ -304,13 +405,24 @@ PROTO MonsterBorg4WD [
                 metalness 0
               }
               geometry Cylinder {
-                height 0.05
+                height 0.038
                 radius 0.0525
+              }
+            }
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.14 0.14 0.16
+                roughness 0.8
+                metalness 0.24
+              }
+              geometry Cylinder {
+                height 0.041
+                radius 0.019
               }
             }
           ]
           boundingObject Cylinder {
-            height 0.05
+            height 0.038
             radius 0.0525
           }
           physics Physics {
@@ -322,7 +434,7 @@ PROTO MonsterBorg4WD [
       HingeJoint {
         jointParameters HingeJointParameters {
           axis 0 1 0
-          anchor -0.055 -0.095 0.0525
+          anchor -0.066 -0.099 0.0525
         }
         device [
           RotationalMotor {
@@ -332,7 +444,7 @@ PROTO MonsterBorg4WD [
           }
         ]
         endPoint Solid {
-          translation -0.055 -0.095 0.0525
+          translation -0.066 -0.099 0.0525
           name "rear-right-drive-wheel"
           children [
             Shape {
@@ -342,13 +454,24 @@ PROTO MonsterBorg4WD [
                 metalness 0
               }
               geometry Cylinder {
-                height 0.05
+                height 0.038
                 radius 0.0525
+              }
+            }
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.14 0.14 0.16
+                roughness 0.8
+                metalness 0.24
+              }
+              geometry Cylinder {
+                height 0.041
+                radius 0.019
               }
             }
           ]
           boundingObject Cylinder {
-            height 0.05
+            height 0.038
             radius 0.0525
           }
           physics Physics {
@@ -361,7 +484,7 @@ PROTO MonsterBorg4WD [
     boundingObject Group {
       children [
         Transform {
-          translation 0 0 0.027
+          translation 0 0 0.0285
           children [
             Box {
               size 0.16 0.14 0.003
@@ -369,10 +492,26 @@ PROTO MonsterBorg4WD [
           ]
         }
         Transform {
-          translation 0 0 0.066
+          translation 0 0 0.0435
           children [
             Box {
-              size 0.12 0.10 0.032
+              size 0.142 0.096 0.010
+            }
+          ]
+        }
+        Transform {
+          translation 0 0 0.064
+          children [
+            Box {
+              size 0.122 0.102 0.031
+            }
+          ]
+        }
+        Transform {
+          translation 0.106 0 0.090
+          children [
+            Box {
+              size 0.012 0.060 0.046
             }
           ]
         }

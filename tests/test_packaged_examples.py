@@ -3,6 +3,15 @@ from __future__ import annotations
 from webots_mcp_kit.models import bundled_example_root, package_example_root, repo_example_root
 
 
+MONSTERBORG_PROTO_PATHS = (
+    ("monsterborg", "line-follower", "protos", "MonsterBorg4WD.proto"),
+    ("monsterborg", "obstacle-avoidance", "protos", "MonsterBorg4WD.proto"),
+    ("monsterborg", "waypoint-nav", "protos", "MonsterBorg4WD.proto"),
+    ("getting-started", "monsterborg-world-edit", "protos", "MonsterBorg4WD.proto"),
+    ("getting-started", "monsterborg-import-replay", "protos", "MonsterBorg4WD.proto"),
+)
+
+
 MONSTERBORG_WORLD_PATHS = (
     ("monsterborg", "line-follower", "worlds", "monsterborg_line_follower_benchmark.wbt"),
     ("monsterborg", "obstacle-avoidance", "worlds", "monsterborg_obstacle_avoidance_benchmark.wbt"),
@@ -50,3 +59,13 @@ def test_monsterborg_example_worlds_use_reference_proto() -> None:
             assert 'EXTERNPROTO "../protos/MonsterBorg4WD.proto"' in content
             assert "DEF MONSTERBORG MonsterBorg4WD {" in content
             assert "DEF MONSTERBORG Robot {" not in content
+
+
+def test_monsterborg_example_proto_copies_match_runtime_proto() -> None:
+    runtime_proto = (repo_example_root().parent / "src" / "webots_mcp_kit" / "runtime" / "protos" / "MonsterBorg4WD.proto").read_text(
+        encoding="utf-8"
+    )
+    for root in (repo_example_root(), package_example_root()):
+        for parts in MONSTERBORG_PROTO_PATHS:
+            proto_path = root.joinpath(*parts)
+            assert proto_path.read_text(encoding="utf-8") == runtime_proto

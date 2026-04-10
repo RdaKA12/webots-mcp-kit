@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.10.2
+
+- Corrected the MonsterBorg reference model geometry with a wider, more stable wheel stance, proper horizontal motor-can orientation, revised body and axle visual layout, and a new `monsterborg-reference-r2` model revision.
+- Synchronized all bundled MonsterBorg example PROTO copies with the canonical runtime model and added regression tests so benchmark and getting-started worlds cannot drift back to broken geometry.
+- Retuned the default MonsterBorg line-follow example and scaffold constants for the updated chassis stance, and made release publish jobs idempotent with `skip-existing` so reruns no longer fail on duplicate TestPyPI/PyPI files.
+
 ## v2.10.1
 
 - Moved the bundled MonsterBorg benchmark and getting-started worlds onto the shared `MonsterBorg4WD.proto` reference model so static examples now match generated scenarios instead of carrying the old inline placeholder robot.

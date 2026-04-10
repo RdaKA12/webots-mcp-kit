@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from webots_mcp_kit.benchmark import list_benchmarks
+from webots_mcp_kit.monsterborg_dimensions import MONSTERBORG_MODEL_REVISION, monsterborg_dimensions
 from webots_mcp_kit.controller_authoring import inspect_controller
 from webots_mcp_kit.controller_scaffold import scaffold_controller
 from webots_mcp_kit.controller_validation import validate_controller
@@ -36,6 +37,23 @@ def test_monsterborg_profile_device_contract_is_stable() -> None:
     assert tuple(profile.device_contract["encoders"]) == ("left_encoder", "right_encoder")
     assert tuple(profile.device_contract["range"]) == ("front_range",)
     assert tuple(profile.device_contract["imu"]) == ("imu",)
+
+
+def test_monsterborg_dimensions_and_proto_geometry_are_aligned() -> None:
+    dims = monsterborg_dimensions()
+    proto_path = Path("src/webots_mcp_kit/runtime/protos/MonsterBorg4WD.proto")
+    content = proto_path.read_text(encoding="utf-8")
+    assert dims.model_revision == MONSTERBORG_MODEL_REVISION
+    assert dims.wheel_width_m == 0.038
+    assert dims.wheelbase_m == 0.132
+    assert dims.track_width_m == 0.198
+    assert dims.body_mass_kg == 1.70
+    assert dims.wheel_mass_kg == 0.10
+    assert content.count('rotation 0 0 1 1.5708') == 4
+    assert 'rotation 1 0 0 1.5708' not in content
+    assert content.count("height 0.038") >= 4
+    assert 'anchor 0.066 0.099 0.0525' in content
+    assert 'anchor -0.066 -0.099 0.0525' in content
 
 
 def test_monsterborg_controller_scaffold_and_validation(tmp_path: Path) -> None:

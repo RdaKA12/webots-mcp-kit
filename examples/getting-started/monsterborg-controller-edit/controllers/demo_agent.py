@@ -7,8 +7,8 @@ from webots_mcp_kit.agent import ControllerAgent
 
 TIME_STEP = 32
 MAX_SPEED = 8.0
-CRUISE = 5.4
-TURN_GAIN = 5.2
+CRUISE = 4.6
+TURN_GAIN = 3.8
 
 
 # webots-kit region HELPERS start

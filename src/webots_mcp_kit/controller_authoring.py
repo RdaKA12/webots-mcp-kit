@@ -1641,12 +1641,12 @@ from webots_mcp_kit.monsterborg_line_follow import (
 
 TIME_STEP = 32
 MAX_SPEED = 8.0
-CRUISE = 5.8
-MIN_CRUISE = 2.6
-TURN_GAIN = 5.6
-CURVATURE_GAIN = 2.4
-SEARCH_SPEED = 3.2
-RECOVER_SPEED = 3.8
+CRUISE = 4.2
+MIN_CRUISE = 1.8
+TURN_GAIN = 3.2
+CURVATURE_GAIN = 1.1
+SEARCH_SPEED = 2.0
+RECOVER_SPEED = 2.6
 
 
 # webots-kit region HELPERS start
@@ -2424,10 +2424,10 @@ using webots_mcp_kit::ControllerAgent;
 
 const int TIME_STEP = 32;
 const double MAX_SPEED = 8.0;
-const double CRUISE = 5.6;
-const double TURN_GAIN = 5.4;
-const double SEARCH_GAIN = 4.6;
-const double RECOVER_GAIN = 5.8;
+const double CRUISE = 4.8;
+const double TURN_GAIN = 3.8;
+const double SEARCH_GAIN = 3.1;
+const double RECOVER_GAIN = 4.2;
 
 enum TrackingState {
   TRACK = 0,
