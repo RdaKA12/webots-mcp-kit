@@ -49,11 +49,19 @@ def test_monsterborg_dimensions_and_proto_geometry_are_aligned() -> None:
     assert dims.track_width_m == 0.198
     assert dims.body_mass_kg == 1.70
     assert dims.wheel_mass_kg == 0.10
-    assert content.count('rotation 1 0 0 1.5708') >= 8
-    assert 'rotation 0 0 1 1.5708' not in content
+    assert content.count("rotation 1 0 0 1.5708") >= 4
+    assert content.count("rotation 0 0 1 1.5708") >= 4
     assert content.count("height 0.038") >= 4
     assert 'anchor 0.066 0.099 0.0525' in content
     assert 'anchor -0.066 -0.099 0.0525' in content
+    assert "translation 0 0 0.079" in content
+    assert "translation 0 0 0.062" in content
+    assert "translation 0 0 0.038" in content
+    assert "translation 0.090 0 0.080" in content
+    assert "translation 0.106 0 0.090" in content
+    assert "translation 0.122 0 0.094" in content
+    assert "translation 0.028 0.099 0.0525" in content
+    assert "translation -0.028 -0.099 0.0525" in content
 
 
 def test_monsterborg_controller_scaffold_and_validation(tmp_path: Path) -> None:

@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.5
+
+- Re-layered the MonsterBorg chassis visuals so the 3 mm top plate is again the upper deck, the inner body sits below it, and the front camera mast/bridge reads as a connected mount instead of a floating bracket.
+- Moved all four visible motor cans onto the wheel centerlines so the direct-drive motor visuals line up with the wheels without clipping through the chassis stack, and promoted the layout to `monsterborg-reference-r5`.
+
 ## v2.10.4
 
 - Lowered the visible MonsterBorg motor cans underneath the chassis stack so the motor side now reads as the underside of the robot instead of sitting on the top deck.

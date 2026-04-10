@@ -23,7 +23,7 @@ PROTO MonsterBorg4WD [
     supervisor IS supervisor
     children [
       Transform {
-        translation 0 0 0.0285
+        translation 0 0 0.079
         children [
           Shape {
             appearance PBRAppearance {
@@ -38,22 +38,22 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation 0 0 0.0435
+        translation 0 0 0.038
         children [
           Shape {
             appearance PBRAppearance {
-              baseColor 0.76 0.78 0.82
-              roughness 0.8
-              metalness 0.12
+              baseColor 0.73 0.75 0.79
+              roughness 0.82
+              metalness 0.08
             }
             geometry Box {
-              size 0.142 0.096 0.010
+              size 0.126 0.074 0.006
             }
           }
         ]
       }
       Transform {
-        translation 0 0 0.064
+        translation 0 0 0.062
         children [
           Shape {
             appearance PBRAppearance {
@@ -62,13 +62,13 @@ PROTO MonsterBorg4WD [
               metalness 0.10
             }
             geometry Box {
-              size 0.122 0.102 0.031
+              size 0.122 0.094 0.028
             }
           }
         ]
       }
       Transform {
-        translation 0.091 0 0.085
+        translation 0.090 0 0.080
         children [
           Shape {
             appearance PBRAppearance {
@@ -77,28 +77,13 @@ PROTO MonsterBorg4WD [
               metalness 0.04
             }
             geometry Box {
-              size 0.034 0.060 0.006
+              size 0.010 0.060 0.022
             }
           }
         ]
       }
       Transform {
-        translation 0.106 0 0.076
-        children [
-          Shape {
-            appearance PBRAppearance {
-              baseColor 0.16 0.16 0.18
-              roughness 0.9
-              metalness 0.06
-            }
-            geometry Box {
-              size 0.012 0.060 0.028
-            }
-          }
-        ]
-      }
-      Transform {
-        translation 0.118 0 0.090
+        translation 0.106 0 0.090
         children [
           Shape {
             appearance PBRAppearance {
@@ -162,8 +147,8 @@ PROTO MonsterBorg4WD [
         name "imu"
       }
       Transform {
-        translation -0.066 0.0505 0.0335
-        rotation 1 0 0 1.5708
+        translation 0.028 0.099 0.0525
+        rotation 0 0 1 1.5708
         children [
           Shape {
             appearance PBRAppearance {
@@ -179,8 +164,8 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation 0.066 0.0505 0.0335
-        rotation 1 0 0 1.5708
+        translation 0.028 -0.099 0.0525
+        rotation 0 0 1 1.5708
         children [
           Shape {
             appearance PBRAppearance {
@@ -196,8 +181,8 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation -0.066 -0.0505 0.0335
-        rotation 1 0 0 1.5708
+        translation -0.028 0.099 0.0525
+        rotation 0 0 1 1.5708
         children [
           Shape {
             appearance PBRAppearance {
@@ -213,8 +198,8 @@ PROTO MonsterBorg4WD [
         ]
       }
       Transform {
-        translation 0.066 -0.0505 0.0335
-        rotation 1 0 0 1.5708
+        translation -0.028 -0.099 0.0525
+        rotation 0 0 1 1.5708
         children [
           Shape {
             appearance PBRAppearance {
@@ -539,7 +524,7 @@ PROTO MonsterBorg4WD [
     boundingObject Group {
       children [
         Transform {
-          translation 0 0 0.0285
+          translation 0 0 0.079
           children [
             Box {
               size 0.16 0.14 0.003
@@ -547,39 +532,31 @@ PROTO MonsterBorg4WD [
           ]
         }
         Transform {
-          translation 0 0 0.0435
+          translation 0 0 0.038
           children [
             Box {
-              size 0.142 0.096 0.010
+              size 0.126 0.074 0.006
             }
           ]
         }
         Transform {
-          translation 0 0 0.064
+          translation 0 0 0.062
           children [
             Box {
-              size 0.122 0.102 0.031
+              size 0.122 0.094 0.028
             }
           ]
         }
         Transform {
-          translation 0.091 0 0.085
+          translation 0.090 0 0.080
           children [
             Box {
-              size 0.034 0.060 0.006
+              size 0.010 0.060 0.022
             }
           ]
         }
         Transform {
-          translation 0.106 0 0.076
-          children [
-            Box {
-              size 0.012 0.060 0.028
-            }
-          ]
-        }
-        Transform {
-          translation 0.118 0 0.090
+          translation 0.106 0 0.090
           children [
             Box {
               size 0.020 0.060 0.006
