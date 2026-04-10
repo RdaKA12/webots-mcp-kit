@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.1
+
+- Moved the bundled MonsterBorg benchmark and getting-started worlds onto the shared `MonsterBorg4WD.proto` reference model so static examples now match generated scenarios instead of carrying the old inline placeholder robot.
+- Added packaged MonsterBorg example PROTO assets and regression checks that verify both repo and installed example trees reference the shared robot model rather than `DEF MONSTERBORG Robot`.
+
 ## v2.10.0
 
 - Replaced the inline MonsterBorg generator block with a shared `MonsterBorg4WD.proto` reference model built around official wheel, motor, and chassis dimensions plus Formula Pi camera geometry and the repo-local visual reference world.

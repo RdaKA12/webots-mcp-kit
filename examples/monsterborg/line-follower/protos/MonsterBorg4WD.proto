@@ -1,0 +1,386 @@
+#VRML_SIM R2025a utf8
+
+PROTO MonsterBorg4WD [
+  field SFVec3f    translation       0 0 0
+  field SFRotation rotation          0 0 1 0
+  field SFString   name              "monsterborg"
+  field SFString   controller        "<extern>"
+  field MFString   controllerArgs    [ ]
+  field SFBool     supervisor        FALSE
+  field SFFloat    driveMaxTorque    24
+  field SFFloat    bodyMass          1.5
+  field SFFloat    wheelMass         0.12
+  field SFInt32    cameraWidth       48
+  field SFInt32    cameraHeight      8
+  field SFFloat    cameraFieldOfView 1
+] {
+  Robot {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    controller IS controller
+    controllerArgs IS controllerArgs
+    supervisor IS supervisor
+    children [
+      Transform {
+        translation 0 0 0.027
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.88 0.88 0.9
+              roughness 0.85
+              metalness 0.15
+            }
+            geometry Box {
+              size 0.16 0.14 0.003
+            }
+          }
+        ]
+      }
+      Transform {
+        translation -0.0795 0 0.041
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.72 0.72 0.74
+              roughness 0.8
+              metalness 0.2
+            }
+            geometry Box {
+              size 0.001 0.03 0.03
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0 0 0.066
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.73 0.75 0.79
+              roughness 0.78
+              metalness 0.08
+            }
+            geometry Box {
+              size 0.12 0.10 0.032
+            }
+          }
+        ]
+      }
+      Transform {
+        translation -0.055 0.04 0.05
+        rotation 1 0 0 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.28 0.28 0.30
+              roughness 0.75
+              metalness 0.45
+            }
+            geometry Cylinder {
+              height 0.057
+              radius 0.0185
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.055 0.04 0.05
+        rotation 1 0 0 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.28 0.28 0.30
+              roughness 0.75
+              metalness 0.45
+            }
+            geometry Cylinder {
+              height 0.057
+              radius 0.0185
+            }
+          }
+        ]
+      }
+      Transform {
+        translation -0.055 -0.04 0.05
+        rotation 1 0 0 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.28 0.28 0.30
+              roughness 0.75
+              metalness 0.45
+            }
+            geometry Cylinder {
+              height 0.057
+              radius 0.0185
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.055 -0.04 0.05
+        rotation 1 0 0 1.5708
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.28 0.28 0.30
+              roughness 0.75
+              metalness 0.45
+            }
+            geometry Cylinder {
+              height 0.057
+              radius 0.0185
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.103 0 0.090
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.15 0.15 0.17
+              roughness 0.9
+              metalness 0.05
+            }
+            geometry Box {
+              size 0.010 0.060 0.040
+            }
+          }
+        ]
+      }
+      Transform {
+        translation 0.118 0 0.098
+        rotation 0 1 0 0.17
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.12 0.12 0.13
+              roughness 0.9
+              metalness 0.0
+            }
+            geometry Box {
+              size 0.025 0.025 0.008
+            }
+          }
+          Camera {
+            name "front_camera"
+            width IS cameraWidth
+            height IS cameraHeight
+            fieldOfView IS cameraFieldOfView
+          }
+        ]
+      }
+      Transform {
+        translation 0.128 0 0.060
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.10 0.10 0.10
+              roughness 0.95
+              metalness 0.0
+            }
+            geometry Box {
+              size 0.012 0.022 0.012
+            }
+          }
+          DistanceSensor {
+            name "front_range"
+            lookupTable [
+              0 1000 0
+              0.5 600 0
+              1 200 0
+            ]
+            type "infra-red"
+          }
+        ]
+      }
+      InertialUnit {
+        name "imu"
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0 1 0
+          anchor 0.055 0.095 0.0525
+        }
+        device [
+          RotationalMotor {
+            name "front_left_motor"
+            maxVelocity 9
+            maxTorque IS driveMaxTorque
+          }
+          PositionSensor {
+            name "left_encoder"
+          }
+        ]
+        endPoint Solid {
+          translation 0.055 0.095 0.0525
+          name "front-left-drive-wheel"
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.03 0.03 0.03
+                roughness 1
+                metalness 0
+              }
+              geometry Cylinder {
+                height 0.05
+                radius 0.0525
+              }
+            }
+          ]
+          boundingObject Cylinder {
+            height 0.05
+            radius 0.0525
+          }
+          physics Physics {
+            density -1
+            mass IS wheelMass
+          }
+        }
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0 1 0
+          anchor 0.055 -0.095 0.0525
+        }
+        device [
+          RotationalMotor {
+            name "front_right_motor"
+            maxVelocity 9
+            maxTorque IS driveMaxTorque
+          }
+          PositionSensor {
+            name "right_encoder"
+          }
+        ]
+        endPoint Solid {
+          translation 0.055 -0.095 0.0525
+          name "front-right-drive-wheel"
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.03 0.03 0.03
+                roughness 1
+                metalness 0
+              }
+              geometry Cylinder {
+                height 0.05
+                radius 0.0525
+              }
+            }
+          ]
+          boundingObject Cylinder {
+            height 0.05
+            radius 0.0525
+          }
+          physics Physics {
+            density -1
+            mass IS wheelMass
+          }
+        }
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0 1 0
+          anchor -0.055 0.095 0.0525
+        }
+        device [
+          RotationalMotor {
+            name "rear_left_motor"
+            maxVelocity 9
+            maxTorque IS driveMaxTorque
+          }
+        ]
+        endPoint Solid {
+          translation -0.055 0.095 0.0525
+          name "rear-left-drive-wheel"
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.03 0.03 0.03
+                roughness 1
+                metalness 0
+              }
+              geometry Cylinder {
+                height 0.05
+                radius 0.0525
+              }
+            }
+          ]
+          boundingObject Cylinder {
+            height 0.05
+            radius 0.0525
+          }
+          physics Physics {
+            density -1
+            mass IS wheelMass
+          }
+        }
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0 1 0
+          anchor -0.055 -0.095 0.0525
+        }
+        device [
+          RotationalMotor {
+            name "rear_right_motor"
+            maxVelocity 9
+            maxTorque IS driveMaxTorque
+          }
+        ]
+        endPoint Solid {
+          translation -0.055 -0.095 0.0525
+          name "rear-right-drive-wheel"
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.03 0.03 0.03
+                roughness 1
+                metalness 0
+              }
+              geometry Cylinder {
+                height 0.05
+                radius 0.0525
+              }
+            }
+          ]
+          boundingObject Cylinder {
+            height 0.05
+            radius 0.0525
+          }
+          physics Physics {
+            density -1
+            mass IS wheelMass
+          }
+        }
+      }
+    ]
+    boundingObject Group {
+      children [
+        Transform {
+          translation 0 0 0.027
+          children [
+            Box {
+              size 0.16 0.14 0.003
+            }
+          ]
+        }
+        Transform {
+          translation 0 0 0.066
+          children [
+            Box {
+              size 0.12 0.10 0.032
+            }
+          ]
+        }
+      ]
+    }
+    physics Physics {
+      density -1
+      mass IS bodyMass
+    }
+  }
+}
