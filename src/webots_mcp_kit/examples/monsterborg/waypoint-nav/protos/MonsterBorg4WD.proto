@@ -148,7 +148,7 @@ PROTO MonsterBorg4WD [
       }
       Transform {
         translation -0.066 0.0505 0.0525
-        rotation 0 0 1 1.5708
+        rotation 1 0 0 1.5708
         children [
           Shape {
             appearance PBRAppearance {
@@ -165,7 +165,7 @@ PROTO MonsterBorg4WD [
       }
       Transform {
         translation 0.066 0.0505 0.0525
-        rotation 0 0 1 1.5708
+        rotation 1 0 0 1.5708
         children [
           Shape {
             appearance PBRAppearance {
@@ -182,7 +182,7 @@ PROTO MonsterBorg4WD [
       }
       Transform {
         translation -0.066 -0.0505 0.0525
-        rotation 0 0 1 1.5708
+        rotation 1 0 0 1.5708
         children [
           Shape {
             appearance PBRAppearance {
@@ -199,7 +199,7 @@ PROTO MonsterBorg4WD [
       }
       Transform {
         translation 0.066 -0.0505 0.0525
-        rotation 0 0 1 1.5708
+        rotation 1 0 0 1.5708
         children [
           Shape {
             appearance PBRAppearance {
@@ -297,32 +297,42 @@ PROTO MonsterBorg4WD [
           translation 0.066 0.099 0.0525
           name "front-left-drive-wheel"
           children [
-            Shape {
-              appearance PBRAppearance {
-                baseColor 0.03 0.03 0.03
-                roughness 1
-                metalness 0
-              }
-              geometry Cylinder {
+            Pose {
+              rotation 1 0 0 1.5708
+              children [
+                Shape {
+                  appearance PBRAppearance {
+                    baseColor 0.03 0.03 0.03
+                    roughness 1
+                    metalness 0
+                  }
+                  geometry Cylinder {
+                    height 0.038
+                    radius 0.0525
+                  }
+                }
+                Shape {
+                  appearance PBRAppearance {
+                    baseColor 0.14 0.14 0.16
+                    roughness 0.8
+                    metalness 0.24
+                  }
+                  geometry Cylinder {
+                    height 0.041
+                    radius 0.019
+                  }
+                }
+              ]
+            }
+          ]
+          boundingObject Pose {
+            rotation 1 0 0 1.5708
+            children [
+              Cylinder {
                 height 0.038
                 radius 0.0525
               }
-            }
-            Shape {
-              appearance PBRAppearance {
-                baseColor 0.14 0.14 0.16
-                roughness 0.8
-                metalness 0.24
-              }
-              geometry Cylinder {
-                height 0.041
-                radius 0.019
-              }
-            }
-          ]
-          boundingObject Cylinder {
-            height 0.038
-            radius 0.0525
+            ]
           }
           physics Physics {
             density -1
@@ -349,32 +359,42 @@ PROTO MonsterBorg4WD [
           translation 0.066 -0.099 0.0525
           name "front-right-drive-wheel"
           children [
-            Shape {
-              appearance PBRAppearance {
-                baseColor 0.03 0.03 0.03
-                roughness 1
-                metalness 0
-              }
-              geometry Cylinder {
+            Pose {
+              rotation 1 0 0 1.5708
+              children [
+                Shape {
+                  appearance PBRAppearance {
+                    baseColor 0.03 0.03 0.03
+                    roughness 1
+                    metalness 0
+                  }
+                  geometry Cylinder {
+                    height 0.038
+                    radius 0.0525
+                  }
+                }
+                Shape {
+                  appearance PBRAppearance {
+                    baseColor 0.14 0.14 0.16
+                    roughness 0.8
+                    metalness 0.24
+                  }
+                  geometry Cylinder {
+                    height 0.041
+                    radius 0.019
+                  }
+                }
+              ]
+            }
+          ]
+          boundingObject Pose {
+            rotation 1 0 0 1.5708
+            children [
+              Cylinder {
                 height 0.038
                 radius 0.0525
               }
-            }
-            Shape {
-              appearance PBRAppearance {
-                baseColor 0.14 0.14 0.16
-                roughness 0.8
-                metalness 0.24
-              }
-              geometry Cylinder {
-                height 0.041
-                radius 0.019
-              }
-            }
-          ]
-          boundingObject Cylinder {
-            height 0.038
-            radius 0.0525
+            ]
           }
           physics Physics {
             density -1
@@ -398,32 +418,42 @@ PROTO MonsterBorg4WD [
           translation -0.066 0.099 0.0525
           name "rear-left-drive-wheel"
           children [
-            Shape {
-              appearance PBRAppearance {
-                baseColor 0.03 0.03 0.03
-                roughness 1
-                metalness 0
-              }
-              geometry Cylinder {
+            Pose {
+              rotation 1 0 0 1.5708
+              children [
+                Shape {
+                  appearance PBRAppearance {
+                    baseColor 0.03 0.03 0.03
+                    roughness 1
+                    metalness 0
+                  }
+                  geometry Cylinder {
+                    height 0.038
+                    radius 0.0525
+                  }
+                }
+                Shape {
+                  appearance PBRAppearance {
+                    baseColor 0.14 0.14 0.16
+                    roughness 0.8
+                    metalness 0.24
+                  }
+                  geometry Cylinder {
+                    height 0.041
+                    radius 0.019
+                  }
+                }
+              ]
+            }
+          ]
+          boundingObject Pose {
+            rotation 1 0 0 1.5708
+            children [
+              Cylinder {
                 height 0.038
                 radius 0.0525
               }
-            }
-            Shape {
-              appearance PBRAppearance {
-                baseColor 0.14 0.14 0.16
-                roughness 0.8
-                metalness 0.24
-              }
-              geometry Cylinder {
-                height 0.041
-                radius 0.019
-              }
-            }
-          ]
-          boundingObject Cylinder {
-            height 0.038
-            radius 0.0525
+            ]
           }
           physics Physics {
             density -1
@@ -447,32 +477,42 @@ PROTO MonsterBorg4WD [
           translation -0.066 -0.099 0.0525
           name "rear-right-drive-wheel"
           children [
-            Shape {
-              appearance PBRAppearance {
-                baseColor 0.03 0.03 0.03
-                roughness 1
-                metalness 0
-              }
-              geometry Cylinder {
+            Pose {
+              rotation 1 0 0 1.5708
+              children [
+                Shape {
+                  appearance PBRAppearance {
+                    baseColor 0.03 0.03 0.03
+                    roughness 1
+                    metalness 0
+                  }
+                  geometry Cylinder {
+                    height 0.038
+                    radius 0.0525
+                  }
+                }
+                Shape {
+                  appearance PBRAppearance {
+                    baseColor 0.14 0.14 0.16
+                    roughness 0.8
+                    metalness 0.24
+                  }
+                  geometry Cylinder {
+                    height 0.041
+                    radius 0.019
+                  }
+                }
+              ]
+            }
+          ]
+          boundingObject Pose {
+            rotation 1 0 0 1.5708
+            children [
+              Cylinder {
                 height 0.038
                 radius 0.0525
               }
-            }
-            Shape {
-              appearance PBRAppearance {
-                baseColor 0.14 0.14 0.16
-                roughness 0.8
-                metalness 0.24
-              }
-              geometry Cylinder {
-                height 0.041
-                radius 0.019
-              }
-            }
-          ]
-          boundingObject Cylinder {
-            height 0.038
-            radius 0.0525
+            ]
           }
           physics Physics {
             density -1

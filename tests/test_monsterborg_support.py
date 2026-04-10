@@ -49,8 +49,8 @@ def test_monsterborg_dimensions_and_proto_geometry_are_aligned() -> None:
     assert dims.track_width_m == 0.198
     assert dims.body_mass_kg == 1.70
     assert dims.wheel_mass_kg == 0.10
-    assert content.count('rotation 0 0 1 1.5708') == 4
-    assert 'rotation 1 0 0 1.5708' not in content
+    assert content.count('rotation 1 0 0 1.5708') >= 8
+    assert 'rotation 0 0 1 1.5708' not in content
     assert content.count("height 0.038") >= 4
     assert 'anchor 0.066 0.099 0.0525' in content
     assert 'anchor -0.066 -0.099 0.0525' in content

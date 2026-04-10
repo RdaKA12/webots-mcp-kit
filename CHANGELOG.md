@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.3
+
+- Corrected the MonsterBorg wheel and motor visual axes so bundled smoke/example worlds now use the intended 90° rotation around the X axis instead of leaving cylinders flat on the floor.
+- Promoted the corrected geometry to `monsterborg-reference-r3`, synchronized all bundled PROTO copies, and kept the MonsterBorg line-follow scaffold/example tuning aligned with the updated chassis.
+
 ## v2.10.2
 
 - Corrected the MonsterBorg reference model geometry with a wider, more stable wheel stance, proper horizontal motor-can orientation, revised body and axle visual layout, and a new `monsterborg-reference-r2` model revision.

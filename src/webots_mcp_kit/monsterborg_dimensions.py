@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 
-MONSTERBORG_MODEL_REVISION = "monsterborg-reference-r2"
+MONSTERBORG_MODEL_REVISION = "monsterborg-reference-r3"
 
 
 @dataclass(frozen=True, slots=True)
