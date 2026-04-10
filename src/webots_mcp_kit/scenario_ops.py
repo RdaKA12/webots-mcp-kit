@@ -16,6 +16,7 @@ from .benchmarks import get_scenario, scenario_registry
 from .controller_scaffold import scaffold_controller
 from .diagnostics import collect_runtime_diagnostics
 from .errors import KitError
+from .monsterborg_dimensions import MONSTERBORG_MODEL_REVISION, monsterborg_dimensions
 from .models import (
     SESSION_EXPORT_ARTIFACT_STANDARD_VERSION,
     SESSION_EXPORT_STANDARD_ARTIFACTS,
@@ -23,6 +24,7 @@ from .models import (
     ProjectManifest,
     ScenarioSpec,
     SessionExport,
+    bundled_runtime_root,
 )
 from .robot_profiles import get_robot_profile, robot_profile_from_template
 from .session_store import SessionStore
@@ -762,6 +764,7 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
     if world_path.exists() and not force:
         raise FileExistsError(f"Refusing to overwrite existing world file: {world_path}")
 
+    copied_runtime_assets = _ensure_robot_runtime_assets(profile.robot_profile, scenario_dir)
     atomic_write_text(world_path, build_world_text(spec), encoding="utf-8")
     controller_language = "cpp" if controller_path.suffix.lower() in {".cpp", ".cc", ".cxx"} else "python"
     scaffold_controller(
@@ -797,10 +800,16 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         "robot_family": profile.robot_family,
         "robot_profile": profile.robot_profile,
         "runtime_target": "interactive-webots",
+        "world_runtime_mode": "toolkit-extern",
+        "standalone_play_supported": False,
+        "recommended_open_mode": "session-start",
+        "robot_model_revision": _robot_model_revision(profile.robot_profile),
+        "robot_dimension_source_summary": _robot_dimension_source_summary(profile.robot_profile),
         "default_camera": spec.controller.get("default_camera", benchmark_profile.default_camera),
         "duration_s": spec.benchmark["duration_s"],
         "threshold_overrides": spec.benchmark.get("threshold_overrides", {}),
         "arena_floor": spec.environment.get("arena", {}).get("floor"),
+        "copied_runtime_assets": copied_runtime_assets,
         "next_step": suggested_benchmark_command,
     }
     atomic_write_text(benchmark_config_path, json.dumps(benchmark_payload, indent=2), encoding="utf-8")
@@ -820,6 +829,11 @@ def build_scenario(path: Path, *, force: bool = False) -> GeneratedScenario:
         robot_family=profile.robot_family,
         robot_profile=profile.robot_profile,
         runtime_target="interactive-webots",
+        world_runtime_mode="toolkit-extern",
+        standalone_play_supported=False,
+        recommended_open_mode="session-start",
+        robot_model_revision=_robot_model_revision(profile.robot_profile),
+        robot_dimension_source_summary=_robot_dimension_source_summary(profile.robot_profile),
         default_camera=str(spec.controller.get("default_camera", benchmark_profile.default_camera)),
         suggested_session_command=suggested_session_command,
         suggested_benchmark_command=suggested_benchmark_command,
@@ -1079,6 +1093,8 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
             "goal_alignment_readiness": {"ready": False, "issues": [issue.code for issue in report.issues]},
             "issues": [issue.to_dict() for issue in report.issues],
             "support_tier": "experimental-foundation",
+            "robot_model_revision": None,
+            "robot_dimension_source_summary": {},
             "next_step": "Create a spec with `webots-kit scenario init <path> --template <template>`.",
         }
     spec = load_scenario_spec(spec_path)
@@ -1203,6 +1219,8 @@ def scenario_doctor(path: Path) -> dict[str, Any]:
         "goal_alignment_readiness": goal_alignment_readiness,
         "issues": [issue.to_dict() for issue in report.issues],
         "support_tier": "experimental-foundation",
+        "robot_model_revision": _robot_model_revision(robot_profile),
+        "robot_dimension_source_summary": _robot_dimension_source_summary(robot_profile),
         "next_step": next_step,
     }
 
@@ -1239,6 +1257,8 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "scenario": suggested_benchmark_name,
         "robot_family": profile.robot_family,
         "robot_profile": profile.robot_profile,
+        "robot_model_revision": _robot_model_revision(profile.robot_profile),
+        "robot_dimension_source_summary": _robot_dimension_source_summary(profile.robot_profile),
         "default_camera": scenario_def.default_camera,
         "expected_sensor_keys": list(scenario_def.required_sensor_keys),
         "expected_metric_keys": list(scenario_def.required_metric_keys),
@@ -1272,6 +1292,8 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "discovered_robot_def": discovered_robot_def,
         "discovered_robot_family": profile.robot_family,
         "suggested_robot_profile": profile.robot_profile,
+        "robot_model_revision": _robot_model_revision(profile.robot_profile),
+        "robot_dimension_source_summary": _robot_dimension_source_summary(profile.robot_profile),
         "runtime_target": "interactive-webots",
         "physical_adapter_supported": profile.robot_profile == "monsterborg-4wd",
         "discovered_devices": discovered_devices,
@@ -1300,6 +1322,8 @@ def import_project(*, world: Path, controller: Path, project_root: Path | None =
         "suggested_benchmark_name": suggested_benchmark_name,
         "discovered_robot_family": profile.robot_family,
         "suggested_robot_profile": profile.robot_profile,
+        "robot_model_revision": _robot_model_revision(profile.robot_profile),
+        "robot_dimension_source_summary": _robot_dimension_source_summary(profile.robot_profile),
         "runtime_target": "interactive-webots",
         "physical_adapter_supported": profile.robot_profile == "monsterborg-4wd",
         "discovered_robot_name": discovered_robot_name,
@@ -1597,7 +1621,7 @@ def format_session_replay(payload: dict[str, Any]) -> str:
 def _build_line_follow_world(spec: ScenarioSpec) -> str:
     arena_dimensions = spec.environment["arena"]["dimensions"]
     floor_style = str(spec.environment.get("arena", {}).get("floor", "plain"))
-    spawn = spec.layout["spawn"]
+    spawn = _resolved_line_follow_spawn(spec)
     line_track = spec.layout["line_track"]
     line_color = _line_track_style(line_track)
     track_variant = _str_field(line_track, "variant") or "baseline"
@@ -1626,6 +1650,7 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
   locked TRUE
 }}"""
             )
+    segment_nodes.extend(_line_track_joint_blocks(line_track, line_color))
     for index, wall in enumerate(spec.layout.get("walls", []), start=1):
         segment_nodes.append(_wall_block(index, wall))
     for index, landmark in enumerate(spec.layout.get("landmarks", []), start=1):
@@ -1640,10 +1665,12 @@ def _build_line_follow_world(spec: ScenarioSpec) -> str:
             "Generated by webots-kit scenario build.",
             "Template-driven line-follow scenario.",
             f"Track variant: {track_variant}",
+            "Run with webots-kit session start; generated worlds use toolkit-managed external controllers.",
         ],
         arena_size=arena_dimensions,
         floor_style=floor_style,
         body="\n".join(segment_nodes),
+        robot_profile=str(spec.robot["template"]),
         robot_block=_robot_block(
             robot_profile=str(spec.robot["template"]),
             robot_name=str(spec.robot["name"]),
@@ -1681,11 +1708,12 @@ def _build_arena_world(spec: ScenarioSpec) -> str:
         arena_size=arena_dimensions,
         floor_style=floor_style,
         body="\n".join(body_nodes),
+        robot_profile=str(spec.robot["template"]),
         robot_block=_robot_block(robot_profile=str(spec.robot["template"]), robot_name=str(spec.robot["name"]), spawn=spawn, camera_mode=False),
     )
 
 
-def _world_shell(*, title: str, info_lines: list[str], arena_size: list[float], floor_style: str, body: str, robot_block: str) -> str:
+def _world_shell(*, title: str, info_lines: list[str], arena_size: list[float], floor_style: str, body: str, robot_profile: str, robot_block: str) -> str:
     info = "\n".join(f'    "{line}"' for line in info_lines)
     supervisor_y = -max(float(arena_size[1]) / 2 - 0.05, 0.95)
     robot_name = robot_block.split('name "')[1].split('"', 1)[0]
@@ -1695,7 +1723,9 @@ def _world_shell(*, title: str, info_lines: list[str], arena_size: list[float], 
         'EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"',
         'EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"',
     ]
-    if "E-puck" in robot_block:
+    if robot_profile == "monsterborg-4wd":
+        externproto_lines.append('EXTERNPROTO "../protos/MonsterBorg4WD.proto"')
+    elif "E-puck" in robot_block:
         externproto_lines.append('EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/e-puck/protos/E-puck.proto"')
     return f"""#VRML_SIM R2025a utf8
 
@@ -1819,373 +1849,13 @@ def _robot_block(
     translation = spawn["translation"]
     rotation = float(spawn.get("rotation_z", 0.0))
     if robot_profile == "monsterborg-4wd":
-        camera_width = int(line_track.get("camera_width", 48)) if isinstance(line_track, dict) else 48
-        camera_height = int(line_track.get("camera_height", 8)) if isinstance(line_track, dict) else 8
-        camera_field_of_view = float(line_track.get("camera_field_of_view", 1.0)) if isinstance(line_track, dict) else 1.0
-        drive_max_torque = float(line_track.get("drive_max_torque", 24.0)) if isinstance(line_track, dict) else 24.0
-        robot_mass = float(line_track.get("robot_mass", 1.6)) if isinstance(line_track, dict) else 1.6
-        camera_block = ""
-        if camera_mode:
-            camera_block = f"""
-    Transform {{
-      translation 0.16 0 0.14
-      rotation 0 1 0 0.62
-      children [
-        Camera {{
-          name "front_camera"
-          width {camera_width}
-          height {camera_height}
-          fieldOfView {_fmt(camera_field_of_view)}
-        }}
-      ]
-    }}"""
-        else:
-            camera_block = f"""
-    Transform {{
-      translation 0.16 0 0.14
-      rotation 0 1 0 0.62
-      children [
-        Camera {{
-          name "front_camera"
-          width {max(camera_width, 64)}
-          height {max(camera_height, 12)}
-          fieldOfView {_fmt(camera_field_of_view)}
-        }}
-      ]
-    }}"""
-        return f"""DEF MONSTERBORG Robot {{
-  translation {_fmt(translation[0])} {_fmt(translation[1])} {_fmt(translation[2])}
-  rotation 0 0 1 {_fmt(rotation)}
-  name "{robot_name}"
-  controller "<extern>"
-  children [
-    Transform {{
-      translation 0 0 0.11
-      children [
-        Shape {{
-          appearance PBRAppearance {{
-            baseColor 0.7 0.72 0.76
-            roughness 0.9
-            metalness 0.05
-          }}
-          geometry Box {{
-            size 0.24 0.18 0.04
-          }}
-        }}
-      ]
-    }}
-{camera_block}
-    Transform {{
-      translation 0.17 0 0.09
-      children [
-        DistanceSensor {{
-          name "front_range"
-          lookupTable [
-            0 1000 0
-            0.5 600 0
-            1 200 0
-          ]
-          type "infra-red"
-        }}
-      ]
-    }}
-    InertialUnit {{
-      name "imu"
-    }}
-    HingeJoint {{
-      jointParameters HingeJointParameters {{
-        axis 0 1 0
-        anchor 0 0.11 0.055
-      }}
-      device [
-        RotationalMotor {{
-          name "front_left_motor"
-          maxVelocity 9
-          maxTorque {_fmt(drive_max_torque)}
-        }}
-        PositionSensor {{
-          name "left_encoder"
-        }}
-      ]
-      endPoint Solid {{
-        translation 0 0.11 0.055
-        name "front-left-drive-wheel"
-        children [
-          Pose {{
-            rotation -1 0 0 1.5708
-            children [
-              Shape {{
-                appearance PBRAppearance {{
-                  baseColor 0.05 0.05 0.05
-                  roughness 1
-                  metalness 0
-                }}
-                geometry Cylinder {{
-                  radius 0.055
-                  height 0.038
-                }}
-              }}
-            ]
-          }}
-        ]
-        boundingObject Pose {{
-          rotation -1 0 0 1.5708
-          children [
-            Cylinder {{
-              radius 0.055
-              height 0.038
-            }}
-          ]
-        }}
-        physics Physics {{
-          density -1
-          mass 0.12
-        }}
-      }}
-    }}
-    HingeJoint {{
-      jointParameters HingeJointParameters {{
-        axis 0 1 0
-        anchor 0 -0.11 0.055
-      }}
-      device [
-        RotationalMotor {{
-          name "front_right_motor"
-          maxVelocity 9
-          maxTorque {_fmt(drive_max_torque)}
-        }}
-        PositionSensor {{
-          name "right_encoder"
-        }}
-      ]
-      endPoint Solid {{
-        translation 0 -0.11 0.055
-        name "front-right-drive-wheel"
-        children [
-          Pose {{
-            rotation -1 0 0 1.5708
-            children [
-              Shape {{
-                appearance PBRAppearance {{
-                  baseColor 0.05 0.05 0.05
-                  roughness 1
-                  metalness 0
-                }}
-                geometry Cylinder {{
-                  radius 0.055
-                  height 0.038
-                }}
-              }}
-            ]
-          }}
-        ]
-        boundingObject Pose {{
-          rotation -1 0 0 1.5708
-          children [
-            Cylinder {{
-              radius 0.055
-              height 0.038
-            }}
-          ]
-        }}
-        physics Physics {{
-          density -1
-          mass 0.12
-        }}
-      }}
-    }}
-    Transform {{
-      translation 0.1 0.11 0.055
-      children [
-        Shape {{
-          appearance PBRAppearance {{
-            baseColor 0.05 0.05 0.05
-            roughness 1
-            metalness 0
-          }}
-          geometry Cylinder {{
-            radius 0.055
-            height 0.038
-          }}
-        }}
-      ]
-    }}
-    Transform {{
-      translation -0.1 0.11 0.055
-      children [
-        Shape {{
-          appearance PBRAppearance {{
-            baseColor 0.05 0.05 0.05
-            roughness 1
-            metalness 0
-          }}
-          geometry Cylinder {{
-            radius 0.055
-            height 0.038
-          }}
-        }}
-      ]
-    }}
-    Transform {{
-      translation 0.1 -0.11 0.055
-      children [
-        Shape {{
-          appearance PBRAppearance {{
-            baseColor 0.05 0.05 0.05
-            roughness 1
-            metalness 0
-          }}
-          geometry Cylinder {{
-            radius 0.055
-            height 0.038
-          }}
-        }}
-      ]
-    }}
-    Transform {{
-      translation -0.1 -0.11 0.055
-      children [
-        Shape {{
-          appearance PBRAppearance {{
-            baseColor 0.05 0.05 0.05
-            roughness 1
-            metalness 0
-          }}
-          geometry Cylinder {{
-            radius 0.055
-            height 0.038
-          }}
-        }}
-      ]
-    }}
-    HingeJoint {{
-      jointParameters HingeJointParameters {{
-        axis 0 1 0
-        anchor -0.06 0.04 0.18
-      }}
-      device [
-        RotationalMotor {{
-          name "rear_left_motor"
-          maxVelocity 9
-        }}
-      ]
-      endPoint Solid {{
-        translation -0.06 0.04 0.18
-        name "rear-left-actuator"
-        children [
-          Shape {{
-            appearance PBRAppearance {{
-              baseColor 0.2 0.2 0.2
-              transparency 1
-            }}
-            geometry Sphere {{
-              radius 0.01
-            }}
-          }}
-        ]
-        boundingObject Sphere {{
-          radius 0.01
-        }}
-        physics Physics {{
-          density -1
-          mass 0.001
-        }}
-      }}
-    }}
-    HingeJoint {{
-      jointParameters HingeJointParameters {{
-        axis 0 1 0
-        anchor -0.06 -0.04 0.18
-      }}
-      device [
-        RotationalMotor {{
-          name "rear_right_motor"
-          maxVelocity 9
-        }}
-      ]
-      endPoint Solid {{
-        translation -0.06 -0.04 0.18
-        name "rear-right-actuator"
-        children [
-          Shape {{
-            appearance PBRAppearance {{
-              baseColor 0.2 0.2 0.2
-              transparency 1
-            }}
-            geometry Sphere {{
-              radius 0.01
-            }}
-          }}
-        ]
-        boundingObject Sphere {{
-          radius 0.01
-        }}
-        physics Physics {{
-          density -1
-          mass 0.001
-        }}
-      }}
-    }}
-    Solid {{
-      translation 0.13 0 0.02
-      name "front-caster"
-      children [
-        Shape {{
-          appearance PBRAppearance {{
-            baseColor 0.15 0.15 0.15
-            roughness 1
-            metalness 0
-          }}
-          geometry Sphere {{
-            radius 0.02
-          }}
-        }}
-      ]
-      boundingObject Sphere {{
-        radius 0.02
-      }}
-      physics Physics {{
-        density -1
-        mass 0.01
-      }}
-    }}
-    Solid {{
-      translation -0.13 0 0.02
-      name "rear-caster"
-      children [
-        Shape {{
-          appearance PBRAppearance {{
-            baseColor 0.15 0.15 0.15
-            roughness 1
-            metalness 0
-          }}
-          geometry Sphere {{
-            radius 0.02
-          }}
-        }}
-      ]
-      boundingObject Sphere {{
-        radius 0.02
-      }}
-      physics Physics {{
-        density -1
-        mass 0.01
-      }}
-    }}
-  ]
-  boundingObject Transform {{
-    translation 0 0 0.11
-    children [
-      Box {{
-        size 0.24 0.18 0.04
-      }}
-    ]
-  }}
-  physics Physics {{
-    density -1
-    mass {_fmt(robot_mass)}
-  }}
-}}"""
+        return _monsterborg_proto_instance(
+            robot_name=robot_name,
+            translation=translation,
+            rotation=rotation,
+            camera_mode=camera_mode,
+            line_track=line_track,
+        )
     camera_settings = ""
     if camera_mode:
         camera_settings = "\n  camera_width 40\n  camera_height 1\n  camera_rotation 0 1 0 0.47"
@@ -2373,6 +2043,43 @@ def _line_track_segments(points: list[list[float]]) -> list[dict[str, float]]:
     return segments
 
 
+def _line_track_joint_blocks(line_track: dict[str, Any], line_color: tuple[float, float, float]) -> list[str]:
+    width = float(line_track.get("width", 0.0)) if isinstance(line_track.get("width"), (int, float)) else 0.0
+    if width <= 0.0:
+        return []
+    joint_size = max(width + 0.015, width * 1.15)
+    blocks: list[str] = []
+    seen: set[tuple[float, float]] = set()
+    joint_index = 0
+    for polyline in _line_track_polylines(line_track):
+        for point in polyline:
+            key = (round(float(point[0]), 6), round(float(point[1]), 6))
+            if key in seen:
+                continue
+            seen.add(key)
+            joint_index += 1
+            blocks.append(
+                f"""Solid {{
+  translation {_fmt(point[0])} {_fmt(point[1])} 0.001
+  children [
+    Shape {{
+      appearance PBRAppearance {{
+        baseColor {_fmt(line_color[0])} {_fmt(line_color[1])} {_fmt(line_color[2])}
+        roughness 1
+        metalness 0
+      }}
+      geometry Box {{
+        size {_fmt(joint_size)} {_fmt(joint_size)} 0.002
+      }}
+    }}
+  ]
+  name "line-joint-{joint_index}"
+  locked TRUE
+}}"""
+            )
+    return blocks
+
+
 def _line_track_polylines(line_track: dict[str, Any]) -> list[list[list[float]]]:
     segments = line_track.get("segments")
     if isinstance(segments, list):
@@ -2392,11 +2099,98 @@ def _all_line_track_points(line_track: dict[str, Any]) -> list[list[float]]:
     return points
 
 
+def _resolved_line_follow_spawn(spec: ScenarioSpec) -> dict[str, Any]:
+    spawn = dict(spec.layout.get("spawn", {}))
+    translation = spawn.get("translation")
+    if not _is_numeric_list(translation, 3):
+        return spec.layout["spawn"]
+    line_track = spec.layout.get("line_track") if isinstance(spec.layout.get("line_track"), dict) else {}
+    polylines = _line_track_polylines(line_track)
+    if not polylines or len(polylines[0]) < 2:
+        return spec.layout["spawn"]
+    start = [float(polylines[0][0][0]), float(polylines[0][0][1])]
+    next_point = [float(polylines[0][1][0]), float(polylines[0][1][1])]
+    dx = next_point[0] - start[0]
+    dy = next_point[1] - start[1]
+    segment_length = math.hypot(dx, dy)
+    if segment_length <= 1e-9:
+        return spec.layout["spawn"]
+    spawn_xy = [float(translation[0]), float(translation[1])]
+    distance_to_start = _distance_2d(spawn_xy, start)
+    profile = get_robot_profile(robot_profile_from_template(_str_field(spec.robot, "template")))
+    width = float(line_track.get("width", 0.0)) if isinstance(line_track.get("width"), (int, float)) else 0.0
+    preferred_offset = min(segment_length * 0.4, max(profile.footprint_radius * 1.5, width * 0.9))
+    if distance_to_start <= preferred_offset * 0.8:
+        spawn["translation"] = [
+            round(start[0] + dx / segment_length * preferred_offset, 6),
+            round(start[1] + dy / segment_length * preferred_offset, 6),
+            float(translation[2]),
+        ]
+    return spawn
+
+
 def _line_track_style(line_track: dict[str, Any]) -> tuple[float, float, float]:
     color = line_track.get("color")
     if _is_numeric_list(color, 3):
         return float(color[0]), float(color[1]), float(color[2])
     return tuple(DEFAULT_LINE_TRACK_COLOR)
+
+
+def _robot_model_revision(robot_profile: str) -> str | None:
+    if robot_profile == "monsterborg-4wd":
+        return MONSTERBORG_MODEL_REVISION
+    return None
+
+
+def _robot_dimension_source_summary(robot_profile: str) -> dict[str, Any]:
+    if robot_profile == "monsterborg-4wd":
+        return monsterborg_dimensions().dimension_source_summary
+    return {}
+
+
+def _ensure_robot_runtime_assets(robot_profile: str, scenario_dir: Path) -> list[str]:
+    if robot_profile != "monsterborg-4wd":
+        return []
+    runtime_root = bundled_runtime_root()
+    source = runtime_root / "protos" / "MonsterBorg4WD.proto"
+    if not source.exists():
+        raise FileNotFoundError(f"MonsterBorg PROTO asset is missing: {source}")
+    protos_dir = scenario_dir / "protos"
+    protos_dir.mkdir(parents=True, exist_ok=True)
+    destination = protos_dir / source.name
+    shutil.copy2(source, destination)
+    return [str(destination)]
+
+
+def _monsterborg_proto_instance(
+    *,
+    robot_name: str,
+    translation: list[float],
+    rotation: float,
+    camera_mode: bool,
+    line_track: dict[str, Any] | None = None,
+) -> str:
+    dims = monsterborg_dimensions()
+    camera_width = int(line_track.get("camera_width", 48)) if isinstance(line_track, dict) else 48
+    camera_height = int(line_track.get("camera_height", 8)) if isinstance(line_track, dict) else 8
+    camera_field_of_view = float(line_track.get("camera_field_of_view", 1.0)) if isinstance(line_track, dict) else 1.0
+    drive_max_torque = float(line_track.get("drive_max_torque", 24.0)) if isinstance(line_track, dict) else 24.0
+    robot_mass = float(line_track.get("robot_mass", dims.body_mass_kg)) if isinstance(line_track, dict) else dims.body_mass_kg
+    if not camera_mode:
+        camera_width = max(camera_width, 64)
+        camera_height = max(camera_height, 12)
+    return f"""DEF MONSTERBORG MonsterBorg4WD {{
+  translation {_fmt(translation[0])} {_fmt(translation[1])} {_fmt(translation[2])}
+  rotation 0 0 1 {_fmt(rotation)}
+  name "{robot_name}"
+  controller "<extern>"
+  driveMaxTorque {_fmt(drive_max_torque)}
+  bodyMass {_fmt(robot_mass)}
+  wheelMass {_fmt(dims.wheel_mass_kg)}
+  cameraWidth {camera_width}
+  cameraHeight {camera_height}
+  cameraFieldOfView {_fmt(camera_field_of_view)}
+}}"""
 
 
 def _default_spec(template: str, scenario_name: str, project_name: str) -> ScenarioSpec:
@@ -2989,8 +2783,8 @@ def _benchmark_mapping(spec: ScenarioSpec, benchmark_name: str, scenario_def: An
 
 def _discover_world_robot_identity(world_path: Path, benchmark_name: str, *, robot_profile: str = "e-puck") -> tuple[str, str]:
     content = world_path.read_text(encoding="utf-8", errors="replace")
-    if "front_left_motor" in content and "front_camera" in content:
-        def_match = re.search(r"DEF\s+([A-Za-z0-9_]+)\s+Robot\s*{", content)
+    if "front_left_motor" in content or "MonsterBorg4WD" in content or "monsterborg" in content.lower():
+        def_match = re.search(r"DEF\s+([A-Za-z0-9_]+)\s+(?:Robot|MonsterBorg4WD)\s*{", content)
         robot_def = def_match.group(1) if def_match else _default_robot_def("monsterborg-4wd")
         name_match = re.search(r'name\s+"([^"]+)"', content[def_match.end() : def_match.end() + 600] if def_match else content)
         if name_match:
@@ -3163,7 +2957,7 @@ def _default_template_for_kind(kind: str, *, robot_profile: str = "e-puck") -> s
 
 def _discover_world_robot_profile(world_path: Path) -> str:
     content = world_path.read_text(encoding="utf-8", errors="replace").lower()
-    if "front_left_motor" in content or "monsterborg" in content or "front_camera" in content:
+    if "front_left_motor" in content or "monsterborg" in content or "front_camera" in content or "monsterborg4wd" in content:
         return "monsterborg-4wd"
     return "e-puck"
 

@@ -191,6 +191,11 @@ class GeneratedScenario:
     robot_family: str = "e-puck"
     robot_profile: str = "e-puck"
     runtime_target: str = "interactive-webots"
+    world_runtime_mode: str = "toolkit-extern"
+    standalone_play_supported: bool = False
+    recommended_open_mode: str = "session-start"
+    robot_model_revision: str | None = None
+    robot_dimension_source_summary: dict[str, Any] = field(default_factory=dict)
     world_inventory_summary: dict[str, Any] = field(default_factory=dict)
     world_authoring_context: dict[str, Any] = field(default_factory=dict)
     benchmark_mapping: dict[str, Any] = field(default_factory=dict)
@@ -238,3 +243,18 @@ def bundled_example_root() -> Path:
     if repo_root.exists():
         return repo_root
     return package_example_root()
+
+
+def repo_runtime_root() -> Path:
+    return Path(__file__).resolve().parents[1] / "webots_mcp_kit" / "runtime"
+
+
+def package_runtime_root() -> Path:
+    return Path(__file__).resolve().parent / "runtime"
+
+
+def bundled_runtime_root() -> Path:
+    repo_root = repo_runtime_root()
+    if repo_root.exists():
+        return repo_root
+    return package_runtime_root()

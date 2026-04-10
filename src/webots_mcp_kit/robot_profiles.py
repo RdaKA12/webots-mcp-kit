@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .monsterborg_dimensions import monsterborg_dimensions
 from .models import bundled_example_root
 
 
@@ -28,6 +29,7 @@ def _examples_root() -> Path:
 
 
 def robot_profile_registry() -> dict[str, RobotProfile]:
+    monsterborg = monsterborg_dimensions()
     return {
         "e-puck": RobotProfile(
             robot_family="e-puck",
@@ -83,13 +85,13 @@ def robot_profile_registry() -> dict[str, RobotProfile]:
                 "waypoint-nav": "monsterborg-waypoint",
                 "obstacle-avoidance": "monsterborg-obstacle-course",
             },
-            footprint_radius=0.135,
+            footprint_radius=monsterborg.footprint_radius_m,
             supported_tasks=("line-follow", "waypoint-nav", "obstacle-avoidance"),
-            world_proto="inline-monsterborg-4wd",
+            world_proto="MonsterBorg4WD.proto",
             import_hints={
-                "node_types": ["Robot"],
+                "node_types": ["Robot", "MonsterBorg4WD"],
                 "name_prefixes": ["monsterborg-"],
-                "device_names": ["front_left_motor", "front_camera", "front_range", "imu"],
+                "device_names": ["front_left_motor", "rear_left_motor", "front_camera", "front_range", "imu"],
             },
             runtime_targets=("interactive-webots", "monsterborg-physical"),
         ),

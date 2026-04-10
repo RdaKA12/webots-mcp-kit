@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from webots_mcp_kit.controller_validation import validate_controller
+from webots_mcp_kit.monsterborg_dimensions import MONSTERBORG_MODEL_REVISION
 from webots_mcp_kit.models import SESSION_EXPORT_ARTIFACT_STANDARD_VERSION, SESSION_EXPORT_STANDARD_ARTIFACTS, SessionExport, SessionManifest
 from webots_mcp_kit.scenario_ops import (
     build_scenario,
@@ -18,6 +19,7 @@ from webots_mcp_kit.scenario_ops import (
     validate_scenario,
 )
 from webots_mcp_kit.utils import utc_now_iso
+from webots_mcp_kit.world_ops import inspect_world
 
 
 def test_project_init_creates_manifest(tmp_path: Path) -> None:
@@ -65,7 +67,47 @@ def test_line_track_build_writes_track_segments(tmp_path: Path) -> None:
     generated = build_scenario(scenario_dir / "webots-kit.scenario.json")
     world_text = Path(generated.world_path).read_text(encoding="utf-8")
     assert "line-segment-1" in world_text
+    assert "line-joint-1" in world_text
     assert "floor-style-light" in world_text
+    assert "Run with webots-kit session start" in world_text
+
+
+def test_line_track_build_nudges_spawn_off_first_vertex_and_marks_runtime_mode(tmp_path: Path) -> None:
+    project_root = tmp_path / "monsterborg-line-project"
+    init_project(project_root)
+    scenario_dir = project_root / "scenarios" / "demo-line"
+    init_scenario(scenario_dir, template="monsterborg-line-track")
+    spec_path = scenario_dir / "webots-kit.scenario.json"
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    payload["layout"]["spawn"]["translation"] = [-1.25, 0.05, 0.0]
+    payload["layout"]["spawn"]["rotation_z"] = 0.0
+    spec_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    generated = build_scenario(spec_path, force=True)
+    inspection = inspect_world(Path(generated.world_path))
+    world_text = Path(generated.world_path).read_text(encoding="utf-8")
+    metadata = json.loads((scenario_dir / "webots-kit.generated.json").read_text(encoding="utf-8"))
+    proto_path = scenario_dir / "protos" / "MonsterBorg4WD.proto"
+    proto_text = proto_path.read_text(encoding="utf-8")
+
+    assert inspection["target_robot"]["translation"] != [-1.25, 0.05, 0.0]
+    assert proto_path.exists()
+    assert 'EXTERNPROTO "../protos/MonsterBorg4WD.proto"' in world_text
+    assert "DEF MONSTERBORG MonsterBorg4WD {" in world_text
+    assert "rear-left-drive-wheel" in proto_text
+    assert "rear-right-drive-wheel" in proto_text
+    assert "rear-left-actuator" not in proto_text
+    assert "rear-right-actuator" not in proto_text
+    assert generated.world_runtime_mode == "toolkit-extern"
+    assert generated.standalone_play_supported is False
+    assert generated.recommended_open_mode == "session-start"
+    assert generated.robot_model_revision == MONSTERBORG_MODEL_REVISION
+    assert generated.robot_dimension_source_summary["primary_sources"]
+    assert metadata["world_runtime_mode"] == "toolkit-extern"
+    assert metadata["standalone_play_supported"] is False
+    assert metadata["recommended_open_mode"] == "session-start"
+    assert metadata["robot_model_revision"] == MONSTERBORG_MODEL_REVISION
+    assert metadata["robot_dimension_source_summary"]["primary_sources"]
 
 
 def test_rich_authoring_fields_build_into_world_and_metadata(tmp_path: Path) -> None:
@@ -326,6 +368,26 @@ def test_project_import_creates_metadata(tmp_path: Path) -> None:
     assert payload["next_commands"]
     assert payload["team_handoff_summary"].startswith("Imported sample.wbt as imported-sample")
     assert payload["support_tier"] == "experimental-foundation"
+
+
+def test_project_import_recognizes_monsterborg_proto_instance(tmp_path: Path) -> None:
+    world = tmp_path / "monster.wbt"
+    controller = tmp_path / "agent.py"
+    world.write_text(
+        '#VRML_SIM R2025a utf8\nEXTERNPROTO "../protos/MonsterBorg4WD.proto"\nDEF MONSTERBORG MonsterBorg4WD {\n  name "monsterborg-test"\n  controller "<extern>"\n}\n',
+        encoding="utf-8",
+    )
+    controller.write_text(
+        'from controller import Robot\nrobot = Robot()\nfront_left = robot.getDevice("front_left_motor")\nfront_camera = robot.getDevice("front_camera")\n',
+        encoding="utf-8",
+    )
+
+    payload = import_project(world=world, controller=controller, project_root=tmp_path / "monsterborg-import")
+
+    assert payload["suggested_robot_profile"] == "monsterborg-4wd"
+    assert payload["discovered_robot_def"] == "MONSTERBORG"
+    assert payload["discovered_robot_name"] == "monsterborg-test"
+    assert payload["robot_model_revision"] == MONSTERBORG_MODEL_REVISION
 
 
 def test_replay_session_reads_canonical_export_manifest(tmp_path: Path) -> None:

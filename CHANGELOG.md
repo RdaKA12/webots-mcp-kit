@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.10.0
+
+- Replaced the inline MonsterBorg generator block with a shared `MonsterBorg4WD.proto` reference model built around official wheel, motor, and chassis dimensions plus Formula Pi camera geometry and the repo-local visual reference world.
+- Updated generated MonsterBorg scenarios to copy the canonical PROTO into each scenario, emit `robot_model_revision` and `robot_dimension_source_summary` metadata, and keep line-follow spawn offsets off the first track vertex.
+- Fixed the default MonsterBorg drive geometry so all four wheels are real wheel nodes with correct orientation instead of rear actuator placeholders, and expanded scenario/import tests to cover the new model surface.
+
 ## v2.9.0
 
 - Hardened MonsterBorg `obstacle-avoidance` and `waypoint-nav` with stateful reference controllers, generated task variants, and task-aware controller/scenario readiness outputs alongside the existing line-follow lane.
