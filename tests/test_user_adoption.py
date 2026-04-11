@@ -18,6 +18,9 @@ def test_install_and_verify_scripts_exist() -> None:
     verify_script = _read("scripts/verify_install.ps1")
     assert "GITHUB_ACTIONS" in verify_script
     assert "GitHub-hosted Windows runners are not a supported interactive Webots runtime." in verify_script
+    assert "WEBOTS_KIT_PYTHON" in verify_script
+    assert "pythonLocation" in verify_script
+    assert "PIPX_BIN_DIR" in verify_script
 
 
 def test_readme_prefers_pipx_and_lists_support_boundaries() -> None:

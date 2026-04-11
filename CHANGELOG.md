@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.6
+
+- Hardened the public Windows install verification scripts so they now prefer the `setup-python` interpreter, an explicit `WEBOTS_KIT_PYTHON`, the matching `Scripts\webots-kit(.exe)` path, and the pipx bin directory before failing command resolution.
+- Pinned the release and Windows CI install-smoke jobs to export `WEBOTS_KIT_PYTHON`, which keeps TestPyPI and PyPI smoke checks on the same interpreter that performed the install instead of relying on ambient shell PATH state.
+
 ## v2.10.5
 
 - Re-layered the MonsterBorg chassis visuals so the 3 mm top plate is again the upper deck, the inner body sits below it, and the front camera mast/bridge reads as a connected mount instead of a floating bracket.

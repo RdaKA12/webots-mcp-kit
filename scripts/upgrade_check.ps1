@@ -29,6 +29,81 @@ function Get-CommandTail {
     return $CommandParts[1..($CommandParts.Length - 1)]
 }
 
+function Resolve-PythonCommand {
+    if ($env:WEBOTS_KIT_PYTHON) {
+        $explicitPython = $env:WEBOTS_KIT_PYTHON.Trim()
+        if ($explicitPython -and (Test-Path -LiteralPath $explicitPython)) {
+            return @($explicitPython)
+        }
+    }
+
+    if ($env:pythonLocation) {
+        $actionsPython = Join-Path $env:pythonLocation "python.exe"
+        if (Test-Path -LiteralPath $actionsPython) {
+            return @($actionsPython)
+        }
+    }
+
+    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+    if ($pythonCommand) {
+        return @($pythonCommand.Source)
+    }
+
+    $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+    if ($pyLauncher) {
+        return @($pyLauncher.Source, "-3")
+    }
+
+    throw "Python and webots-kit are not available on PATH."
+}
+
+function Get-WebotsKitCommandCandidates {
+    param([string[]]$PythonCommand)
+
+    $candidates = [System.Collections.Generic.List[string]]::new()
+
+    $resolvedPython = $PythonCommand[0]
+    if ($resolvedPython) {
+        $pythonDir = Split-Path -Parent $resolvedPython
+        foreach ($relative in @("webots-kit.exe", "webots-kit", "..\Scripts\webots-kit.exe", "..\Scripts\webots-kit")) {
+            $candidate = [System.IO.Path]::GetFullPath((Join-Path $pythonDir $relative))
+            if ((Test-Path -LiteralPath $candidate) -and -not $candidates.Contains($candidate)) {
+                [void]$candidates.Add($candidate)
+            }
+        }
+    }
+
+    foreach ($binDir in @($env:PIPX_BIN_DIR, (Join-Path $HOME ".local\bin"), (Join-Path $HOME ".local\Bin"))) {
+        if (-not $binDir) {
+            continue
+        }
+        foreach ($leaf in @("webots-kit.exe", "webots-kit")) {
+            $candidate = Join-Path $binDir $leaf
+            if ((Test-Path -LiteralPath $candidate) -and -not $candidates.Contains($candidate)) {
+                [void]$candidates.Add($candidate)
+            }
+        }
+    }
+
+    try {
+        $pipxBinDir = & $resolvedPython @(Get-CommandTail -CommandParts $PythonCommand) -m pipx environment --value PIPX_BIN_DIR 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $pipxBin = (($pipxBinDir | Where-Object { $_ -and $_.Trim() }) | Select-Object -Last 1).Trim()
+            if ($pipxBin) {
+                foreach ($leaf in @("webots-kit.exe", "webots-kit")) {
+                    $candidate = Join-Path $pipxBin $leaf
+                    if ((Test-Path -LiteralPath $candidate) -and -not $candidates.Contains($candidate)) {
+                        [void]$candidates.Add($candidate)
+                    }
+                }
+            }
+        }
+    } catch {
+    }
+
+    return $candidates
+}
+
 function Emit-Summary {
     param([hashtable]$Summary)
 
@@ -85,14 +160,14 @@ function Resolve-WebotsKitCommand {
         return @($command.Source)
     }
 
-    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $pythonCommand) {
-        throw "Python and webots-kit are not available on PATH."
+    $pythonCommand = Resolve-PythonCommand
+    foreach ($candidate in Get-WebotsKitCommandCandidates -PythonCommand $pythonCommand) {
+        return @($candidate)
     }
 
-    & $pythonCommand.Source -m webots_mcp_kit.cli --version *> $null
+    & $pythonCommand[0] @(Get-CommandTail -CommandParts $pythonCommand) -m webots_mcp_kit.cli --version *> $null
     if ($LASTEXITCODE -eq 0) {
-        return @($pythonCommand.Source, "-m", "webots_mcp_kit.cli")
+        return @($pythonCommand + @("-m", "webots_mcp_kit.cli"))
     }
 
     throw "webots-kit is not available in this shell."

@@ -129,6 +129,15 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Pin smoke Python
+        shell: powershell
+        run: |
+          $pythonExe = Join-Path $env:pythonLocation 'python.exe'
+          if (-not (Test-Path -LiteralPath $pythonExe)) {
+            throw "setup-python python.exe not found at $pythonExe"
+          }
+          "WEBOTS_KIT_PYTHON=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Install Webots
         shell: powershell
         run: |
@@ -196,6 +205,15 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+
+      - name: Pin smoke Python
+        shell: powershell
+        run: |
+          $pythonExe = Join-Path $env:pythonLocation 'python.exe'
+          if (-not (Test-Path -LiteralPath $pythonExe)) {
+            throw "setup-python python.exe not found at $pythonExe"
+          }
+          "WEBOTS_KIT_PYTHON=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install Webots
         shell: powershell

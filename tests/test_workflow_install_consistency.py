@@ -138,11 +138,17 @@ def test_release_install_smoke_jobs_checkout_repo_for_verify_script() -> None:
     assert "test-install-testpypi:" in release_content
     assert "test-install-pypi:" in release_content
     assert release_content.count("uses: actions/checkout@v5") >= 2
+    assert release_content.count("Pin smoke Python") >= 2
+    assert release_content.count("WEBOTS_KIT_PYTHON=") >= 2
+    assert "pythonLocation" in release_content
 
 
 def test_windows_ci_includes_team_upgrade_smoke() -> None:
     root = Path(__file__).resolve().parents[1]
     content = (root / ".github/workflows/windows-ci.yml").read_text(encoding="utf-8")
+    assert "Pin smoke Python" in content
+    assert "WEBOTS_KIT_PYTHON=" in content
+    assert "pythonLocation" in content
     assert "Public verify JSON smoke" in content
     assert "verify_install.ps1 -Json -Output .\\verify-install.json" in content
     assert "MonsterBorg verify JSON smoke" in content
