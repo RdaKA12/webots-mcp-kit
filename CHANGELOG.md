@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.10
+
+- Fixed a PowerShell command-resolution bug in `verify_install.ps1` and `upgrade_check.ps1` where a single-item command array could collapse to a plain string, causing the child invocation to treat the first character of `C:\...` as the executable name.
+- The public install smoke scripts now preserve command arrays explicitly and wrap `Resolve-PythonCommand` results defensively before invoking the pinned Python or module entrypoint.
+
 ## v2.10.9
 
 - Changed the public install verification and upgrade smoke scripts to prefer the pinned interpreter's `python -m webots_mcp_kit.cli` entrypoint outright whenever CI exports `WEBOTS_KIT_PYTHON` or `pythonLocation`, instead of attempting console-script discovery first.

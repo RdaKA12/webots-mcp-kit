@@ -33,25 +33,25 @@ function Resolve-PythonCommand {
     if ($env:WEBOTS_KIT_PYTHON) {
         $explicitPython = $env:WEBOTS_KIT_PYTHON.Trim()
         if ($explicitPython -and (Test-Path -LiteralPath $explicitPython)) {
-            return @($explicitPython)
+            return ,@($explicitPython)
         }
     }
 
     if ($env:pythonLocation) {
         $actionsPython = Join-Path $env:pythonLocation "python.exe"
         if (Test-Path -LiteralPath $actionsPython) {
-            return @($actionsPython)
+            return ,@($actionsPython)
         }
     }
 
     $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
     if ($pythonCommand) {
-        return @($pythonCommand.Source)
+        return ,@($pythonCommand.Source)
     }
 
     $pyLauncher = Get-Command py -ErrorAction SilentlyContinue
     if ($pyLauncher) {
-        return @($pyLauncher.Source, "-3")
+        return ,@($pyLauncher.Source, "-3")
     }
 
     throw "Python and webots-kit are not available on PATH."
@@ -158,26 +158,26 @@ function Resolve-WebotsKitCommand {
     $preferModuleEntrypoint = [bool]($env:WEBOTS_KIT_PYTHON -or $env:pythonLocation)
 
     if ($preferModuleEntrypoint) {
-        $pythonCommand = Resolve-PythonCommand
+        $pythonCommand = @(Resolve-PythonCommand)
         & $pythonCommand[0] @(Get-CommandTail -CommandParts $pythonCommand) -m webots_mcp_kit.cli --version *> $null
         if ($LASTEXITCODE -eq 0) {
-            return @($pythonCommand + @("-m", "webots_mcp_kit.cli"))
+            return ,@($pythonCommand + @("-m", "webots_mcp_kit.cli"))
         }
     }
 
     $command = Get-Command webots-kit -ErrorAction SilentlyContinue
     if ($command) {
-        return @($command.Source)
+        return ,@($command.Source)
     }
 
-    $pythonCommand = Resolve-PythonCommand
+    $pythonCommand = @(Resolve-PythonCommand)
     foreach ($candidate in Get-WebotsKitCommandCandidates -PythonCommand $pythonCommand) {
-        return @($candidate)
+        return ,@($candidate)
     }
 
     & $pythonCommand[0] @(Get-CommandTail -CommandParts $pythonCommand) -m webots_mcp_kit.cli --version *> $null
     if ($LASTEXITCODE -eq 0) {
-        return @($pythonCommand + @("-m", "webots_mcp_kit.cli"))
+        return ,@($pythonCommand + @("-m", "webots_mcp_kit.cli"))
     }
 
     throw "webots-kit is not available in this shell."

@@ -23,6 +23,8 @@ def test_install_and_verify_scripts_exist() -> None:
     assert "PIPX_BIN_DIR" in verify_script
     assert "Scripts\\webots-kit.exe" in verify_script
     assert "preferModuleEntrypoint" in verify_script
+    assert "return ,@($explicitPython)" in verify_script
+    assert "$pythonCommand = @(Resolve-PythonCommand)" in verify_script
 
 
 def test_readme_prefers_pipx_and_lists_support_boundaries() -> None:
