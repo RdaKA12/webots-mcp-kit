@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.9
+
+- Changed the public install verification and upgrade smoke scripts to prefer the pinned interpreter's `python -m webots_mcp_kit.cli` entrypoint outright whenever CI exports `WEBOTS_KIT_PYTHON` or `pythonLocation`, instead of attempting console-script discovery first.
+- This removes the last remaining dependence on Windows console-script launcher discovery during GitHub-hosted install smoke runs.
+
 ## v2.10.8
 
 - Added the missing Windows `Scripts\webots-kit(.exe)` sibling path to the public verify and upgrade smoke resolvers, which matches the default `actions/setup-python` layout on GitHub-hosted runners.

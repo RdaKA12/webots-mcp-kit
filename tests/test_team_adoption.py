@@ -24,6 +24,7 @@ def test_team_scripts_exist() -> None:
     assert "pythonLocation" in verify_script
     assert "PIPX_BIN_DIR" in verify_script
     assert "Scripts\\webots-kit.exe" in verify_script
+    assert "preferModuleEntrypoint" in verify_script
     bootstrap_script = _read("scripts/bootstrap_workspace.ps1")
     assert "[string]$Starter" in bootstrap_script
     assert "[string]$Destination" in bootstrap_script
@@ -35,6 +36,7 @@ def test_team_scripts_exist() -> None:
     assert "pythonLocation" in upgrade_script
     assert "PIPX_BIN_DIR" in upgrade_script
     assert "Scripts\\webots-kit.exe" in upgrade_script
+    assert "preferModuleEntrypoint" in upgrade_script
 
 
 def test_getting_started_workspaces_exist_with_expected_files() -> None:

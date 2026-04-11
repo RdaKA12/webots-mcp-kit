@@ -188,6 +188,16 @@ function Get-WebotsKitCommandCandidates {
 }
 
 function Resolve-WebotsKitCommand {
+    $preferModuleEntrypoint = [bool]($env:WEBOTS_KIT_PYTHON -or $env:pythonLocation)
+
+    if ($preferModuleEntrypoint) {
+        $pythonCommand = Resolve-PythonCommand
+        & $pythonCommand[0] @(Get-CommandTail -CommandParts $pythonCommand) -m webots_mcp_kit.cli --version *> $null
+        if ($LASTEXITCODE -eq 0) {
+            return @($pythonCommand + @("-m", "webots_mcp_kit.cli"))
+        }
+    }
+
     $command = Get-Command webots-kit -ErrorAction SilentlyContinue
     if ($command) {
         return @($command.Source)
