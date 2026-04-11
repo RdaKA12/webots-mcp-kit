@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.8
+
+- Added the missing Windows `Scripts\webots-kit(.exe)` sibling path to the public verify and upgrade smoke resolvers, which matches the default `actions/setup-python` layout on GitHub-hosted runners.
+- Seeded the release install-smoke PATH with the pinned interpreter root plus its `Scripts` directory before running `verify_install.ps1` and `upgrade_check.ps1`, so the child PowerShell process no longer depends on ambient runner PATH state.
+
 ## v2.10.7
 
 - Switched the Windows CI and release install-smoke jobs to install, verify, and diagnose through the pinned `WEBOTS_KIT_PYTHON` interpreter instead of relying on ambient `python` or `webots-kit` PATH resolution.

@@ -166,6 +166,13 @@ jobs:
       - name: Install smoke
         shell: powershell
         run: |
+          $pythonRoot = Split-Path -Parent $env:WEBOTS_KIT_PYTHON
+          $scriptsDir = Join-Path $pythonRoot 'Scripts'
+          if (Test-Path -LiteralPath $scriptsDir) {
+            $env:PATH = "$scriptsDir;$pythonRoot;$env:PATH"
+          } else {
+            $env:PATH = "$pythonRoot;$env:PATH"
+          }
           powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime -Output .\verify-install.json
           powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\upgrade-check -Runtime -Output .\upgrade-check.json
           powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime -Output .\verify-install-monsterborg.json
@@ -245,6 +252,13 @@ jobs:
       - name: Install smoke
         shell: powershell
         run: |
+          $pythonRoot = Split-Path -Parent $env:WEBOTS_KIT_PYTHON
+          $scriptsDir = Join-Path $pythonRoot 'Scripts'
+          if (Test-Path -LiteralPath $scriptsDir) {
+            $env:PATH = "$scriptsDir;$pythonRoot;$env:PATH"
+          } else {
+            $env:PATH = "$pythonRoot;$env:PATH"
+          }
           powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -Runtime -Output .\verify-install.json
           powershell -ExecutionPolicy Bypass -File .\scripts\upgrade_check.ps1 -Workspace .\upgrade-check -Runtime -Output .\upgrade-check.json
           powershell -ExecutionPolicy Bypass -File .\scripts\verify_install.ps1 -RobotProfile monsterborg-4wd -Runtime -Output .\verify-install-monsterborg.json

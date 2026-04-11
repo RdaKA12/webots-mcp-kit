@@ -148,7 +148,7 @@ function Get-WebotsKitCommandCandidates {
     $resolvedPython = $PythonCommand[0]
     if ($resolvedPython) {
         $pythonDir = Split-Path -Parent $resolvedPython
-        foreach ($relative in @("webots-kit.exe", "webots-kit", "..\Scripts\webots-kit.exe", "..\Scripts\webots-kit")) {
+        foreach ($relative in @("webots-kit.exe", "webots-kit", "Scripts\webots-kit.exe", "Scripts\webots-kit", "..\Scripts\webots-kit.exe", "..\Scripts\webots-kit")) {
             $candidate = [System.IO.Path]::GetFullPath((Join-Path $pythonDir $relative))
             if ((Test-Path -LiteralPath $candidate) -and -not $candidates.Contains($candidate)) {
                 [void]$candidates.Add($candidate)

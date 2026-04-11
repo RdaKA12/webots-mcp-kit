@@ -21,6 +21,7 @@ def test_install_and_verify_scripts_exist() -> None:
     assert "WEBOTS_KIT_PYTHON" in verify_script
     assert "pythonLocation" in verify_script
     assert "PIPX_BIN_DIR" in verify_script
+    assert "Scripts\\webots-kit.exe" in verify_script
 
 
 def test_readme_prefers_pipx_and_lists_support_boundaries() -> None:

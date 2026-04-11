@@ -144,6 +144,8 @@ def test_release_install_smoke_jobs_checkout_repo_for_verify_script() -> None:
     assert "pythonLocation" in release_content
     assert release_content.count("& $env:WEBOTS_KIT_PYTHON -m pip install") >= 2
     assert release_content.count("& $env:WEBOTS_KIT_PYTHON -m webots_mcp_kit.cli --version") >= 2
+    assert release_content.count("Join-Path $pythonRoot 'Scripts'") >= 2
+    assert release_content.count('$env:PATH = "$scriptsDir;$pythonRoot;$env:PATH"') >= 2
 
 
 def test_windows_ci_includes_team_upgrade_smoke() -> None:
