@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.10.7
+
+- Switched the Windows CI and release install-smoke jobs to install, verify, and diagnose through the pinned `WEBOTS_KIT_PYTHON` interpreter instead of relying on ambient `python` or `webots-kit` PATH resolution.
+- Added workflow guards that assert the pinned interpreter is also used for TestPyPI/PyPI install verification, closing the remaining mismatch that could leave `verify_install.ps1` probing a different Python than the one that performed the package install.
+
 ## v2.10.6
 
 - Hardened the public Windows install verification scripts so they now prefer the `setup-python` interpreter, an explicit `WEBOTS_KIT_PYTHON`, the matching `Scripts\webots-kit(.exe)` path, and the pipx bin directory before failing command resolution.

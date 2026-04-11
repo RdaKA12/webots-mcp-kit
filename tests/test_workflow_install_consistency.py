@@ -17,6 +17,7 @@ def test_windows_workflows_do_not_use_bare_pip_install() -> None:
     for relative_path in WORKFLOWS:
         content = (root / relative_path).read_text(encoding="utf-8")
         assert "\npip install" not in content, f"Workflow uses bare pip install: {relative_path}"
+        assert "\npython -m pip install" not in content, f"Workflow uses unpinned python pip install: {relative_path}"
 
 
 def test_runtime_workflow_bypasses_powershell_execution_policy() -> None:
@@ -141,6 +142,8 @@ def test_release_install_smoke_jobs_checkout_repo_for_verify_script() -> None:
     assert release_content.count("Pin smoke Python") >= 2
     assert release_content.count("WEBOTS_KIT_PYTHON=") >= 2
     assert "pythonLocation" in release_content
+    assert release_content.count("& $env:WEBOTS_KIT_PYTHON -m pip install") >= 2
+    assert release_content.count("& $env:WEBOTS_KIT_PYTHON -m webots_mcp_kit.cli --version") >= 2
 
 
 def test_windows_ci_includes_team_upgrade_smoke() -> None:
@@ -149,6 +152,8 @@ def test_windows_ci_includes_team_upgrade_smoke() -> None:
     assert "Pin smoke Python" in content
     assert "WEBOTS_KIT_PYTHON=" in content
     assert "pythonLocation" in content
+    assert "& $env:WEBOTS_KIT_PYTHON -m pip install -e .[dev]" in content
+    assert "& $env:WEBOTS_KIT_PYTHON -m webots_mcp_kit.cli doctor --json" in content
     assert "Public verify JSON smoke" in content
     assert "verify_install.ps1 -Json -Output .\\verify-install.json" in content
     assert "MonsterBorg verify JSON smoke" in content

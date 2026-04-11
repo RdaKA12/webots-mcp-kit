@@ -40,10 +40,11 @@ jobs:
       - name: Install toolkit
         shell: powershell
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
-          python -m pip show pytest
-          python -c "import webots_mcp_kit, pytest; print(webots_mcp_kit.__version__)"
+          & $env:WEBOTS_KIT_PYTHON -m ensurepip --upgrade
+          & $env:WEBOTS_KIT_PYTHON -m pip install --upgrade pip
+          & $env:WEBOTS_KIT_PYTHON -m pip install -e .[dev]
+          & $env:WEBOTS_KIT_PYTHON -m pip show pytest
+          & $env:WEBOTS_KIT_PYTHON -c "import webots_mcp_kit, pytest; print(webots_mcp_kit.__version__)"
 
       - name: Verify Webots install
         shell: powershell
@@ -54,11 +55,13 @@ jobs:
 
       - name: Unit tests
         shell: powershell
-        run: python -m pytest -q -k "not smoke"
+        run: |
+          & $env:WEBOTS_KIT_PYTHON -m pytest -q -k "not smoke"
 
       - name: Doctor smoke
         shell: powershell
-        run: webots-kit doctor --json
+        run: |
+          & $env:WEBOTS_KIT_PYTHON -m webots_mcp_kit.cli doctor --json
 
       - name: Public verify JSON smoke
         shell: powershell
@@ -103,14 +106,14 @@ jobs:
                       print([tool.name for tool in tools.tools])
 
           asyncio.run(main())
-          '@ | python -
+          '@ | & $env:WEBOTS_KIT_PYTHON -
 
       - name: Upload failure diagnostics
         if: failure()
         shell: powershell
         run: |
           $diag = Join-Path $env:GITHUB_WORKSPACE '.ci-diagnostics'
-          python -m webots_mcp_kit.diagnostics --output $diag
+          & $env:WEBOTS_KIT_PYTHON -m webots_mcp_kit.diagnostics --output $diag
           $sessionRoot = Join-Path $env:LOCALAPPDATA 'webots-mcp-kit\sessions'
           if (Test-Path $sessionRoot) {
             Copy-Item -LiteralPath $sessionRoot -Destination (Join-Path $diag 'sessions') -Recurse -Force

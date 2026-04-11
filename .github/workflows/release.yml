@@ -150,10 +150,12 @@ jobs:
       - name: Install from TestPyPI
         shell: powershell
         run: |
-          python -m pip install --upgrade pip
+          & $env:WEBOTS_KIT_PYTHON -m ensurepip --upgrade
+          & $env:WEBOTS_KIT_PYTHON -m pip install --upgrade pip
           for ($i = 0; $i -lt 10; $i++) {
             try {
-              python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "webots-mcp-kit==$env:PACKAGE_VERSION"
+              & $env:WEBOTS_KIT_PYTHON -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "webots-mcp-kit==$env:PACKAGE_VERSION"
+              & $env:WEBOTS_KIT_PYTHON -m webots_mcp_kit.cli --version
               exit 0
             } catch {
               if ($i -eq 9) { throw }
@@ -227,10 +229,12 @@ jobs:
       - name: Install from PyPI
         shell: powershell
         run: |
-          python -m pip install --upgrade pip
+          & $env:WEBOTS_KIT_PYTHON -m ensurepip --upgrade
+          & $env:WEBOTS_KIT_PYTHON -m pip install --upgrade pip
           for ($i = 0; $i -lt 10; $i++) {
             try {
-              python -m pip install "webots-mcp-kit==$env:PACKAGE_VERSION"
+              & $env:WEBOTS_KIT_PYTHON -m pip install "webots-mcp-kit==$env:PACKAGE_VERSION"
+              & $env:WEBOTS_KIT_PYTHON -m webots_mcp_kit.cli --version
               exit 0
             } catch {
               if ($i -eq 9) { throw }
